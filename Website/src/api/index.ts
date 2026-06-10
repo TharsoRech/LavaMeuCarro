@@ -59,3 +59,8 @@ export const getAllUsers = (params?: any) => api.get('/admin/users', { params })
 export const getAdminStats = () => api.get('/admin/stats').then(r => r.data);
 export const getPlanos = () => api.get('/planos').then(r => r.data);
 export const getAssinaturas = () => api.get('/admin/assinaturas').then(r => r.data);
+
+// Plans (landing page)
+export const plansApi = {
+  list: () => api.get<any[]>('/planos').then(r => r.data),
+};

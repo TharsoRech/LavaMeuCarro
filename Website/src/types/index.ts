@@ -13,3 +13,13 @@ export interface Plano { id: number; name: string; description?: string; price: 
 export interface Assinatura { id: number; ownerId: number; planoId: number; status: SubscriptionStatus; startDate?: string; endDate?: string; agendamentosNoMes: number; }
 export interface DashboardSummary { totalHoje: number; confirmados: number; pendentes: number; finalizadosMes: number; faturamentoMes: number; }
 export interface PagedResult<T> { items: T[]; total: number; page: number; pageSize: number; }
+
+export interface PlanDto {
+  id: number;
+  name: string;
+  description?: string;
+  price: number;
+  periodDays: number;
+  appointmentLimit: number;
+  active: boolean;
+}
