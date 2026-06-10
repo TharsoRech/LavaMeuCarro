@@ -17,6 +17,6 @@ public class PlanosController : ControllerBase
     public async Task<ActionResult<List<PlanoDTO>>> GetAll()
     {
         var items = await _repo.GetAllAsync();
-        return Ok(items.Where(p => p.Active).Select(p => new PlanoDTO(p.Id, p.Name, p.Description, p.Price, p.PeriodDays, p.AppointmentLimit, p.Active)));
+        return Ok(items.Where(p => p.Active).OrderBy(p => p.Price).Select(p => new PlanoDTO(p.Id, p.Name, p.Description, p.Price, p.PeriodDays, p.AppointmentLimit, p.Active)));
     }
 }
