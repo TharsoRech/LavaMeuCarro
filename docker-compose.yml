@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./LavaMeuCarroApi
+      dockerfile: Dockerfile
+    container_name: lavameucarro-api
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db;Database=LavaMeuCarro;User Id=sa;Password=4uPYdPr0l6oYPAqUgMmRStdZCqFU;Encrypt=False;TrustServerCertificate=True;
+      - Jwt__Secret=lavameucarro-super-secret-key-2024-change-in-production
+      - Jwt__Issuer=lavameucarro
+      - Jwt__Audience=lavameucarro
+    networks:
+      - lavameucarro-net
+    depends_on:
+      - db
+
+  web:
+    build:
+      context: ./Website
+      dockerfile: Dockerfile
+    container_name: lavameucarro-web
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    depends_on:
+      - api
+    networks:
+      - lavameucarro-net
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: lavameucarro-db
+    restart: unless-stopped
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=4uPYdPr0l6oYPAqUgMmRStdZCqFU
+      - MSSQL_PID=Express
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+      - ./LavaMeuCarroApi/Database/Migrations:/migrations
+    networks:
+      - lavameucarro-net
+
+volumes:
+  sqlserver-data:
+
+networks:
+  lavameucarro-net:
+    driver: bridge

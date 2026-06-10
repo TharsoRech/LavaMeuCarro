@@ -1,0 +1,54 @@
+package com.lavemeucarro.app.presentation.screens.auth
+
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.lavemeucarro.app.data.remote.AuthInterceptor
+import com.lavemeucarro.app.data.remote.LavaMeuCarroApi
+import com.lavemeucarro.app.data.models.LoginRequest
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+data class LoginUiState(
+    val isLoading: Boolean = false,
+    val isLoggedIn: Boolean = false,
+    val error: String? = null
+)
+
+@HiltViewModel
+class LoginViewModel @Inject constructor(
+    private val api: LavaMeuCarroApi,
+    private val dataStore: DataStore<Preferences>
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(LoginUiState())
+    val uiState: StateFlow<LoginUiState> = _uiState
+
+    fun login(email: String, password: String) {
+        if (email.isBlank() || password.isBlank()) {
+            _uiState.update { it.copy(error = "Preencha todos os campos") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            try {
+                val response = api.login(LoginRequest(email, password))
+                dataStore.edit { prefs ->
+                    prefs[stringPreferencesKey("access_token")] = response.token
+                    prefs[stringPreferencesKey("refresh_token")] = response.refreshToken
+                }
+                _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = "Email ou senha incorretos") }
+            }
+        }
+    }
+}

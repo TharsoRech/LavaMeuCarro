@@ -1,0 +1,99 @@
+using Dapper;
+using LavaMeuCarro.Application.Interfaces;
+using LavaMeuCarro.Domain.Entities;
+using LavaMeuCarro.Domain.Enums;
+using LavaMeuCarro.Infrastructure.Data;
+
+namespace LavaMeuCarro.Infrastructure.Repositories;
+
+public class AgendamentoRepository : IAgendamentoRepository
+{
+    private readonly IDbConnectionFactory _factory;
+    public AgendamentoRepository(IDbConnectionFactory factory) => _factory = factory;
+
+    public async Task<Agendamento?> GetByIdAsync(int id)
+    {
+        using var db = _factory.CreateConnection();
+        return await db.QueryFirstOrDefaultAsync<Agendamento>("SELECT * FROM Agendamentos WHERE Id = @Id", new { Id = id });
+    }
+
+    public async Task<List<Agendamento>> GetByClientAsync(int clientId)
+    {
+        using var db = _factory.CreateConnection();
+        return (await db.QueryAsync<Agendamento>("SELECT * FROM Agendamentos WHERE ClientId = @ClientId ORDER BY ScheduledAt DESC", new { ClientId = clientId })).ToList();
+    }
+
+    public async Task<List<Agendamento>> GetByUnidadeAsync(int unidadeId, DateTime? date, int? funcionarioId)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = "SELECT * FROM Agendamentos WHERE UnidadeId = @UnidadeId AND (@Date IS NULL OR CAST(ScheduledAt AS DATE) = @Date) AND (@FuncionarioId IS NULL OR FuncionarioId = @FuncionarioId) ORDER BY ScheduledAt";
+        return (await db.QueryAsync<Agendamento>(sql, new { UnidadeId = unidadeId, Date = date?.Date, FuncionarioId = funcionarioId })).ToList();
+    }
+
+    public async Task<List<Agendamento>> GetByFuncionarioAsync(int funcionarioId, DateTime? date)
+    {
+        using var db = _factory.CreateConnection();
+        return (await db.QueryAsync<Agendamento>("SELECT * FROM Agendamentos WHERE FuncionarioId = @FuncionarioId AND (@Date IS NULL OR CAST(ScheduledAt AS DATE) = @Date) ORDER BY ScheduledAt", new { FuncionarioId = funcionarioId, Date = date?.Date })).ToList();
+    }
+
+    public async Task<List<Agendamento>> GetByStatusAsync(AgendamentoStatus status, int userId)
+    {
+        using var db = _factory.CreateConnection();
+        return (await db.QueryAsync<Agendamento>("SELECT * FROM Agendamentos WHERE Status = @Status AND (ClientId = @UserId OR FuncionarioId = @UserId) ORDER BY ScheduledAt DESC", new { Status = status, UserId = userId })).ToList();
+    }
+
+    public async Task<int> CreateAsync(Agendamento agendamento)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = @"INSERT INTO Agendamentos (ClientId, FuncionarioId, ServicoId, UnidadeId, VeiculoId, ScheduledAt, DurationMinutes, TotalPrice, Status, Modalidade, TaxaDeslocamento, PrecoBruto, Desconto, PrecoAdicionais, Notes, CreatedAt)
+                    VALUES (@ClientId, @FuncionarioId, @ServicoId, @UnidadeId, @VeiculoId, @ScheduledAt, @DurationMinutes, @TotalPrice, @Status, @Modalidade, @TaxaDeslocamento, @PrecoBruto, @Desconto, @PrecoAdicionais, @Notes, @CreatedAt);
+                    SELECT CAST(SCOPE_IDENTITY() AS INT)";
+        return await db.QuerySingleAsync<int>(sql, agendamento);
+    }
+
+    public async Task UpdateAsync(Agendamento agendamento)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = @"UPDATE Agendamentos SET Status=@Status, CancellationReason=@CancellationReason, VistoriaFotos=@VistoriaFotos, VistoriaObservacoes=@VistoriaObservacoes, VistoriaData=@VistoriaData, RetiradoPor=@RetiradoPor, NomeAutorizado=@NomeAutorizado, DocumentoAutorizado=@DocumentoAutorizado, RetiradaEm=@RetiradaEm, UpdatedAt=@UpdatedAt WHERE Id=@Id";
+        await db.ExecuteAsync(sql, agendamento);
+    }
+
+    public async Task<bool> HasConflictAsync(int unidadeId, DateTime inicio, DateTime fim, int? excludeId)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = @"SELECT COUNT(*) FROM Agendamentos WHERE UnidadeId = @UnidadeId AND ScheduledAt < @Fim AND DATEADD(MINUTE, DurationMinutes, ScheduledAt) > @Inicio AND Status NOT IN (3, 5) AND (@ExcludeId IS NULL OR Id <> @ExcludeId)";
+        return await db.QuerySingleAsync<int>(sql, new { UnidadeId = unidadeId, Inicio = inicio, Fim = fim, ExcludeId = excludeId }) > 0;
+    }
+
+    public async Task<int> CountByOwnerInMonthAsync(int ownerId, int month, int year)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = @"SELECT COUNT(*) FROM Agendamentos a INNER JOIN Unidades u ON a.UnidadeId = u.Id WHERE u.OwnerId = @OwnerId AND MONTH(a.ScheduledAt) = @Month AND YEAR(a.ScheduledAt) = @Year AND a.Status NOT IN (3, 5)";
+        return await db.QuerySingleAsync<int>(sql, new { OwnerId = ownerId, Month = month, Year = year });
+    }
+
+    public async Task<int> CountByStatusAsync(int unidadeId, AgendamentoStatus status, DateTime? from, DateTime? to)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = "SELECT COUNT(*) FROM Agendamentos WHERE UnidadeId = @UnidadeId AND Status = @Status AND (@From IS NULL OR ScheduledAt >= @From) AND (@To IS NULL OR ScheduledAt < @To)";
+        return await db.QuerySingleAsync<int>(sql, new { UnidadeId = unidadeId, Status = status, From = from, To = to });
+    }
+
+    public async Task<decimal> SumByUnidadeAsync(int unidadeId, DateTime from, DateTime to)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = "SELECT ISNULL(SUM(TotalPrice), 0) FROM Agendamentos WHERE UnidadeId = @UnidadeId AND Status = 4 AND ScheduledAt >= @From AND ScheduledAt < @To";
+        return await db.QuerySingleAsync<decimal>(sql, new { UnidadeId = unidadeId, From = from, To = to });
+    }
+
+    public async Task<(List<Agendamento> Items, int Total)> GetPagedAsync(int unidadeId, int page, int pageSize, string? search, AgendamentoStatus? status)
+    {
+        using var db = _factory.CreateConnection();
+        var where = "WHERE a.UnidadeId = @UnidadeId AND (@Status IS NULL OR a.Status = @Status)";
+        var countSql = $"SELECT COUNT(*) FROM Agendamentos a {where}";
+        var total = await db.QuerySingleAsync<int>(countSql, new { UnidadeId = unidadeId, Status = status });
+        var sql = $"SELECT a.* FROM Agendamentos a {where} ORDER BY a.ScheduledAt DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+        var items = (await db.QueryAsync<Agendamento>(sql, new { UnidadeId = unidadeId, Status = status, Offset = (page - 1) * pageSize, PageSize = pageSize })).ToList();
+        return (items, total);
+    }
+}
