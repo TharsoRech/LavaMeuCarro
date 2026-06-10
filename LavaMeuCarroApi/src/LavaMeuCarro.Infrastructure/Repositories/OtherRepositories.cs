@@ -1,6 +1,7 @@
 using Dapper;
 using LavaMeuCarro.Application.Interfaces;
 using LavaMeuCarro.Domain.Entities;
+using LavaMeuCarro.Domain.Enums;
 using LavaMeuCarro.Infrastructure.Data;
 
 namespace LavaMeuCarro.Infrastructure.Repositories;
@@ -31,10 +32,13 @@ public class AssinaturaRepository : IAssinaturaRepository
     private readonly IDbConnectionFactory _factory;
     public AssinaturaRepository(IDbConnectionFactory factory) => _factory = factory;
     public async Task<Assinatura?> GetByOwnerAsync(int ownerId) { using var db = _factory.CreateConnection(); return await db.QueryFirstOrDefaultAsync<Assinatura>("SELECT * FROM Assinaturas WHERE OwnerId = @OwnerId", new { OwnerId = ownerId }); }
+    public async Task<Assinatura?> GetByIdAsync(int id) { using var db = _factory.CreateConnection(); return await db.QueryFirstOrDefaultAsync<Assinatura>("SELECT * FROM Assinaturas WHERE Id = @Id", new { Id = id }); }
     public async Task<int> CreateAsync(Assinatura a) { using var db = _factory.CreateConnection(); return await db.QuerySingleAsync<int>("INSERT INTO Assinaturas (OwnerId, PlanoId, Status, StartDate, EndDate, TrialEndDate, AgendamentosNoMes, CreatedAt) VALUES (@OwnerId, @PlanoId, @Status, @StartDate, @EndDate, @TrialEndDate, @AgendamentosNoMes, @CreatedAt); SELECT CAST(SCOPE_IDENTITY() AS INT)", a); }
     public async Task UpdateAsync(Assinatura a) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("UPDATE Assinaturas SET Status=@Status, StartDate=@StartDate, EndDate=@EndDate, AgendamentosNoMes=@AgendamentosNoMes, LastResetAt=@LastResetAt, UpdatedAt=GETUTCDATE() WHERE Id=@Id", a); }
     public async Task<List<Assinatura>> GetAllAsync(int page, int pageSize) { using var db = _factory.CreateConnection(); return (await db.QueryAsync<Assinatura>("SELECT * FROM Assinaturas ORDER BY Id DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY", new { Offset = (page-1)*pageSize, PageSize = pageSize })).ToList(); }
+    public async Task<(List<Assinatura> Items, int Total)> GetPagedAsync(int page, int pageSize, SubscriptionStatus? status) { using var db = _factory.CreateConnection(); var where = status.HasValue ? "WHERE Status = @Status" : ""; var total = await db.QuerySingleAsync<int>($"SELECT COUNT(*) FROM Assinaturas {where}", new { Status = status }); var items = (await db.QueryAsync<Assinatura>($"SELECT * FROM Assinaturas {where} ORDER BY Id DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY", new { Status = status, Offset = (page-1)*pageSize, PageSize = pageSize })).ToList(); return (items, total); }
     public async Task<int> CountActiveAsync() { using var db = _factory.CreateConnection(); return await db.QuerySingleAsync<int>("SELECT COUNT(*) FROM Assinaturas WHERE Status = 1"); }
+    public async Task<int> CountByStatusAsync(SubscriptionStatus status) { using var db = _factory.CreateConnection(); return await db.QuerySingleAsync<int>("SELECT COUNT(*) FROM Assinaturas WHERE Status = @Status", new { Status = (int)status }); }
 }
 
 public class PlanoRepository : IPlanoRepository
@@ -55,6 +59,7 @@ public class NotificacaoRepository : INotificacaoRepository
     public async Task<List<Notificacao>> GetByUserAsync(int userId) { using var db = _factory.CreateConnection(); return (await db.QueryAsync<Notificacao>("SELECT * FROM Notificacoes WHERE UserId = @UserId ORDER BY CreatedAt DESC", new { UserId = userId })).ToList(); }
     public async Task<int> CreateAsync(Notificacao n) { using var db = _factory.CreateConnection(); return await db.QuerySingleAsync<int>("INSERT INTO Notificacoes (UserId, Title, Body, Type, ReferenceId, ReferenceType, CreatedAt) VALUES (@UserId, @Title, @Body, @Type, @ReferenceId, @ReferenceType, @CreatedAt); SELECT CAST(SCOPE_IDENTITY() AS INT)", n); }
     public async Task MarkReadAsync(int id) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("UPDATE Notificacoes SET IsRead = 1 WHERE Id = @Id", new { Id = id }); }
+    public async Task MarkAllReadAsync(int userId) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("UPDATE Notificacoes SET IsRead = 1 WHERE UserId = @UserId AND IsRead = 0", new { UserId = userId }); }
     public async Task<int> CountUnreadAsync(int userId) { using var db = _factory.CreateConnection(); return await db.QuerySingleAsync<int>("SELECT COUNT(*) FROM Notificacoes WHERE UserId = @UserId AND IsRead = 0", new { UserId = userId }); }
 }
 
@@ -91,6 +96,7 @@ public class PushDeviceTokenRepository : IPushDeviceTokenRepository
     public async Task<int> UpsertAsync(PushDeviceToken t) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("DELETE FROM PushDeviceTokens WHERE DeviceId = @DeviceId AND UserId = @UserId", t); return await db.QuerySingleAsync<int>("INSERT INTO PushDeviceTokens (UserId, DeviceToken, Provider, Platform, DeviceId, Active, CreatedAt) VALUES (@UserId, @DeviceToken, @Provider, @Platform, @DeviceId, @Active, @CreatedAt); SELECT CAST(SCOPE_IDENTITY() AS INT)", t); }
     public async Task RemoveByDeviceIdAsync(string deviceId) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("DELETE FROM PushDeviceTokens WHERE DeviceId = @DeviceId", new { DeviceId = deviceId }); }
     public async Task<List<PushDeviceToken>> GetByUserAsync(int userId) { using var db = _factory.CreateConnection(); return (await db.QueryAsync<PushDeviceToken>("SELECT * FROM PushDeviceTokens WHERE UserId = @UserId AND Active = 1", new { UserId = userId })).ToList(); }
+    public async Task<List<PushDeviceToken>> GetAllActiveAsync() { using var db = _factory.CreateConnection(); return (await db.QueryAsync<PushDeviceToken>("SELECT * FROM PushDeviceTokens WHERE Active = 1")).ToList(); }
 }
 
 public class NpsFeedbackRepository : INpsFeedbackRepository
@@ -138,4 +144,13 @@ public class EmailVerificationTokenRepository : IEmailVerificationTokenRepositor
     public async Task<int> CreateAsync(EmailVerificationToken t) { using var db = _factory.CreateConnection(); return await db.QuerySingleAsync<int>("INSERT INTO EmailVerificationTokens (Email, Code, ExpiresAt, CreatedAt) VALUES (@Email, @Code, @ExpiresAt, @CreatedAt); SELECT CAST(SCOPE_IDENTITY() AS INT)", t); }
     public async Task<EmailVerificationToken?> GetByCodeAsync(string email, string code) { using var db = _factory.CreateConnection(); return await db.QueryFirstOrDefaultAsync<EmailVerificationToken>("SELECT * FROM EmailVerificationTokens WHERE Email = @Email AND Code = @Code AND Used = 0 AND ExpiresAt > GETUTCDATE()", new { Email = email, Code = code }); }
     public async Task MarkUsedAsync(int id) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("UPDATE EmailVerificationTokens SET Used = 1 WHERE Id = @Id", new { Id = id }); }
+}
+
+public class AsaasPaymentRecordRepository : IAsaasPaymentRecordRepository
+{
+    private readonly IDbConnectionFactory _factory;
+    public AsaasPaymentRecordRepository(IDbConnectionFactory factory) => _factory = factory;
+    public async Task<List<AsaasPaymentRecord>> GetByAssinaturaAsync(int assinaturaId) { using var db = _factory.CreateConnection(); return (await db.QueryAsync<AsaasPaymentRecord>("SELECT * FROM AsaasPaymentRecords WHERE AssinaturaId = @AssinaturaId ORDER BY CreatedAt DESC", new { AssinaturaId = assinaturaId })).ToList(); }
+    public async Task<(List<AsaasPaymentRecord> Items, int Total)> GetPagedAsync(int page, int pageSize, string? status) { using var db = _factory.CreateConnection(); var where = status != null ? "WHERE Status = @Status" : ""; var total = await db.QuerySingleAsync<int>($"SELECT COUNT(*) FROM AsaasPaymentRecords {where}", new { Status = status }); var items = (await db.QueryAsync<AsaasPaymentRecord>($"SELECT * FROM AsaasPaymentRecords {where} ORDER BY CreatedAt DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY", new { Status = status, Offset = (page-1)*pageSize, PageSize = pageSize })).ToList(); return (items, total); }
+    public async Task<int> CreateAsync(AsaasPaymentRecord r) { using var db = _factory.CreateConnection(); return await db.QuerySingleAsync<int>("INSERT INTO AsaasPaymentRecords (AssinaturaId, AsaasPaymentId, Status, Value, PaymentDate, CreatedAt) VALUES (@AssinaturaId, @AsaasPaymentId, @Status, @Value, @PaymentDate, @CreatedAt); SELECT CAST(SCOPE_IDENTITY() AS INT)", r); }
 }

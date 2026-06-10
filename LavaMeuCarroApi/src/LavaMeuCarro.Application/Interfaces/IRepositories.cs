@@ -1,4 +1,5 @@
 using LavaMeuCarro.Domain.Entities;
+using LavaMeuCarro.Domain.Enums;
 
 namespace LavaMeuCarro.Application.Interfaces;
 
@@ -14,10 +15,13 @@ public interface ICategoriaRepository
 public interface IAssinaturaRepository
 {
     Task<Assinatura?> GetByOwnerAsync(int ownerId);
+    Task<Assinatura?> GetByIdAsync(int id);
     Task<int> CreateAsync(Assinatura assinatura);
     Task UpdateAsync(Assinatura assinatura);
     Task<List<Assinatura>> GetAllAsync(int page, int pageSize);
+    Task<(List<Assinatura> Items, int Total)> GetPagedAsync(int page, int pageSize, SubscriptionStatus? status);
     Task<int> CountActiveAsync();
+    Task<int> CountByStatusAsync(SubscriptionStatus status);
 }
 
 public interface IPlanoRepository
@@ -34,6 +38,7 @@ public interface INotificacaoRepository
     Task<List<Notificacao>> GetByUserAsync(int userId);
     Task<int> CreateAsync(Notificacao notificacao);
     Task MarkReadAsync(int id);
+    Task MarkAllReadAsync(int userId);
     Task<int> CountUnreadAsync(int userId);
 }
 
@@ -42,6 +47,7 @@ public interface IPushDeviceTokenRepository
     Task<int> UpsertAsync(PushDeviceToken token);
     Task RemoveByDeviceIdAsync(string deviceId);
     Task<List<PushDeviceToken>> GetByUserAsync(int userId);
+    Task<List<PushDeviceToken>> GetAllActiveAsync();
 }
 
 public interface IAvaliacaoRepository
@@ -83,6 +89,13 @@ public interface ISupportSettingRepository
     Task<string?> GetValueAsync(string key);
     Task SetValueAsync(string key, string value);
     Task<Dictionary<string, string>> GetAllAsync();
+}
+
+public interface IAsaasPaymentRecordRepository
+{
+    Task<List<AsaasPaymentRecord>> GetByAssinaturaAsync(int assinaturaId);
+    Task<(List<AsaasPaymentRecord> Items, int Total)> GetPagedAsync(int page, int pageSize, string? status);
+    Task<int> CreateAsync(AsaasPaymentRecord record);
 }
 
 public interface IAdicionalRepository

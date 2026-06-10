@@ -37,6 +37,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISupportSettingRepository, SupportSettingRepository>();
         services.AddScoped<IAdicionalRepository, AdicionalRepository>();
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
+        services.AddScoped<IAsaasPaymentRecordRepository, AsaasPaymentRecordRepository>();
 
         // Services
         services.AddScoped<IJwtTokenService, JwtTokenService>();
