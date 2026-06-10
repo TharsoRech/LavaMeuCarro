@@ -474,7 +474,7 @@ function PlansSection() {
 
 const FAQ_ITEMS = [
   { question: 'Como começo a usar o Lava Meu Carro?', answer: 'Entre em contato pelo WhatsApp, fazemos seu cadastro e configuração inicial. Em minutos você está operando com agenda, serviços e clientes.' },
-  { question: 'O cliente precisa ter o app?', answer: 'Não. O cliente pode agendar pelo site sem precisar baixar nada. O app é opcional para uma experiência mais completa.' },
+  { question: 'O cliente precisa ter o app?', answer: 'Sim. O cliente precisa baixar o aplicativo Lava Meu Carro para criar uma conta, encontrar centros automotivos e agendar serviços. Após o cadastro, ele acompanha status, histórico e notificações diretamente pelo app.' },
   { question: 'Funciona para lava-jato, estética e detalhamento?', answer: 'Sim! O sistema atende todos os tipos de serviços automotivos: lavagem, polimento, cristalização, higienização, insulfilm e mais.' },
   { question: 'Como funciona o agendamento pelo cliente?', answer: 'O cliente cria uma conta, encontra centros automotivos, escolhe o serviço, visualiza horários disponíveis e agenda pelo próprio app. Depois, acompanha status, histórico e notificações.' },
   { question: 'Como funciona para centros automotivos?', answer: 'O centro cadastra unidade, profissionais, serviços, horários e passa a controlar agenda, clientes, relatórios e notificações. Também é possível usar o Web Admin para uma gestão mais confortável no computador.' },
