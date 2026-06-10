@@ -1,0 +1,53 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": ".NET API (LavaMeuCarro)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "dotnet-build",
+      "program": "${workspaceFolder}/LavaMeuCarroApi/src/LavaMeuCarro.API/bin/Debug/net8.0/LavaMeuCarro.API.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/LavaMeuCarroApi/src/LavaMeuCarro.API",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5050"
+      }
+    },
+    {
+      "name": "Website (Vite Dev)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/Website",
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Local:\\s+(https?://\\S+)"
+      }
+    },
+    {
+      "name": "Website + API",
+      "type": "node",
+      "request": "launch",
+      "serverReadyAction": {
+        "action": "openExternally"
+      },
+      "preLaunchTask": "start-all",
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full Stack (API + Website)",
+      "configurations": [".NET API (LavaMeuCarro)", "Website (Vite Dev)"],
+      "stopAll": true
+    }
+  ]
+}

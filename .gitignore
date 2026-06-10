@@ -11,10 +11,17 @@ build/
 
 # IDE
 .vs/
-.vscode/
 .idea/
 *.suo
 *.user
+*.swp
+*.swo
+*~
+
+# VS Code (keep launch/tasks configs)
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
 
 # OS
 .DS_Store
@@ -34,3 +41,17 @@ coverage/
 
 # Docker
 **/docker-compose.override.yml
+
+# Android
+**/.gradle/
+**/local.properties
+**/captures/
+**/.externalNativeBuild/
+**/.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+*.hprof
+*.iml
