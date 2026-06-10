@@ -9,7 +9,7 @@ export default function AdminDashboard() {
   });
 
   const stats = [
-    { label: 'Agendamentos Hoje', value: summary?.hoje ?? 0, icon: Calendar, color: 'bg-blue-500' },
+    { label: 'Agendamentos Hoje', value: summary?.totalHoje ?? 0, icon: Calendar, color: 'bg-blue-500' },
     { label: 'Pendentes', value: summary?.pendentes ?? 0, icon: Clock, color: 'bg-yellow-500' },
     { label: 'Finalizados (Mês)', value: summary?.finalizadosMes ?? 0, icon: CheckCircle, color: 'bg-green-500' },
     { label: 'Faturamento (Mês)', value: `R$ ${(summary?.faturamentoMes ?? 0).toFixed(2)}`, icon: DollarSign, color: 'bg-emerald-500' },

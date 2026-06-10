@@ -8,6 +8,7 @@ build/
 **/bin/
 **/obj/
 **/out/
+*.tsbuildinfo
 
 # IDE
 .vs/

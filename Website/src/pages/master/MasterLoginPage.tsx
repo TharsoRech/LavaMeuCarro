@@ -30,7 +30,7 @@ export default function MasterLoginPage() {
     setError('');
     try {
       const res = await api.post('/auth/login', { ...data, tipo: 'Master' });
-      setAuth(res.data);
+      setAuth(res.data.token, res.data.refreshToken, res.data.user);
       navigate('/master/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao fazer login');
