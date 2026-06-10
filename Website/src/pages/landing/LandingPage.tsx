@@ -88,12 +88,12 @@ function Hero() {
         </div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6 text-balance">
-          Seu centro automotivo com agenda online,
+          Seu studio automotivo com agenda online,
           <span className="text-blue-600"> equipe organizada e menos faltas</span>
         </h1>
 
         <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto mb-10">
-          O cliente agenda pelo app em poucos toques e seu centro recebe tudo no painel Web Admin: horários, confirmações, notificações e relatórios para crescer com controle.
+          O cliente agenda pelo app em poucos toques e seu studio recebe tudo no painel Web Admin: horários, confirmações, notificações e relatórios para crescer com controle.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -138,7 +138,7 @@ function ProductScreenshots() {
 
   const mobileShots = [
     { src: '/screenshots/mobile/home.png', title: 'Tela inicial' },
-    { src: '/screenshots/mobile/busca.png', title: 'Busca de centros automotivos' },
+    { src: '/screenshots/mobile/busca.png', title: 'Busca de studios automotivos' },
     { src: '/screenshots/mobile/agendamentos.png', title: 'Agendamentos do cliente' },
     { src: '/screenshots/mobile/minhas-unidades.png', title: 'Minhas unidades' },
     { src: '/screenshots/mobile/relatorios.png', title: 'Relatorios no app' },
@@ -243,13 +243,13 @@ function ProductScreenshots() {
 
 const features = [
   { icon: <Calendar className="w-6 h-6" />, title: 'Agendamento Fácil', desc: 'Agende em segundos pelo app. Escolha o serviço, profissional e horário disponível sem precisar ligar.', color: 'blue' },
-  { icon: <MapPin className="w-6 h-6" />, title: 'Perto de Você', desc: 'Encontre os melhores centros automotivos na sua cidade ou bairro com busca por localização.', color: 'green' },
+  { icon: <MapPin className="w-6 h-6" />, title: 'Perto de Você', desc: 'Encontre os melhores studios automotivos na sua cidade ou bairro com busca por localização.', color: 'green' },
   { icon: <Clock className="w-6 h-6" />, title: 'Avaliações Reais', desc: 'Veja avaliações de clientes reais antes de escolher. Transparência total para a sua decisão.', color: 'yellow' },
-  { icon: <Clock className="w-6 h-6" />, title: 'Lembretes Automáticos', desc: 'Seus clientes recebem lembretes diários por push no celular com o horário e o centro. Ninguém mais esquece o agendamento.', color: 'purple' },
+  { icon: <Clock className="w-6 h-6" />, title: 'Lembretes Automáticos', desc: 'Seus clientes recebem lembretes diários por push no celular com o horário e o studio. Ninguém mais esquece o agendamento.', color: 'purple' },
   { icon: <BellRing className="w-6 h-6" />, title: 'Push Personalizados', desc: 'Envie notificações push para seus clientes: confirme agendamentos, avise sobre mudanças de status e dispare promoções diretamente no celular deles.', color: 'cyan' },
   { icon: <Shield className="w-6 h-6" />, title: 'Seguro e Confiável', desc: 'Seus dados protegidos com criptografia de ponta a ponta e autenticação segura.', color: 'red' },
   { icon: <Tag className="w-6 h-6" />, title: 'Promoções de Serviços', desc: 'Crie promoções com preços especiais e período definido. Seus serviços em destaque aparecem automaticamente para clientes próximos no app.', color: 'orange' },
-  { icon: <Users className="w-6 h-6" />, title: 'Vários Profissionais', desc: 'Centros com toda a equipe cadastrada. Escolha o profissional de sua preferência.', color: 'indigo' },
+  { icon: <Users className="w-6 h-6" />, title: 'Vários Profissionais', desc: 'Studios com toda a equipe cadastrada. Escolha o profissional de sua preferência.', color: 'indigo' },
 ];
 
 const featureColors: Record<string, string> = {
@@ -284,16 +284,16 @@ function Features() {
 
 function HowItWorks() {
   const steps = [
-    { num: 1, title: 'Cliente escolhe o centro e profissional', desc: 'Pelo app, o cliente encontra sua unidade, vê serviços e seleciona o profissional ideal.' },
+    { num: 1, title: 'Cliente escolhe o studio e profissional', desc: 'Pelo app, o cliente encontra sua unidade, vê serviços e seleciona o profissional ideal.' },
     { num: 2, title: 'Seleciona serviço, data e horário', desc: 'A agenda exibe horários disponíveis e o cliente conclui o agendamento em poucos toques.' },
-    { num: 3, title: 'Seu centro recebe no painel Web Admin', desc: 'A solicitação entra direto na agenda da unidade com status e dados do cliente.' },
-    { num: 4, title: 'Confirmações e acompanhamento', desc: 'Cliente e centro recebem notificações, reduzindo esquecimentos e melhorando a presença.' },
+    { num: 3, title: 'Seu studio recebe no painel Web Admin', desc: 'A solicitação entra direto na agenda da unidade com status e dados do cliente.' },
+    { num: 4, title: 'Confirmações e acompanhamento', desc: 'Cliente e studio recebem notificações, reduzindo esquecimentos e melhorando a presença.' },
   ];
   return (
     <section id="como-funciona" className="py-24 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Como o cliente agenda no seu centro</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Como o cliente agenda no seu studio</h2>
           <p className="text-lg text-gray-600">Fluxo simples para o cliente, operação organizada para sua equipe.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -317,7 +317,7 @@ function ForProfessionals() {
     'Agenda digital integrada',
     'Notificações automáticas para clientes',
     'Gestão de serviços e preços',
-    'Vários centros/unidades com a mesma licença',
+    'Vários studios/unidades com a mesma licença',
     'Relatório de agendamentos',
     'Painel de gerenciamento completo',
     'Suporte dedicado',
@@ -328,9 +328,9 @@ function ForProfessionals() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-6">
-              <Car className="w-4 h-4" /> Para Profissionais e Centros Automotivos
+              <Car className="w-4 h-4" /> Para Profissionais e Studios Automotivos
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">Gerencie seu centro de qualquer lugar</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">Gerencie seu studio de qualquer lugar</h2>
             <p className="text-gray-600 mb-8 leading-relaxed">
               Baixe o app, faça seu cadastro e em minutos tenha agenda, serviços, equipe, clientes e comunicações automáticas funcionando.
             </p>
@@ -371,7 +371,7 @@ function ForProfessionals() {
 const fullAccessFeatures = [
   { icon: <MonitorSmartphone className="w-6 h-6" />, title: 'App + painel Web Admin', desc: 'Operação completa no celular e no navegador, com a mesma conta.' },
   { icon: <Calendar className="w-6 h-6" />, title: 'Agenda com controle total', desc: 'Organize horários, encaixes, confirmações e status dos agendamentos.' },
-  { icon: <Users className="w-6 h-6" />, title: 'Gestão de clientes, equipe e unidades', desc: 'Centralize histórico, profissionais, serviços e múltiplos centros na mesma licença.' },
+  { icon: <Users className="w-6 h-6" />, title: 'Gestão de clientes, equipe e unidades', desc: 'Centralize histórico, profissionais, serviços e múltiplos studios na mesma licença.' },
   { icon: <BarChart3 className="w-6 h-6" />, title: 'Relatórios e indicadores', desc: 'Acompanhe desempenho para decidir com mais segurança e rapidez.' },
   { icon: <MailCheck className="w-6 h-6" />, title: 'Confirmações e status por e-mail', desc: 'Comunicação automática para reduzir dúvidas e faltas dos clientes.' },
   { icon: <BellRing className="w-6 h-6" />, title: 'Notificações e lembretes', desc: 'Avisos automáticos para profissional e cliente em cada etapa.' },
@@ -382,11 +382,11 @@ function CompleteSuite() {
     <section className="py-24 bg-gray-50 border-y border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Tudo que o sistema entrega para o seu centro</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Tudo que o sistema entrega para o seu studio</h2>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto">Você faz o registro rápido e já entra com um sistema completo em mãos. Todos os planos liberam os mesmos módulos.</p>
         </div>
         <div className="mb-8 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm text-blue-800">
-          O que muda entre os planos é apenas o limite de agendamentos por ciclo. Recursos como painel Web Admin, múltiplos centros/unidades, relatórios, notificações e e-mails automáticos continuam inclusos em todos.
+          O que muda entre os planos é apenas o limite de agendamentos por ciclo. Recursos como painel Web Admin, múltiplos studios/unidades, relatórios, notificações e e-mails automáticos continuam inclusos em todos.
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {fullAccessFeatures.map((item) => (
@@ -443,7 +443,7 @@ function PlanCard({ plan, isRecommended }: { plan: PlanDto; isRecommended: boole
       </div>
       <ul className="mt-5 space-y-2 text-sm text-gray-700">
         <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-blue-600" />{formatAppointmentLimit(plan.appointmentLimit)}</li>
-        <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-blue-600" />Vários centros/unidades com a mesma licença</li>
+        <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-blue-600" />Vários studios/unidades com a mesma licença</li>
         <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-blue-600" />Gestão completa de agenda e clientes</li>
         {plan.appointmentLimit <= 0 && (
           <li className="flex items-center gap-2 font-medium text-emerald-700"><CheckCircle className="w-4 h-4 text-emerald-600" />Este plano opera com agendamentos ilimitados</li>
@@ -484,8 +484,8 @@ function PlansSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Planos de assinatura</h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">Escolha o plano ideal para o seu centro e comece a usar com 30 dias grátis, sem cartão de crédito.</p>
-          <p className="mt-3 text-sm font-medium text-blue-700">Registro rápido e acesso completo: app, painel Web Admin, vários centros/unidades, agenda, equipe, relatórios e comunicações automáticas.</p>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">Escolha o plano ideal para o seu studio e comece a usar com 30 dias grátis, sem cartão de crédito.</p>
+          <p className="mt-3 text-sm font-medium text-blue-700">Registro rápido e acesso completo: app, painel Web Admin, vários studios/unidades, agenda, equipe, relatórios e comunicações automáticas.</p>
         </div>
         <div className="mb-8 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 text-sm text-emerald-800">
           A assinatura é por volume de uso: muda somente o limite de agendamentos por ciclo. O sistema completo continua liberado em qualquer plano, com cenários de agendamentos ilimitados nos planos sem limite.
@@ -562,7 +562,7 @@ function AboutSection() {
             <span className="inline-flex items-center rounded-full bg-blue-100 px-4 py-2 text-sm font-medium text-blue-700">Quem somos</span>
             <h2 className="mt-6 text-3xl sm:text-4xl font-bold text-gray-900">Criei o Lava Meu Carro para facilitar a rotina de quem vive de estética automotiva.</h2>
             <div className="mt-6 space-y-4 text-gray-600 leading-relaxed">
-              <p>Sou <strong className="text-gray-900">Tharso Francisco Rech Curia</strong> e idealizei o Lava Meu Carro para resolver um problema real: simplificar agendamentos, organização e presença digital de centros automotivos e profissionais de estética veicular.</p>
+              <p>Sou <strong className="text-gray-900">Tharso Francisco Rech Curia</strong> e idealizei o Lava Meu Carro para resolver um problema real: simplificar agendamentos, organização e presença digital de studios automotivos e profissionais de estética veicular.</p>
               <p>Este é um projeto solo, desenvolvido de forma independente, com uma proposta clara: entregar uma plataforma simples, confiável e prática para ajudar negócios automotivos a ganhar tempo e profissionalismo.</p>
               <p>Cada melhoria no produto nasce da rotina de uso, do contato com profissionais e do compromisso de evoluir a experiência de quem agenda e de quem atende.</p>
             </div>
@@ -580,7 +580,7 @@ function AboutSection() {
               </div>
             </div>
             <div className="mt-8 space-y-4">
-              <div className="rounded-2xl bg-white p-4 border border-gray-100"><p className="text-sm font-semibold text-gray-900">Missão</p><p className="mt-1 text-sm text-gray-600">Tornar o agendamento e a gestão de centros automotivos mais simples, acessíveis e profissionais.</p></div>
+              <div className="rounded-2xl bg-white p-4 border border-gray-100"><p className="text-sm font-semibold text-gray-900">Missão</p><p className="mt-1 text-sm text-gray-600">Tornar o agendamento e a gestão de studios automotivos mais simples, acessíveis e profissionais.</p></div>
               <div className="rounded-2xl bg-white p-4 border border-gray-100"><p className="text-sm font-semibold text-gray-900">Visão de produto</p><p className="mt-1 text-sm text-gray-600">Criar uma experiência prática para profissionais e clientes, sem burocracia desnecessária.</p></div>
               <div className="rounded-2xl bg-white p-4 border border-gray-100"><p className="text-sm font-semibold text-gray-900">Compromisso</p><p className="mt-1 text-sm text-gray-600">Evoluir continuamente a plataforma com melhorias reais, baseadas em uso e feedback.</p></div>
             </div>
@@ -600,13 +600,13 @@ const FAQ_VIDEOS = [
       { title: 'Como criar uma conta', src: '/marketing/Mobile/LavaMeuCarro_Mobile_Criar_Conta_Nova.mov' },
       { title: 'Mudar tipo de perfil (cliente ↔ profissional)', src: '/marketing/Mobile/LavaMeuCarro_Mobile_Mudar_Tipo_Perfil.mov' },
       { title: 'Como fazer um agendamento', src: '/marketing/Mobile/LavaMeuCarro_Mobile_Fazendo_Agendamento.mov' },
-      { title: 'Ver detalhes do centro', src: '/marketing/Mobile/LavaMeuCarro_Mobile_Detalhes_Do_Centro.mov' },
+      { title: 'Ver detalhes do studio', src: '/marketing/Mobile/LavaMeuCarro_Mobile_Detalhes_Do_Centro.mov' },
     ],
   },
   {
-    category: 'App Mobile – Gestão de centro automotivo',
+    category: 'App Mobile – Gestão de studio automotivo',
     items: [
-      { title: 'Criar novo centro', src: '/marketing/Mobile/LavaMeuCarro_Mobile_Criando_Novo_Centro.mov' },
+      { title: 'Criar novo studio', src: '/marketing/Mobile/LavaMeuCarro_Mobile_Criando_Novo_Centro.mov' },
       { title: 'Adicionar serviços, profissionais e horários', src: '/marketing/Mobile/LavaMeuCarro_Mobile_Adicionando_Servicos_Profissionais_Setando_Horarios_Agenda.mov' },
       { title: 'Ver agendamentos', src: '/marketing/Mobile/LavaMeuCarro_Mobile_Agendamentos.mov' },
     ],
@@ -627,18 +627,18 @@ const FAQ_VIDEOS = [
 
 const FAQ_TEXT_ITEMS = [
   { question: 'Como baixo o app Lava Meu Carro?', answer: 'Você pode baixar o aplicativo diretamente pela Google Play. No site, use o botão "Google Play" na seção de download. Em aparelhos iPhone, a versão para App Store pode depender da disponibilidade publicada no momento.' },
-  { question: 'Como funciona o Lava Meu Carro para clientes?', answer: 'O cliente cria uma conta, encontra centros automotivos e profissionais, escolhe o serviço, visualiza horários disponíveis e agenda pelo próprio app. Depois, consegue acompanhar status, histórico, notificações e detalhes do atendimento.' },
-  { question: 'Como funciona para centros automotivos e profissionais?', answer: 'O centro cadastra unidade, profissionais, serviços, horários e passa a controlar agenda, clientes, relatórios e notificações. Também é possível usar o Web Admin para uma gestão mais confortável no computador.' },
+  { question: 'Como funciona o Lava Meu Carro para clientes?', answer: 'O cliente cria uma conta, encontra studios automotivos e profissionais, escolhe o serviço, visualiza horários disponíveis e agenda pelo próprio app. Depois, consegue acompanhar status, histórico, notificações e detalhes do atendimento.' },
+  { question: 'Como funciona para studios automotivos e profissionais?', answer: 'O studio cadastra unidade, profissionais, serviços, horários e passa a controlar agenda, clientes, relatórios e notificações. Também é possível usar o Web Admin para uma gestão mais confortável no computador.' },
   { question: 'O que é a licença/assinatura?', answer: 'A licença/assinatura é por volume de uso e habilita o acesso completo à plataforma. O uso é limitado pelo volume de agendamentos por ciclo, conforme o plano contratado.' },
   { question: 'Existe teste grátis ou plano inicial?', answer: 'Sim. Cada conta tem direito a um período de teste gratuito de 30 dias, disponível uma única vez. Após o uso do trial, é necessário contratar um plano pago para continuar utilizando os recursos de gestão da plataforma.' },
   { question: 'Tenho suporte se eu precisar de ajuda?', answer: 'Sim. Você pode entrar em contato pelo WhatsApp exibido no site. O suporte ajuda com onboarding, uso do app, dúvidas operacionais e problemas de acesso.' },
   { question: 'Meus dados estão seguros?', answer: 'Sim. A plataforma utiliza HTTPS/TLS para transmissão, armazenamento protegido de credenciais e controles de acesso por perfil. Além disso, o tratamento de dados segue diretrizes da LGPD e só usa cookies analíticos com consentimento.' },
   { question: 'Vocês compartilham meus dados com terceiros?', answer: 'Somente quando necessário para a operação técnica do serviço, como monitoramento de erros e performance. Quando houver uso de serviços terceiros, isso é informado com transparência e condicionado às bases legais e consentimentos aplicáveis.' },
-  { question: 'Posso usar pelo celular e pelo computador?', answer: 'Sim. O cliente normalmente usa o app mobile para buscar e agendar. Já o centro pode operar tanto no app quanto no Web Admin, com recursos de gestão, agenda, cadastro e relatórios.' },
+  { question: 'Posso usar pelo celular e pelo computador?', answer: 'Sim. O cliente normalmente usa o app mobile para buscar e agendar. Já o studio pode operar tanto no app quanto no Web Admin, com recursos de gestão, agenda, cadastro e relatórios.' },
   { question: 'Dá para cadastrar mais de uma unidade?', answer: 'Sim. O sistema foi preparado para gestão por unidade, permitindo separar profissionais, serviços, agenda e relatórios conforme a estrutura do negócio.' },
   { question: 'O cliente recebe confirmações e avisos?', answer: 'Sim. O sistema pode enviar notificações e comunicações operacionais do agendamento, como confirmação, atualização de status e outras mensagens transacionais relacionadas ao atendimento.' },
   { question: 'Posso alterar ou cancelar um agendamento?', answer: 'Sim. Dependendo do status do agendamento e das regras aplicáveis, cliente e administradores conseguem cancelar ou ajustar o atendimento. Em cenários elegíveis, também é possível trocar o profissional responsável.' },
-  { question: 'Como começo a configurar meu centro?', answer: 'O ideal é seguir esta ordem: criar a unidade, cadastrar profissionais, cadastrar serviços, definir horários de atendimento e depois começar a operar a agenda. Os vídeos desta seção mostram esse fluxo na prática.' },
+  { question: 'Como começo a configurar meu studio?', answer: 'O ideal é seguir esta ordem: criar a unidade, cadastrar profissionais, cadastrar serviços, definir horários de atendimento e depois começar a operar a agenda. Os vídeos desta seção mostram esse fluxo na prática.' },
   { question: 'Consigo ver relatórios do meu negócio?', answer: 'Sim. A plataforma possui relatórios com indicadores visuais para ajudar no acompanhamento de faturamento, atendimentos, profissionais, serviços e desempenho operacional da unidade.' },
 ];
 
@@ -756,7 +756,7 @@ function DownloadCta() {
   return (
     <section className="py-24 bg-blue-600">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Pronto para transformar a gestão do seu centro automotivo?</h2>
+        <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">Pronto para transformar a gestão do seu studio automotivo?</h2>
         <p className="text-blue-100 text-lg mb-10">Ative o Lava Meu Carro e ofereça agendamento online com controle total no app e no Web Admin.</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a href="https://play.google.com/store/apps/details?id=com.TFSoftware.lavemeucarro" target="_blank" rel="noopener noreferrer"
