@@ -41,6 +41,7 @@ import com.TFSoftware.lavemeucarro.app.data.models.ProfessionalOptionDTO
 import com.TFSoftware.lavemeucarro.app.data.models.UnidadeDto
 import com.TFSoftware.lavemeucarro.app.presentation.theme.AppColors
 import com.TFSoftware.lavemeucarro.app.utils.DateFormatter
+import com.TFSoftware.lavemeucarro.app.utils.NewRelicLogger
 import java.util.Date
 
 private val ADMIN_PANEL_URL = "https://lavemeucarro.com/admin"
@@ -64,6 +65,10 @@ fun AppointmentsScreen(
     val isBatchProcessing by viewModel.isBatchProcessing.collectAsState()
     val context = LocalContext.current
 
+    // Context switching state (following HoraDaBeleza pattern)
+    var isContextSwitching by remember { mutableStateOf(false) }
+    val CONTEXT_SWITCH_FALLBACK_MS = 75000L // 75 seconds fallback timer
+    
     // Sub-tab state: "unidade" or "pessoal"
     var activeSubTab by remember { mutableStateOf(if (isProfessional) "unidade" else "pessoal") }
     var selectedStatus by remember { mutableStateOf<String?>(null) }
@@ -88,14 +93,40 @@ fun AppointmentsScreen(
     val dates = remember { DateFormatter.getNext14Days() }
     val selectedDate = dates.getOrElse(selectedDateIndex) { dates.first() }
     val selectedDateStr = DateFormatter.formatIso(selectedDate)
+    
+    // Context switching fallback timer (prevent infinite loading)
+    LaunchedEffect(isContextSwitching) {
+        if (!isContextSwitching) return@LaunchedEffect
+        
+        kotlinx.coroutines.delay(CONTEXT_SWITCH_FALLBACK_MS)
+        if (isContextSwitching) {
+            // Fallback triggered - force stop context switching
+            isContextSwitching = false
+            NewRelicLogger.reportWarning(
+                "Context switching fallback timer triggered to prevent visual lockup",
+                "AppointmentsScreen.contextSwitchFallback",
+                mapOf(
+                    "timeoutMs" to CONTEXT_SWITCH_FALLBACK_MS,
+                    "selectedUnitId" to selectedUnit?.id,
+                    "activeTab" to activeSubTab,
+                    "selectedDate" to selectedDateStr
+                )
+            )
+        }
+    }
 
     // Load data based on active tab
     LaunchedEffect(isProfessional, selectedUnit, selectedDateStr, activeSubTab, showCancelled) {
-        if (isProfessional && activeSubTab == "unidade" && selectedUnit != null) {
-            viewModel.loadUnitAppointments(selectedUnit!!.id, selectedDateStr)
-            viewModel.loadDashboardSummary(selectedUnit!!.id)
-        } else if (activeSubTab == "pessoal" || !isProfessional) {
-            viewModel.loadMyAppointments()
+        isContextSwitching = true
+        try {
+            if (isProfessional && activeSubTab == "unidade" && selectedUnit != null) {
+                viewModel.loadUnitAppointments(selectedUnit!!.id, selectedDateStr)
+                viewModel.loadDashboardSummary(selectedUnit!!.id)
+            } else if (activeSubTab == "pessoal" || !isProfessional) {
+                viewModel.loadMyAppointments()
+            }
+        } finally {
+            isContextSwitching = false
         }
     }
 
@@ -216,7 +247,8 @@ fun AppointmentsScreen(
         c
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
         // Header
         Surface(tonalElevation = 1.dp) {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -524,6 +556,37 @@ fun AppointmentsScreen(
                                 onQuickAction = { status -> viewModel.updateStatus(ag.id, status) }
                             )
                         }
+                    }
+                }
+            }
+        }
+        
+        // Context switching overlay (following HoraDaBeleza pattern)
+        if (isContextSwitching) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier.padding(32.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(48.dp),
+                            strokeWidth = 4.dp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Carregando...",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
