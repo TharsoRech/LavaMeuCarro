@@ -503,6 +503,13 @@ data class PagedResult<T>(
 // ==================== Push ====================
 data class PushTokenRequest(val token: String, val plataforma: String = "Android")
 
+data class RegisterPushDeviceRequest(
+    val deviceToken: String,
+    val platform: String = "android",
+    val provider: String? = "fcm",
+    val deviceId: String? = null
+)
+
 // ==================== Review ====================
 data class ReviewDto(
     val id: String,
@@ -535,5 +542,7 @@ data class PromotionDto(
     val unidadeName: String = "",
     val unidadeCity: String = "",
     val averageRating: Double? = null,
-    val unidadeLogoUrl: String? = null
+    val unidadeLogoUrl: String? = null,
+    val unidadeLatitude: Double? = null,
+    val unidadeLongitude: Double? = null
 )

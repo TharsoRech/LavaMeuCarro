@@ -19,7 +19,10 @@ public class PromotionsController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<List<PromotionDTO>>> GetActive(
-        [FromQuery] int limit = 10)
+        [FromQuery] int limit = 10,
+        [FromQuery] double? lat = null,
+        [FromQuery] double? lng = null,
+        [FromQuery] double? radius = null)
     {
         var servicos = await _servicoRepo.GetPromotionsAsync(limit);
         var result = new List<PromotionDTO>();
@@ -27,6 +30,15 @@ public class PromotionsController : ControllerBase
         foreach (var s in servicos)
         {
             var unidade = await _unidadeRepo.GetByIdAsync(s.UnidadeId);
+            
+            // Filter by location if coordinates provided
+            if (lat.HasValue && lng.HasValue && radius.HasValue && unidade != null && unidade.Latitude.HasValue && unidade.Longitude.HasValue)
+            {
+                var distance = CalculateDistance(lat.Value, lng.Value, unidade.Latitude.Value, unidade.Longitude.Value);
+                if (distance > radius.Value)
+                    continue; // Skip this promotion - out of radius
+            }
+            
             result.Add(new PromotionDTO(
                 s.Id,
                 s.Name,
@@ -40,12 +52,31 @@ public class PromotionsController : ControllerBase
                 unidade?.Name ?? "",
                 unidade?.City ?? "",
                 unidade?.AverageRating,
-                unidade?.LogoUrl
+                unidade?.LogoUrl,
+                unidade?.Latitude,
+                unidade?.Longitude
             ));
         }
 
         return Ok(result);
     }
+
+    /// <summary>
+    /// Calculate distance between two coordinates using Haversine formula (returns km)
+    /// </summary>
+    private double CalculateDistance(double lat1, double lng1, double lat2, double lng2)
+    {
+        const double R = 6371; // Earth's radius in km
+        var dLat = ToRadians(lat2 - lat1);
+        var dLng = ToRadians(lng2 - lng1);
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                Math.Sin(dLng / 2) * Math.Sin(dLng / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return R * c;
+    }
+
+    private double ToRadians(double degrees) => degrees * Math.PI / 180;
 }
 
 public record PromotionDTO(
@@ -61,5 +92,7 @@ public record PromotionDTO(
     string UnidadeName,
     string UnidadeCity,
     decimal? AverageRating,
-    string? UnidadeLogoUrl
+    string? UnidadeLogoUrl,
+    double? UnidadeLatitude = null,
+    double? UnidadeLongitude = null
 );

@@ -57,17 +57,19 @@ class HomeViewModel @Inject constructor(
             try {
                 val unidadesResult = api.getPopularUnidades()
                 val categoriasResult = api.getCategorias()
-                val promotionsResult = api.getPromotions()
+                
+                // Get promotions with location filtering if available
+                val lat = _userLatitude.value
+                val lng = _userLongitude.value
+                val promotionsResult = api.getPromotions(
+                    lat = lat,
+                    lng = lng,
+                    radius = if (lat != null && lng != null) 50 else null
+                )
+                
                 _unidades.value = unidadesResult
                 _categorias.value = categoriasResult
-                
-                // Filter promotions by city if location is set
-                val city = _userCity.value
-                _promotions.value = if (city != null) {
-                    promotionsResult.filter { it.unidadeCity.equals(city, ignoreCase = true) }
-                } else {
-                    promotionsResult
-                }
+                _promotions.value = promotionsResult
                 
                 notificationManager.refreshNotifications()
             } catch (_: Exception) {
@@ -173,11 +175,9 @@ class HomeViewModel @Inject constructor(
                     val unidadesResult = api.getUnidades(city = city)
                     _unidades.value = unidadesResult
                     
-                    // Reload and filter promotions by city
+                    // Reload promotions with location filtering
                     val promotionsResult = api.getPromotions()
-                    _promotions.value = promotionsResult.filter { 
-                        it.unidadeCity.equals(city, ignoreCase = true) 
-                    }
+                    _promotions.value = promotionsResult
                 }
             } catch (_: Exception) {
                 _cepResult.value = null
@@ -203,11 +203,13 @@ class HomeViewModel @Inject constructor(
                 )
                 _unidades.value = unidadesResult
                 
-                // Reload and filter promotions by city
-                val promotionsResult = api.getPromotions()
-                _promotions.value = promotionsResult.filter { 
-                    it.unidadeCity.equals(city, ignoreCase = true) 
-                }
+                // Reload promotions with location filtering
+                val promotionsResult = api.getPromotions(
+                    lat = lat,
+                    lng = lng,
+                    radius = if (lat != null && lng != null) 50 else null
+                )
+                _promotions.value = promotionsResult
             } catch (_: Exception) {}
             _isLoading.value = false
         }

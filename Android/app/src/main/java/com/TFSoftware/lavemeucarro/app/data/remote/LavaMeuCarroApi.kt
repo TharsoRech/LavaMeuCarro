@@ -213,8 +213,8 @@ interface LavaMeuCarroApi {
     suspend fun deleteMyAccount()
 
     // ==================== Push Token ====================
-    @POST("api/push/register")
-    suspend fun registerPushToken(@Body request: PushTokenRequest)
+    @POST("api/notifications/push-device/register")
+    suspend fun registerPushToken(@Body request: RegisterPushDeviceRequest)
 
     // ==================== Reviews ====================
     @POST("api/reviews")
@@ -225,5 +225,10 @@ interface LavaMeuCarroApi {
 
     // ==================== Promotions ====================
     @GET("api/promotions")
-    suspend fun getPromotions(@Query("limit") limit: Int = 10): List<PromotionDto>
+    suspend fun getPromotions(
+        @Query("limit") limit: Int = 10,
+        @Query("lat") lat: Double? = null,
+        @Query("lng") lng: Double? = null,
+        @Query("radius") radius: Double? = null
+    ): List<PromotionDto>
 }

@@ -93,7 +93,32 @@ public class PushDeviceTokenRepository : IPushDeviceTokenRepository
 {
     private readonly IDbConnectionFactory _factory;
     public PushDeviceTokenRepository(IDbConnectionFactory factory) => _factory = factory;
-    public async Task<int> UpsertAsync(PushDeviceToken t) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("DELETE FROM PushDeviceTokens WHERE DeviceId = @DeviceId AND UserId = @UserId", t); return await db.QuerySingleAsync<int>("INSERT INTO PushDeviceTokens (UserId, DeviceToken, Provider, Platform, DeviceId, Active, CreatedAt) VALUES (@UserId, @DeviceToken, @Provider, @Platform, @DeviceId, @Active, @CreatedAt); SELECT CAST(SCOPE_IDENTITY() AS INT)", t); }
+    
+    public async Task<int> UpsertAsync(PushDeviceToken t) 
+    { 
+        using var db = _factory.CreateConnection(); 
+        // First, deactivate old tokens for this device
+        await db.ExecuteAsync(
+            "UPDATE PushDeviceTokens SET Active = 0, UpdatedAt = GETUTCDATE() WHERE DeviceId = @DeviceId AND UserId = @UserId AND DeviceToken != @DeviceToken", 
+            t); 
+        // Then insert or update the current token
+        var existing = await db.QueryFirstOrDefaultAsync<PushDeviceToken>(
+            "SELECT * FROM PushDeviceTokens WHERE DeviceToken = @DeviceToken AND UserId = @UserId", 
+            t);
+        
+        if (existing != null)
+        {
+            await db.ExecuteAsync(
+                "UPDATE PushDeviceTokens SET Active = 1, UpdatedAt = GETUTCDATE() WHERE Id = @Id", 
+                new { existing.Id });
+            return existing.Id;
+        }
+        
+        return await db.QuerySingleAsync<int>(
+            "INSERT INTO PushDeviceTokens (UserId, DeviceToken, Provider, Platform, DeviceId, Active, CreatedAt, UpdatedAt) VALUES (@UserId, @DeviceToken, @Provider, @Platform, @DeviceId, @Active, @CreatedAt, @UpdatedAt); SELECT CAST(SCOPE_IDENTITY() AS INT)", 
+            t); 
+    }
+    
     public async Task RemoveByDeviceIdAsync(string deviceId) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("DELETE FROM PushDeviceTokens WHERE DeviceId = @DeviceId", new { DeviceId = deviceId }); }
     public async Task<List<PushDeviceToken>> GetByUserAsync(int userId) { using var db = _factory.CreateConnection(); return (await db.QueryAsync<PushDeviceToken>("SELECT * FROM PushDeviceTokens WHERE UserId = @UserId AND Active = 1", new { UserId = userId })).ToList(); }
     public async Task<List<PushDeviceToken>> GetAllActiveAsync() { using var db = _factory.CreateConnection(); return (await db.QueryAsync<PushDeviceToken>("SELECT * FROM PushDeviceTokens WHERE Active = 1")).ToList(); }
