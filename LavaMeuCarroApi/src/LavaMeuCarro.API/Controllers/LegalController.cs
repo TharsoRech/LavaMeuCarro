@@ -61,4 +61,20 @@ public class LegalController : ControllerBase
             updatedAt = doc.CreatedAt
         });
     }
+
+    [HttpGet("documents/{context}")]
+    public async Task<ActionResult> GetLegalDocumentsByContext(string context)
+    {
+        var docs = await _repo.GetByContextAsync(context);
+        return Ok(docs.Select(d => new
+        {
+            d.Id,
+            d.Code,
+            d.Title,
+            d.Version,
+            d.Context,
+            d.Content,
+            d.IsRequired
+        }));
+    }
 }

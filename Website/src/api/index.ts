@@ -103,6 +103,7 @@ export const privacyApi = {
 export const legalApi = {
   getPrivacyPolicy: () => api.get<LegalDocumentDto>('/legal/privacy-policy').then(r => r.data),
   getTermsOfUse: () => api.get<LegalDocumentDto>('/legal/terms-of-use').then(r => r.data),
+  getLegalDocuments: (context: string) => api.get<LegalDocumentDto[]>(`/legal/documents/${context}`).then(r => r.data),
 };
 
 // ── Reports ───────────────────────────────────────────────────────────────────
