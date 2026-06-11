@@ -1,0 +1,237 @@
+using HoraDaBeleza.Application.DTOs;
+using HoraDaBeleza.Application.Interfaces;
+using HoraDaBeleza.Domain.Entities;
+using HoraDaBeleza.Domain.Enums;
+using HoraDaBeleza.Domain.Exceptions;
+using MediatR;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace HoraDaBeleza.Application.Commands.Subscription.VerifyAppleReceiptCommand;
+
+public class VerifyAppleReceiptCommandHandler(
+    IUserRepository userRepository,
+    ISubscriptionRepository subscriptionRepository,
+    IPlanRepository planRepository,
+    IConfiguration configuration,
+    IHttpClientFactory httpClientFactory) : IRequestHandler<VerifyAppleReceiptCommand, SubscriptionDto>
+{
+    public async Task<SubscriptionDto> Handle(VerifyAppleReceiptCommand request, CancellationToken cancellationToken)
+    {
+        var user = await userRepository.GetByIdAsync(request.UserId)
+                   ?? throw new BusinessException("User not found.");
+
+        string? productId = null;
+        DateTime? expiresDateUtc = null;
+        string? originalTransactionId = null;
+
+        // Try sandbox first, then production if it returns 21007
+        var validationResult = await VerifyReceiptAsync(request.Receipt, true, cancellationToken);
+        if (validationResult.Status == 21007)
+        {
+            validationResult = await VerifyReceiptAsync(request.Receipt, false, cancellationToken);
+        }
+
+        if (validationResult.Status != 0 || validationResult.Receipt == null)
+        {
+            throw new BusinessException($"Invalid Apple receipt. Status code: {validationResult.Status}");
+        }
+
+        // Get the latest receipt info (for auto-renewable subscriptions)
+        if (validationResult.LatestReceiptInfo != null && validationResult.LatestReceiptInfo.Length > 0)
+        {
+            var latestReceipt = validationResult.LatestReceiptInfo
+                .OrderByDescending(r => r.ExpiresDateMs)
+                .FirstOrDefault();
+
+            if (latestReceipt != null)
+            {
+                productId = latestReceipt.ProductId;
+                if (long.TryParse(latestReceipt.ExpiresDateMs, out var expiresMs))
+                {
+                    expiresDateUtc = DateTimeOffset.FromUnixTimeMilliseconds(expiresMs).UtcDateTime;
+                }
+                originalTransactionId = latestReceipt.OriginalTransactionId;
+            }
+        }
+        // Fallback to in_app if latest_receipt_info is not present (e.g. for non-renewing)
+        else if (validationResult.Receipt.InApp != null && validationResult.Receipt.InApp.Length > 0)
+        {
+             var latestInApp = validationResult.Receipt.InApp
+                .OrderByDescending(r => r.ExpiresDateMs)
+                .FirstOrDefault();
+
+             if (latestInApp != null)
+             {
+                 productId = latestInApp.ProductId;
+                 if (long.TryParse(latestInApp.ExpiresDateMs, out var expiresMs))
+                 {
+                     expiresDateUtc = DateTimeOffset.FromUnixTimeMilliseconds(expiresMs).UtcDateTime;
+                 }
+                 originalTransactionId = latestInApp.OriginalTransactionId;
+             }
+        }
+
+        if (string.IsNullOrEmpty(productId))
+        {
+            throw new BusinessException("Could not find product ID in the Apple receipt.");
+        }
+
+        var plans = (await planRepository.ListActiveAsync()).ToList();
+
+        // Match plan by product ID
+        Plan? targetPlan = null;
+
+        if (productId.Contains("semipro"))
+        {
+            targetPlan = plans.FirstOrDefault(p => p.AppointmentLimit == 20 && p.Price > 0);
+        }
+        else if (productId.Contains("professional"))
+        {
+            targetPlan = plans.FirstOrDefault(p => p.AppointmentLimit == 50 && p.Price > 0);
+        }
+        else if (productId.Contains("business"))
+        {
+            targetPlan = plans.FirstOrDefault(p => p.AppointmentLimit == 100 && p.Price > 0);
+        }
+        else if (productId.Contains("enterprise"))
+        {
+            targetPlan = plans.Where(p => p.Price > 0).OrderByDescending(p => p.AppointmentLimit).FirstOrDefault();
+        }
+
+        // Fallback
+        if (targetPlan == null)
+        {
+            if (productId.Contains("semipro")) targetPlan = plans.OrderBy(p => p.Price).FirstOrDefault(p => p.Price > 0);
+            if (productId.Contains("enterprise")) targetPlan = plans.OrderByDescending(p => p.Price).FirstOrDefault();
+
+            if (targetPlan == null)
+                 throw new BusinessException($"No matching plan found for the Apple subscription. Product ID: {productId}");
+        }
+
+        var currentSubscription = await subscriptionRepository.GetActiveByUserAsync(request.UserId);
+
+        bool isActive = expiresDateUtc == null || expiresDateUtc > DateTime.UtcNow;
+        var status = isActive ? SubscriptionStatus.Active : SubscriptionStatus.Expired;
+        var endDate = expiresDateUtc ?? DateTime.UtcNow.AddDays(targetPlan.PeriodDays);
+
+        if (currentSubscription == null)
+        {
+            currentSubscription = new Domain.Entities.Subscription
+            {
+                UserId = request.UserId,
+                PlanId = targetPlan.Id,
+                Status = status,
+                StartDate = DateTime.UtcNow,
+                EndDate = endDate,
+                CreatedAt = DateTime.UtcNow,
+                NextBillingDate = expiresDateUtc,
+                AsaasSubscriptionId = originalTransactionId ?? "apple_sub_" + Guid.NewGuid().ToString("N")
+            };
+            await subscriptionRepository.CreateAsync(currentSubscription);
+        }
+        else
+        {
+            currentSubscription.PlanId = targetPlan.Id;
+            currentSubscription.Status = status;
+            currentSubscription.EndDate = endDate;
+            currentSubscription.NextBillingDate = expiresDateUtc;
+            if (!string.IsNullOrEmpty(originalTransactionId))
+            {
+                 currentSubscription.AsaasSubscriptionId = originalTransactionId;
+            }
+
+            await subscriptionRepository.UpdateAsync(currentSubscription);
+        }
+
+        return new SubscriptionDto(
+            currentSubscription.Id,
+            currentSubscription.UserId,
+            currentSubscription.PlanId,
+            targetPlan.Name,
+            currentSubscription.Status,
+            targetPlan.PlanType,
+            isActive,
+            currentSubscription.StartDate,
+            currentSubscription.EndDate,
+            currentSubscription.TrialStartDate,
+            currentSubscription.TrialEndDate,
+            targetPlan.MaxClients,
+            currentSubscription.CurrentClients,
+            currentSubscription.NextBillingDate,
+            true);
+    }
+
+    private async Task<AppleReceiptValidationResponse> VerifyReceiptAsync(string receiptData, bool useSandbox, CancellationToken cancellationToken)
+    {
+        var url = useSandbox
+            ? "https://sandbox.itunes.apple.com/verifyReceipt"
+            : "https://buy.itunes.apple.com/verifyReceipt";
+
+        var sharedSecret = configuration["Apple:IapSharedSecret"] ?? "";
+
+        var requestBody = new
+        {
+            @receipt_data = receiptData,
+            password = sharedSecret,
+            exclude_old_transactions = true
+        };
+
+        var jsonOptions = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+        var jsonContent = new StringContent(JsonSerializer.Serialize(requestBody, jsonOptions), Encoding.UTF8, "application/json");
+
+        using var client = httpClientFactory.CreateClient("AppleIAP");
+        var response = await client.PostAsync(url, jsonContent, cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        var validationResponse = JsonSerializer.Deserialize<AppleReceiptValidationResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (validationResponse == null)
+            throw new Exception("Failed to deserialize Apple receipt validation response.");
+
+        return validationResponse;
+    }
+
+    private class AppleReceiptValidationResponse
+    {
+        public int Status { get; set; }
+        public AppleReceipt? Receipt { get; set; }
+
+        [JsonPropertyName("latest_receipt_info")]
+        public AppleReceiptInfo[]? LatestReceiptInfo { get; set; }
+    }
+
+    private class AppleReceipt
+    {
+        [JsonPropertyName("in_app")]
+        public AppleReceiptInfo[]? InApp { get; set; }
+    }
+
+    private class AppleReceiptInfo
+    {
+        [JsonPropertyName("product_id")]
+        public string ProductId { get; set; } = string.Empty;
+
+        [JsonPropertyName("transaction_id")]
+        public string TransactionId { get; set; } = string.Empty;
+
+        [JsonPropertyName("original_transaction_id")]
+        public string OriginalTransactionId { get; set; } = string.Empty;
+
+        [JsonPropertyName("purchase_date_ms")]
+        public string PurchaseDateMs { get; set; } = string.Empty;
+
+        [JsonPropertyName("expires_date_ms")]
+        public string ExpiresDateMs { get; set; } = string.Empty;
+    }
+}

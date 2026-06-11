@@ -1,0 +1,83 @@
+using Dapper;
+using HoraDaBeleza.Application.Interfaces;
+using HoraDaBeleza.Domain.Entities;
+using HoraDaBeleza.Domain.Enums;
+using HoraDaBeleza.Infrastructure.Data;
+
+namespace HoraDaBeleza.Infrastructure.Repositories;
+
+public class ReviewRepository : IReviewRepository
+{
+    private readonly IDbConnectionFactory _db;
+    public ReviewRepository(IDbConnectionFactory db) => _db = db;
+
+    public async Task<IEnumerable<Review>> ListBySalonAsync(int salonId)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync<Review>(
+            "SELECT * FROM Reviews WHERE SalonId=@SalonId AND (TargetType IS NULL OR TargetType=@TargetType) ORDER BY CreatedAt DESC",
+            new { SalonId = salonId, TargetType = (int)ReviewTarget.Salon });
+    }
+
+    public async Task<IEnumerable<Review>> ListByProfessionalAsync(int professionalId)
+    {
+        using var conn = _db.CreateConnection();
+        return await conn.QueryAsync<Review>(
+            "SELECT * FROM Reviews WHERE ProfessionalId=@ProfessionalId AND (TargetType IS NULL OR TargetType=@TargetType) ORDER BY CreatedAt DESC",
+            new { ProfessionalId = professionalId, TargetType = (int)ReviewTarget.Professional });
+    }
+
+    public async Task<bool> ReviewExistsForAppointmentAsync(int appointmentId, ReviewTarget? targetType = null)
+    {
+        using var conn = _db.CreateConnection();
+        var sql = "SELECT COUNT(1) FROM Reviews WHERE AppointmentId=@AppointmentId";
+        if (targetType.HasValue)
+        {
+            sql += " AND (TargetType=@TargetType OR TargetType IS NULL)";
+        }
+
+        return await conn.QuerySingleAsync<int>(sql,
+            new { AppointmentId = appointmentId, TargetType = targetType.HasValue ? (int)targetType.Value : (int?)null }) > 0;
+    }
+
+    public async Task<int> CreateAsync(Review review)
+    {
+        using var conn = _db.CreateConnection();
+        const string sql = @"
+            INSERT INTO Reviews (AppointmentId,ClientId,ProfessionalId,SalonId,TargetType,Rating,Comment,CreatedAt)
+            VALUES (@AppointmentId,@ClientId,@ProfessionalId,@SalonId,@TargetType,@Rating,@Comment,@CreatedAt);
+            SELECT CAST(SCOPE_IDENTITY() AS INT);
+            UPDATE Professionals SET
+                AverageRating=(SELECT AVG(CAST(Rating AS DECIMAL(3,2))) FROM Reviews WHERE ProfessionalId=@ProfessionalId AND (TargetType IS NULL OR TargetType=@ProfessionalTarget)),
+                TotalReviews=(SELECT COUNT(1) FROM Reviews WHERE ProfessionalId=@ProfessionalId AND (TargetType IS NULL OR TargetType=@ProfessionalTarget))
+            WHERE Id=@ProfessionalId;
+            UPDATE Salons SET
+                AverageRating=(SELECT AVG(CAST(Rating AS DECIMAL(3,2))) FROM Reviews WHERE SalonId=@SalonId AND (TargetType IS NULL OR TargetType=@SalonTarget)),
+                Reviews=(SELECT COUNT(1) FROM Reviews WHERE SalonId=@SalonId AND (TargetType IS NULL OR TargetType=@SalonTarget))
+            WHERE Id=@SalonId;";
+        return await conn.QuerySingleAsync<int>(sql, new
+        {
+            review.AppointmentId,
+            review.ClientId,
+            review.ProfessionalId,
+            review.SalonId,
+            TargetType = review.TargetType.HasValue ? (int)review.TargetType.Value : (int?)null,
+            review.Rating,
+            review.Comment,
+            review.CreatedAt,
+            ProfessionalTarget = (int)ReviewTarget.Professional,
+            SalonTarget = (int)ReviewTarget.Salon
+        });
+    }
+
+    public async Task<IEnumerable<Review>> GetReviewsAsync(int salonId)
+    {
+        using var conn = _db.CreateConnection();
+        var sql = @"
+            SELECT r.*, u.Name AS UserName, u.Base64Image AS UserPhoto
+            FROM Reviews r
+            INNER JOIN Users u ON u.Id = r.ClientId
+            WHERE r.SalonId = @SalonId AND (r.TargetType IS NULL OR r.TargetType = @TargetType)";
+        return await conn.QueryAsync<Review>(sql, new { SalonId = salonId, TargetType = (int)ReviewTarget.Salon });
+    }
+}
