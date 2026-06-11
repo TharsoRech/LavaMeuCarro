@@ -39,6 +39,7 @@ fun MyUnitsScreen(
     val funcionarios by viewModel.funcionarios.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val selectedUnit by viewModel.selectedUnit.collectAsState()
+    val error by viewModel.error.collectAsState()
 
     var showCreateUnit by remember { mutableStateOf(false) }
     var showEditUnit by remember { mutableStateOf(false) }
@@ -142,7 +143,16 @@ fun MyUnitsScreen(
         )
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it)
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Minhas Unidades") },
@@ -587,6 +597,9 @@ class MyUnitsViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error
+
     init { loadUnits() }
 
     fun loadUnits() {
@@ -653,18 +666,17 @@ class MyUnitsViewModel @Inject constructor(
     fun addFuncionario(unidadeId: String, nome: String, specialty: String?) {
         viewModelScope.launch {
             try {
-                // The backend expects a funcionario update/create via the API
-                // Using a map-based approach for flexibility
-                val body = mapOf(
-                    "nome" to nome,
-                    "specialty" to (specialty ?: ""),
-                    "unidadeId" to unidadeId,
-                    "active" to true
+                val body = com.lavemeucarro.app.data.models.CreateFuncionarioRequest(
+                    nome = nome,
+                    specialty = specialty,
+                    unidadeId = unidadeId,
+                    active = true
                 )
-                // Note: Backend may need a specific endpoint for creating funcionarios
-                // For now, refresh the list
+                api.createFuncionario(body)
                 loadUnitDetails(unidadeId)
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                _error.value = e.message ?: "Erro ao adicionar funcionário"
+            }
         }
     }
 }

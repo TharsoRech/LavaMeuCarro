@@ -91,6 +91,9 @@ dependencies {
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.32.0")
 
+    // Biometric
+    implementation("androidx.biometric:biometric:1.1.0")
+
     // Coil (image loading)
     implementation("io.coil-kt:coil-compose:2.5.0")
 

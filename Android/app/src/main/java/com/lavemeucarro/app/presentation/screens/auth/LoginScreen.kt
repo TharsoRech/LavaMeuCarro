@@ -1,9 +1,11 @@
 package com.lavemeucarro.app.presentation.screens.auth
 
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -11,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -18,9 +21,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lavemeucarro.app.managers.AuthManager
+import com.lavemeucarro.app.managers.BiometricHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -36,6 +42,17 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
+    var biometricAvailable by remember { mutableStateOf(false) }
+    var biometricEnabled by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val biometricHelper = remember { BiometricHelper(context) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        biometricAvailable = biometricHelper.isBiometricAvailable()
+        biometricEnabled = viewModel.getBiometricEnabled().first()
+    }
 
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) onLoginSuccess()
@@ -102,7 +119,42 @@ fun LoginScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Biometric login button
+        if (biometricAvailable && biometricEnabled) {
+            OutlinedButton(
+                onClick = {
+                    val activity = context as? FragmentActivity
+                    if (activity != null) {
+                        biometricHelper.authenticate(
+                            activity = activity,
+                            onSuccess = {
+                                scope.launch {
+                                    viewModel.tryAutoLogin()
+                                }
+                            },
+                            onError = { /* User can fall back to password */ }
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Icon(Icons.Default.Fingerprint, null, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Entrar com Biometria")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                "ou",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         Button(
             onClick = { viewModel.login(email, password) },

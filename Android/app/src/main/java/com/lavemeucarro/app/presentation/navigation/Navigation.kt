@@ -25,6 +25,7 @@ import com.lavemeucarro.app.presentation.screens.vehicles.VehiclesScreen
 import com.lavemeucarro.app.presentation.screens.notifications.NotificationsScreen
 import com.lavemeucarro.app.presentation.screens.legal.LegalDocumentsScreen
 import com.lavemeucarro.app.presentation.screens.subscription.SubscriptionScreen
+import com.lavemeucarro.app.presentation.screens.appointment.NewAppointmentScreen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,6 +77,9 @@ class AppViewModel @Inject constructor(
     private val _navigationStack = MutableStateFlow<List<Screen>>(emptyList())
     val navigationStack: StateFlow<List<Screen>> = _navigationStack
 
+    private val _selectedUnidadeId = MutableStateFlow<String?>(null)
+    val selectedUnidadeId: StateFlow<String?> = _selectedUnidadeId
+
     init {
         viewModelScope.launch {
             val loggedIn = authManager.tryAutoLogin()
@@ -92,6 +96,10 @@ class AppViewModel @Inject constructor(
     fun navigateTo(screen: Screen) {
         _navigationStack.value = _navigationStack.value + _currentTab.value
         _currentTab.value = screen
+    }
+
+    fun setSelectedUnidadeId(id: String) {
+        _selectedUnidadeId.value = id
     }
 
     fun goBack(): Boolean {
@@ -209,12 +217,18 @@ fun AppNavigation(viewModel: AppViewModel = hiltViewModel()) {
         when (currentTab.route) {
             Screen.Home.route -> HomeScreen(
                 modifier = Modifier.padding(innerPadding),
-                onNavigateToUnidade = { id -> viewModel.navigateTo(Screen.UnidadeDetail) },
+                onNavigateToUnidade = { id ->
+                    viewModel.setSelectedUnidadeId(id)
+                    viewModel.navigateTo(Screen.NewAppointment)
+                },
                 onNavigateToNotifications = { viewModel.navigateTo(Screen.Notifications) }
             )
             Screen.Appointments.route -> AppointmentsScreen(
                 modifier = Modifier.padding(innerPadding),
-                onNavigateToDetail = { id -> viewModel.navigateTo(Screen.UnidadeDetail) }
+                onNavigateToDetail = { id ->
+                    viewModel.setSelectedUnidadeId(id)
+                    viewModel.navigateTo(Screen.NewAppointment)
+                }
             )
             Screen.MyUnits.route -> MyUnitsScreen(
                 modifier = Modifier.padding(innerPadding)
@@ -251,9 +265,30 @@ fun AppNavigation(viewModel: AppViewModel = hiltViewModel()) {
                 modifier = Modifier.padding(innerPadding),
                 onBack = { viewModel.goBack() }
             )
+            Screen.NewAppointment.route -> {
+                val unidadeId = viewModel.selectedUnidadeId.collectAsState().value
+                if (unidadeId != null) {
+                    NewAppointmentScreen(
+                        unidadeId = unidadeId,
+                        onBack = { viewModel.goBack() }
+                    )
+                } else {
+                    HomeScreen(
+                        modifier = Modifier.padding(innerPadding),
+                        onNavigateToUnidade = { id ->
+                            viewModel.setSelectedUnidadeId(id)
+                            viewModel.navigateTo(Screen.NewAppointment)
+                        },
+                        onNavigateToNotifications = { viewModel.navigateTo(Screen.Notifications) }
+                    )
+                }
+            }
             else -> HomeScreen(
                 modifier = Modifier.padding(innerPadding),
-                onNavigateToUnidade = { id -> viewModel.navigateTo(Screen.UnidadeDetail) },
+                onNavigateToUnidade = { id ->
+                    viewModel.setSelectedUnidadeId(id)
+                    viewModel.navigateTo(Screen.NewAppointment)
+                },
                 onNavigateToNotifications = { viewModel.navigateTo(Screen.Notifications) }
             )
         }

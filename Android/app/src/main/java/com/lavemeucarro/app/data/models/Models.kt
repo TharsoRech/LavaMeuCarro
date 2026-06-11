@@ -244,6 +244,13 @@ data class FuncionarioDto(
     val avatarUrl: String? = null
 )
 
+data class CreateFuncionarioRequest(
+    val nome: String,
+    val specialty: String? = null,
+    val unidadeId: String,
+    val active: Boolean = true
+)
+
 // ==================== Notificacao ====================
 data class NotificacaoDto(
     val id: String,

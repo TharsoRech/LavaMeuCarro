@@ -130,6 +130,9 @@ interface LavaMeuCarroApi {
     @GET("api/funcionarios")
     suspend fun getFuncionarios(@Query("unidadeId") unidadeId: String): List<FuncionarioDto>
 
+    @POST("api/funcionarios")
+    suspend fun createFuncionario(@Body request: CreateFuncionarioRequest): FuncionarioDto
+
     @PUT("api/funcionarios/{id}")
     suspend fun updateFuncionario(
         @Path("id") id: String,
