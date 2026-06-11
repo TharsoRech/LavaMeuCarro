@@ -383,12 +383,12 @@ data class StatusCount(
 
 data class DashboardSummaryDTO(
     val totalToday: Int = 0,
-    val pendingToday: Int = 0,
-    val confirmedToday: Int = 0,
-    val completedToday: Int = 0,
-    val revenueToday: Double = 0.0,
-    val totalThisWeek: Int = 0,
-    val revenueThisWeek: Double = 0.0
+    val confirmados: Int = 0,
+    val pendentes: Int = 0,
+    val finalizadosMes: Int = 0,
+    val faturamentoMes: Double = 0.0,
+    val finalizadosHoje: Int = 0,
+    val faturamentoHoje: Double = 0.0
 )
 
 // ==================== Privacy ====================

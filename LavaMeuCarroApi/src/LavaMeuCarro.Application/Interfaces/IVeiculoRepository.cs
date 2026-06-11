@@ -10,4 +10,5 @@ public interface IVeiculoRepository
     Task<int> CreateAsync(Veiculo veiculo);
     Task UpdateAsync(Veiculo veiculo);
     Task DeleteAsync(int id);
+    Task<List<Veiculo>> GetByIdsAsync(List<int> ids);
 }

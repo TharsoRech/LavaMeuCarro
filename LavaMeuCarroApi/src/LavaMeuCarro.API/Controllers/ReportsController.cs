@@ -22,7 +22,6 @@ public class ReportsController : ControllerBase
     [HttpGet("business")]
     public async Task<ActionResult> GetBusinessReports([FromQuery] string period = "30d", [FromQuery] int? unidadeId = null)
     {
-        // Determine date range from period
         var now = DateTime.UtcNow;
         DateTime from;
         switch (period)
@@ -34,7 +33,6 @@ public class ReportsController : ControllerBase
             default: from = now.AddDays(-30); break;
         }
 
-        // If no unidadeId, get user's units
         int[] unitIds;
         if (unidadeId.HasValue)
         {
@@ -55,15 +53,25 @@ public class ReportsController : ControllerBase
                 appointmentsOverTime = Array.Empty<object>(),
                 revenueOverTime = Array.Empty<object>(),
                 servicesRanking = Array.Empty<object>(),
+                professionalsRanking = Array.Empty<object>(),
+                clientsRanking = Array.Empty<object>(),
                 statusBreakdown = Array.Empty<object>(),
+                weekdayDemand = Array.Empty<object>(),
+                hourlyDemand = Array.Empty<object>(),
+                insights = Array.Empty<object>(),
                 totalAppointments = 0,
                 totalRevenue = 0.0,
                 averageTicket = 0.0,
-                cancellationRate = 0.0
+                cancellationRate = 0.0,
+                uniqueClients = 0,
+                completedAppointments = 0,
+                noShowCount = 0,
+                professionalsCount = 0,
+                servicesCount = 0
             });
         }
 
-        // Aggregate data across units
+        // Aggregate data
         var totalAppointments = 0;
         var totalRevenue = 0m;
         var totalCancelled = 0;
@@ -71,7 +79,6 @@ public class ReportsController : ControllerBase
 
         foreach (var uid in unitIds)
         {
-            // Count by status
             foreach (AgendamentoStatus status in Enum.GetValues<AgendamentoStatus>())
             {
                 var count = await _agendamentoRepo.CountByStatusAsync(uid, status, from, now);
@@ -80,8 +87,6 @@ public class ReportsController : ControllerBase
                 totalAppointments += count;
                 if (status == AgendamentoStatus.Cancelado) totalCancelled += count;
             }
-
-            // Revenue from finalized appointments
             var revenue = await _agendamentoRepo.SumByUnidadeAsync(uid, from, now);
             totalRevenue += revenue;
         }
@@ -89,20 +94,83 @@ public class ReportsController : ControllerBase
         var averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
         var cancellationRate = totalAppointments > 0 ? (double)totalCancelled / totalAppointments * 100 : 0;
 
-        // Build status breakdown
-        var statusBreakdown = statusCounts.Select(kv => new { status = kv.Key, count = kv.Value });
+        // Status breakdown
+        var statusBreakdown = statusCounts.Select(kv => new { status = kv.Key, count = kv.Value }).ToList();
+
+        // Time series
+        var dailyCounts = await _agendamentoRepo.GetDailyCountsAsync(unitIds, from, now);
+        var appointmentsOverTime = dailyCounts.Select(d => new { date = ((DateTime)d.Date).ToString("yyyy-MM-dd"), value = (double)(int)d.Count }).ToList();
+
+        var revenueByDate = await _agendamentoRepo.GetRevenueByDateAsync(unitIds, from, now);
+        var revenueOverTime = revenueByDate.Select(d => new { date = ((DateTime)d.Date).ToString("yyyy-MM-dd"), value = (double)(decimal)d.Revenue }).ToList();
+
+        // Rankings
+        var serviceRanking = await _agendamentoRepo.GetServiceRankingAsync(unitIds, from, now);
+        var servicesRanking = serviceRanking.Select(s => new { name = (string)s.Name, count = (int)s.Count, revenue = (double)(decimal)s.Revenue, averageTicket = (double)(decimal)s.AverageTicket, share = (double)s.Share }).ToList();
+
+        var professionalRanking = await _agendamentoRepo.GetProfessionalRankingAsync(unitIds, from, now);
+        var professionalsRanking = professionalRanking.Select(p => new { name = (string)p.Name, count = (int)p.Count, revenue = (double)(decimal)p.Revenue, averageTicket = 0.0, share = 0.0 }).ToList();
+
+        var clientRanking = await _agendamentoRepo.GetClientRankingAsync(unitIds, from, now);
+        var clientsRanking = clientRanking.Select(c => new { name = (string)c.Name, visits = (int)c.Visits, revenue = (double)(decimal)c.Revenue, lastVisit = ((DateTime)c.LastVisit).ToString("yyyy-MM-dd") }).ToList();
+
+        // Demand patterns
+        var weekdayDemand = await _agendamentoRepo.GetWeekdayDemandAsync(unitIds, from, now);
+        var weekdayDemandResult = weekdayDemand.Select(d => new { day = (string)d.Day, count = (int)d.Count }).ToList();
+
+        var hourlyDemand = await _agendamentoRepo.GetHourlyDemandAsync(unitIds, from, now);
+        var hourlyDemandResult = hourlyDemand.Select(h => new { hour = $"{(int)h.Hour:D2}:00", count = (int)h.Count }).ToList();
+
+        // Extra stats
+        var uniqueClients = await _agendamentoRepo.CountUniqueClientsAsync(unitIds, from, now);
+        var completedAppointments = statusCounts.GetValueOrDefault("Finalizado", 0);
+        var noShowCount = await _agendamentoRepo.CountNoShowAsync(unitIds, from, now);
+        var professionalsCount = await _agendamentoRepo.CountProfessionalsAsync(unitIds);
+        var servicesCount = await _agendamentoRepo.CountServicesAsync(unitIds);
+
+        // Auto insights
+        var insights = new List<string>();
+        if (cancellationRate > 20)
+            insights.Add($"Taxa de cancelamento alta: {cancellationRate:F1}%. Considere enviar lembretes automáticos.");
+        if (noShowCount > 0)
+            insights.Add($"{noShowCount} cliente(s) não compareceram no período.");
+        if (weekdayDemandResult.Count > 0)
+        {
+            var peakDay = weekdayDemandResult.OrderByDescending(d => d.count).FirstOrDefault();
+            if (peakDay != null) insights.Add($"Dia de maior demanda: {peakDay.day} ({peakDay.count} agendamentos).");
+        }
+        if (hourlyDemandResult.Count > 0)
+        {
+            var peakHour = hourlyDemandResult.OrderByDescending(h => h.count).FirstOrDefault();
+            if (peakHour != null) insights.Add($"Horário de pico: {peakHour.hour} ({peakHour.count} agendamentos).");
+        }
+        if (totalAppointments > 0 && uniqueClients > 0)
+        {
+            var avgVisits = (double)totalAppointments / uniqueClients;
+            if (avgVisits > 1.5) insights.Add($"Clientes recorrentes: média de {avgVisits:F1} visitas por cliente.");
+        }
 
         return Ok(new
         {
             period,
-            appointmentsOverTime = Array.Empty<object>(), // TODO: implement time series grouping
-            revenueOverTime = Array.Empty<object>(), // TODO: implement time series grouping
-            servicesRanking = Array.Empty<object>(), // TODO: implement service-level grouping
+            appointmentsOverTime,
+            revenueOverTime,
+            servicesRanking,
+            professionalsRanking,
+            clientsRanking,
             statusBreakdown,
+            weekdayDemand = weekdayDemandResult,
+            hourlyDemand = hourlyDemandResult,
+            insights,
             totalAppointments,
-            totalRevenue,
-            averageTicket,
-            cancellationRate
+            totalRevenue = (double)totalRevenue,
+            averageTicket = (double)averageTicket,
+            cancellationRate,
+            uniqueClients,
+            completedAppointments,
+            noShowCount,
+            professionalsCount,
+            servicesCount
         });
     }
 }

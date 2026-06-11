@@ -68,7 +68,11 @@ class AppointmentsViewModel @Inject constructor(
         }
     }
 
+    // Currently selected date for refresh context
+    private var _currentDate: String? = null
+
     fun loadUnitAppointments(unidadeId: String, date: String?) {
+        _currentDate = date
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -152,29 +156,35 @@ class AppointmentsViewModel @Inject constructor(
                 val pendingMap = mutableMapOf<String, Int>()
                 val readyMap = mutableMapOf<String, Int>()
 
-                val results = dates.map { date ->
-                    async {
-                        val dateStr = DateFormatter.formatIso(date)
-                        try {
-                            val appts = api.getUnidadeAgendamentos(unidadeId, dateStr)
-                            val pending = appts.count { it.status == "Pendente" }
-                            val readyToFinalize = appts.count {
-                                it.status == "Confirmado" && canBeMarkedAsCompleted(it)
+                // Fetch in batches of 4 to reduce server load
+                val batchSize = 4
+                for (i in dates.indices step batchSize) {
+                    val batch = dates.subList(i, minOf(i + batchSize, dates.size))
+                    val results = batch.map { date ->
+                        async {
+                            val dateStr = DateFormatter.formatIso(date)
+                            try {
+                                val appts = api.getUnidadeAgendamentos(unidadeId, dateStr)
+                                val pending = appts.count { it.status == "Pendente" }
+                                val readyToFinalize = appts.count {
+                                    it.status == "Confirmado" && canBeMarkedAsCompleted(it)
+                                }
+                                dateStr to (pending to readyToFinalize)
+                            } catch (_: Exception) {
+                                dateStr to (0 to 0)
                             }
-                            dateStr to (pending to readyToFinalize)
-                        } catch (_: Exception) {
-                            dateStr to (0 to 0)
                         }
+                    }.map { it.await() }
+
+                    results.forEach { (dateStr, counts) ->
+                        if (counts.first > 0) pendingMap[dateStr] = counts.first
+                        if (counts.second > 0) readyMap[dateStr] = counts.second
                     }
-                }.map { it.await() }
 
-                results.forEach { (dateStr, counts) ->
-                    if (counts.first > 0) pendingMap[dateStr] = counts.first
-                    if (counts.second > 0) readyMap[dateStr] = counts.second
+                    // Update UI progressively after each batch
+                    _pendingDaysMap.value = pendingMap.toMap()
+                    _readyToFinalizeDaysMap.value = readyMap.toMap()
                 }
-
-                _pendingDaysMap.value = pendingMap
-                _readyToFinalizeDaysMap.value = readyMap
             } catch (_: Exception) {
             }
         }
@@ -194,7 +204,7 @@ class AppointmentsViewModel @Inject constructor(
 
     private fun refreshCurrentView() {
         if (_isProfessional.value && _selectedUnit.value != null) {
-            loadUnitAppointments(_selectedUnit.value!!.id, null)
+            loadUnitAppointments(_selectedUnit.value!!.id, _currentDate)
             loadDashboardSummary(_selectedUnit.value!!.id)
         } else {
             loadMyAppointments()

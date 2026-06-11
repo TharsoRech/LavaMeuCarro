@@ -12,4 +12,5 @@ public interface IUnidadeRepository
     Task DeleteAsync(int id);
     Task<List<Unidade>> GetPopularAsync(int limit = 10);
     Task<List<Unidade>> GetByLocationAsync(decimal lat, decimal lng, double radiusKm);
+    Task<List<Unidade>> GetByIdsAsync(List<int> ids);
 }

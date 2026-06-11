@@ -11,4 +11,5 @@ public interface IUserRepository
     Task DeleteAsync(int id);
     Task<List<User>> GetAllAsync(int page, int pageSize, string? search);
     Task<int> CountAsync(string? search);
+    Task<List<User>> GetByIdsAsync(List<int> ids);
 }

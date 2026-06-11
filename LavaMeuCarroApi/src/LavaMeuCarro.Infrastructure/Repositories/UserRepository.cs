@@ -58,4 +58,11 @@ public class UserRepository : IUserRepository
         using var db = _factory.CreateConnection();
         return await db.QuerySingleAsync<int>("SELECT COUNT(*) FROM Users WHERE (@Search IS NULL OR Name LIKE @Search OR Email LIKE @Search)", new { Search = search != null ? $"%{search}%" : null });
     }
+
+    public async Task<List<User>> GetByIdsAsync(List<int> ids)
+    {
+        if (ids.Count == 0) return new List<User>();
+        using var db = _factory.CreateConnection();
+        return (await db.QueryAsync<User>("SELECT * FROM Users WHERE Id IN @Ids", new { Ids = ids })).ToList();
+    }
 }

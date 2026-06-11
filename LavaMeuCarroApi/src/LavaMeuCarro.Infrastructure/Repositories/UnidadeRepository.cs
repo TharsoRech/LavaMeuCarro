@@ -66,4 +66,11 @@ public class UnidadeRepository : IUnidadeRepository
                     ORDER BY Distance";
         return (await db.QueryAsync<Unidade>(sql, new { Lat = lat, Lng = lng, RadiusKm = radiusKm })).ToList();
     }
+
+    public async Task<List<Unidade>> GetByIdsAsync(List<int> ids)
+    {
+        if (ids.Count == 0) return new List<Unidade>();
+        using var db = _factory.CreateConnection();
+        return (await db.QueryAsync<Unidade>("SELECT * FROM Unidades WHERE Id IN @Ids", new { Ids = ids })).ToList();
+    }
 }

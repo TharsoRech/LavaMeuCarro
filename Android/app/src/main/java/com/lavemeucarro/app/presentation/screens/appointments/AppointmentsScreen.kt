@@ -353,9 +353,9 @@ fun AppointmentsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         SummaryChip("Hoje", "${summary.totalToday}", AppColors.StatusConfirmed)
-                        SummaryChip("Pendentes", "${summary.pendingToday}", AppColors.StatusPending)
-                        SummaryChip("Confirmados", "${summary.confirmedToday}", AppColors.Success)
-                        SummaryChip("Receita", "R$%.0f".format(summary.revenueToday), AppColors.Primary)
+                        SummaryChip("Pendentes", "${summary.pendentes}", AppColors.StatusPending)
+                        SummaryChip("Confirmados", "${summary.confirmados}", AppColors.Success)
+                        SummaryChip("Receita Mês", "R$%.0f".format(summary.faturamentoMes), AppColors.Primary)
                     }
                 }
 
