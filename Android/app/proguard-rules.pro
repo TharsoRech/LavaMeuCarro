@@ -8,7 +8,7 @@
 # Gson
 -keepattributes Signature
 -keepattributes *Annotation*
--keep class com.lavemeucarro.app.data.models.** { *; }
+-keep class com.TFSoftware.lavemeucarro.app.data.models.** { *; }
 
 # OkHttp
 -dontwarn okhttp3.**

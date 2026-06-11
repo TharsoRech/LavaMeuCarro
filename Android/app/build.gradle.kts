@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.lavemeucarro.app"
+    namespace = "com.TFSoftware.lavemeucarro"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.lavemeucarro.app"
+        applicationId = "com.TFSoftware.lavemeucarro"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
