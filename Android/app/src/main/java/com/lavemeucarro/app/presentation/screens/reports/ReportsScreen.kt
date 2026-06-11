@@ -13,18 +13,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.lavemeucarro.app.data.models.BusinessReportDto
-import com.lavemeucarro.app.data.models.RankingItem
-import com.lavemeucarro.app.data.models.StatusCount
-import com.lavemeucarro.app.data.models.TimeSeriesPoint
-import com.lavemeucarro.app.data.models.UnidadeDto
+import com.lavemeucarro.app.data.models.*
 import com.lavemeucarro.app.data.remote.LavaMeuCarroApi
 import com.lavemeucarro.app.presentation.theme.AppColors
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +92,6 @@ fun ReportsScreen(
                         trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    // Simple dropdown
                     if (expanded) {
                         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                             DropdownMenuItem(
@@ -136,13 +134,27 @@ fun ReportsScreen(
                 report != null -> {
                     val r = report!!
 
-                    // Summary metrics
-                    Text(
-                        "Resumo",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+                    // === 6 Summary Cards ===
+                    SectionTitle("Resumo")
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        MetricCard(
+                            title = "Faturamento",
+                            value = "R$ %.0f".format(r.totalRevenue),
+                            icon = Icons.Default.AttachMoney,
+                            color = AppColors.Success,
+                            modifier = Modifier.weight(1f)
+                        )
+                        MetricCard(
+                            title = "Clientes",
+                            value = r.uniqueClients.toString(),
+                            icon = Icons.Default.People,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -154,10 +166,9 @@ fun ReportsScreen(
                             modifier = Modifier.weight(1f)
                         )
                         MetricCard(
-                            title = "Receita",
-                            value = "R$ %.0f".format(r.totalRevenue),
-                            icon = Icons.Default.AttachMoney,
-                            color = AppColors.Success,
+                            title = "Ticket Médio",
+                            value = "R$ %.2f".format(r.averageTicket),
+                            icon = Icons.Default.Receipt,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -167,25 +178,26 @@ fun ReportsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         MetricCard(
-                            title = "Ticket Médio",
-                            value = "R$ %.2f".format(r.averageTicket),
-                            icon = Icons.Default.Receipt,
+                            title = "Profissionais",
+                            value = r.professionalsCount.toString(),
+                            icon = Icons.Default.Badge,
                             modifier = Modifier.weight(1f)
                         )
+                        val completionRate = if (r.totalAppointments > 0) r.completedAppointments.toDouble() / r.totalAppointments else 0.0
                         MetricCard(
-                            title = "Cancelamentos",
-                            value = "%.1f%%".format(r.cancellationRate * 100),
-                            icon = Icons.Default.Cancel,
-                            color = MaterialTheme.colorScheme.error,
+                            title = "Saúde Operacional",
+                            value = "%.0f%%".format(completionRate * 100),
+                            icon = Icons.Default.HealthAndSafety,
+                            color = AppColors.Success,
                             modifier = Modifier.weight(1f)
                         )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Revenue over time chart
+                    // === Revenue over time chart ===
                     if (r.revenueOverTime.isNotEmpty()) {
-                        SectionTitle("Receita ao Longo do Tempo")
+                        SectionTitle("Faturamento por Período")
                         SimpleBarChart(
                             data = r.revenueOverTime,
                             modifier = Modifier.fillMaxWidth().height(200.dp).padding(horizontal = 16.dp),
@@ -194,33 +206,102 @@ fun ReportsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    // Appointments over time
-                    if (r.appointmentsOverTime.isNotEmpty()) {
-                        SectionTitle("Agendamentos ao Longo do Tempo")
-                        SimpleBarChart(
-                            data = r.appointmentsOverTime,
-                            modifier = Modifier.fillMaxWidth().height(200.dp).padding(horizontal = 16.dp),
-                            barColor = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-
-                    // Status breakdown
+                    // === Donut chart for status distribution ===
                     if (r.statusBreakdown.isNotEmpty()) {
                         SectionTitle("Distribuição por Status")
-                        StatusBreakdownChart(
+                        DonutStatusChart(
                             data = r.statusBreakdown,
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    // Services ranking
+                    // === Weekday demand chart ===
+                    if (r.weekdayDemand.isNotEmpty()) {
+                        SectionTitle("Demanda por Dia da Semana")
+                        WeekdayDemandChart(
+                            data = r.weekdayDemand,
+                            modifier = Modifier.fillMaxWidth().height(180.dp).padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // === Hourly demand (peak hours) chart ===
+                    if (r.hourlyDemand.isNotEmpty()) {
+                        SectionTitle("Horários de Pico")
+                        HourlyDemandChart(
+                            data = r.hourlyDemand,
+                            modifier = Modifier.fillMaxWidth().height(180.dp).padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // === Top services ranking ===
                     if (r.servicesRanking.isNotEmpty()) {
                         SectionTitle("Top Serviços")
-                        RankingList(
+                        ServiceRankingList(
                             items = r.servicesRanking,
                             modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // === Top professionals ranking ===
+                    if (r.professionalsRanking.isNotEmpty()) {
+                        SectionTitle("Top Profissionais")
+                        RankingList(
+                            items = r.professionalsRanking,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // === Top clients ranking ===
+                    if (r.clientsRanking.isNotEmpty()) {
+                        SectionTitle("Clientes Mais Valiosos")
+                        ClientRankingList(
+                            items = r.clientsRanking,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // === Automatic insights ===
+                    if (r.insights.isNotEmpty()) {
+                        SectionTitle("Insights Automáticos")
+                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            r.insights.forEach { insight ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+                                ) {
+                                    Row(modifier = Modifier.padding(12.dp)) {
+                                        Icon(
+                                            Icons.Default.Lightbulb,
+                                            null,
+                                            tint = AppColors.Accent,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            insight,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            lineHeight = 18.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // === Appointments over time ===
+                    if (r.appointmentsOverTime.isNotEmpty()) {
+                        SectionTitle("Agendamentos ao Longo do Tempo")
+                        SimpleBarChart(
+                            data = r.appointmentsOverTime,
+                            modifier = Modifier.fillMaxWidth().height(200.dp).padding(horizontal = 16.dp),
+                            barColor = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
@@ -272,7 +353,7 @@ private fun SimpleBarChart(
     if (data.isEmpty()) return
 
     val maxValue = data.maxOf { it.value }.coerceAtLeast(1.0)
-    val displayData = data.takeLast(14) // Show last 14 data points max
+    val displayData = data.takeLast(14)
 
     Card(modifier = modifier) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -295,7 +376,6 @@ private fun SimpleBarChart(
                 }
             }
 
-            // X-axis labels (show first, middle, last)
             if (displayData.size > 1) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -313,41 +393,62 @@ private fun SimpleBarChart(
 }
 
 @Composable
-private fun StatusBreakdownChart(
+private fun DonutStatusChart(
     data: List<StatusCount>,
     modifier: Modifier = Modifier
 ) {
     val total = data.sumOf { it.count }.coerceAtLeast(1)
     val colors = listOf(
-        AppColors.Success,    // Confirmed
-        AppColors.Warning,    // Pending
-        MaterialTheme.colorScheme.primary, // Completed
-        MaterialTheme.colorScheme.error,   // Cancelled
-        Color.Gray                           // No-show
+        AppColors.Success,        // Confirmado
+        AppColors.Warning,        // Pendente
+        MaterialTheme.colorScheme.primary, // Finalizado
+        MaterialTheme.colorScheme.error,   // Cancelado
+        Color.Gray                          // NaoCompareceu
     )
 
     Card(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // Horizontal bar
-            Canvas(modifier = Modifier.fillMaxWidth().height(24.dp)) {
-                var xOffset = 0f
-                data.forEachIndexed { index, item ->
-                    val width = (item.count.toFloat() / total) * size.width
-                    drawRect(
-                        color = colors[index % colors.size],
-                        topLeft = Offset(xOffset, 0f),
-                        size = Size(width, size.height)
-                    )
-                    xOffset += width
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Donut chart
+            Box(
+                modifier = Modifier.size(150.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val strokeWidth = 36f
+                    val radius = (size.minDimension - strokeWidth) / 2
+                    val center = Offset(size.width / 2, size.height / 2)
+                    var startAngle = -90f
+
+                    data.forEachIndexed { index, item ->
+                        val sweepAngle = (item.count.toFloat() / total) * 360f
+                        drawArc(
+                            color = colors[index % colors.size],
+                            startAngle = startAngle,
+                            sweepAngle = sweepAngle,
+                            useCenter = false,
+                            topLeft = Offset(center.x - radius, center.y - radius),
+                            size = Size(radius * 2, radius * 2),
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
+                        )
+                        startAngle += sweepAngle
+                    }
+                }
+                // Center text
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Total", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$total", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Legend
             data.forEachIndexed { index, item ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Surface(
@@ -366,6 +467,161 @@ private fun StatusBreakdownChart(
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekdayDemandChart(
+    data: List<WeekdayDemandItem>,
+    modifier: Modifier = Modifier
+) {
+    if (data.isEmpty()) return
+    val maxValue = data.maxOf { it.count }.coerceAtLeast(1)
+
+    Card(modifier = modifier) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Canvas(modifier = Modifier.fillMaxSize().weight(1f)) {
+                val barWidth = (size.width / data.size) * 0.6f
+                val gap = (size.width / data.size) * 0.4f
+
+                data.forEachIndexed { index, item ->
+                    val barHeight = (item.count.toFloat() / maxValue * size.height * 0.85f)
+                    val x = index * (barWidth + gap) + gap / 2
+                    val y = size.height - barHeight
+
+                    drawRect(
+                        color = AppColors.Secondary,
+                        topLeft = Offset(x, y),
+                        size = Size(barWidth, barHeight)
+                    )
+                }
+            }
+
+            // X-axis labels
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                data.forEach { item ->
+                    Text(
+                        item.day.take(3),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 9.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HourlyDemandChart(
+    data: List<HourlyDemandItem>,
+    modifier: Modifier = Modifier
+) {
+    if (data.isEmpty()) return
+    val maxValue = data.maxOf { it.count }.coerceAtLeast(1)
+    val displayData = data.takeLast(12) // Show last 12 hours
+
+    Card(modifier = modifier) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Canvas(modifier = Modifier.fillMaxSize().weight(1f)) {
+                val barWidth = (size.width / displayData.size) * 0.6f
+                val gap = (size.width / displayData.size) * 0.4f
+
+                displayData.forEachIndexed { index, item ->
+                    val barHeight = (item.count.toFloat() / maxValue * size.height * 0.85f)
+                    val x = index * (barWidth + gap) + gap / 2
+                    val y = size.height - barHeight
+
+                    drawRect(
+                        color = AppColors.Accent,
+                        topLeft = Offset(x, y),
+                        size = Size(barWidth, barHeight)
+                    )
+                }
+            }
+
+            // X-axis labels (show every other)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                displayData.forEachIndexed { index, item ->
+                    if (index % 2 == 0) {
+                        Text(
+                            item.hour,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 8.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ServiceRankingList(
+    items: List<RankingItem>,
+    modifier: Modifier = Modifier
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            items.take(10).forEachIndexed { index, item ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        modifier = Modifier.size(24.dp),
+                        shape = MaterialTheme.shapes.small,
+                        color = if (index < 3) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                "${index + 1}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (index < 3) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(item.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            "${item.count} atendimento(s) • ticket R$ %.2f".format(item.averageTicket),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "R$ %.0f".format(item.revenue),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = AppColors.Success
+                        )
+                        if (item.share > 0) {
+                            Text(
+                                "%.1f%%".format(item.share * 100),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -417,6 +673,60 @@ private fun RankingList(
     }
 }
 
+@Composable
+private fun ClientRankingList(
+    items: List<ClientRankingItem>,
+    modifier: Modifier = Modifier
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            items.take(10).forEachIndexed { index, item ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        modifier = Modifier.size(24.dp),
+                        shape = MaterialTheme.shapes.small,
+                        color = if (index < 3) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                "${index + 1}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (index < 3) MaterialTheme.colorScheme.onPrimaryContainer
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(item.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1)
+                        Text("${item.visits} visita(s)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "R$ %.0f".format(item.revenue),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = AppColors.Success
+                        )
+                        item.lastVisit?.let {
+                            Text(
+                                it.take(10),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @HiltViewModel
 class ReportsViewModel @Inject constructor(
     private val api: LavaMeuCarroApi
@@ -444,7 +754,6 @@ class ReportsViewModel @Inject constructor(
             _isLoading.value = true
             _error.value = null
             try {
-                // Load units and report in parallel
                 val unitsDeferred = async { api.getMyUnidades() }
                 val reportDeferred = async { api.getBusinessReport(_selectedPeriod.value, _selectedUnitId.value) }
 

@@ -5,6 +5,8 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lavemeucarro.app.data.models.AssinaturaDto
+import com.lavemeucarro.app.data.models.LegalDocumentDto
 import com.lavemeucarro.app.data.models.SupportContactDto
 import com.lavemeucarro.app.data.models.UpdateProfileRequest
 import com.lavemeucarro.app.data.models.UserDto
@@ -29,9 +31,60 @@ class ProfileViewModel @Inject constructor(
     private val _supportContact = MutableStateFlow<SupportContactDto?>(null)
     val supportContact: StateFlow<SupportContactDto?> = _supportContact
 
+    private val _biometricEnabled = MutableStateFlow(false)
+    val biometricEnabled: StateFlow<Boolean> = _biometricEnabled
+
+    private val _subscription = MutableStateFlow<AssinaturaDto?>(null)
+    val subscription: StateFlow<AssinaturaDto?> = _subscription
+
+    private val _legalDocuments = MutableStateFlow<List<LegalDocumentDto>>(emptyList())
+    val legalDocuments: StateFlow<List<LegalDocumentDto>> = _legalDocuments
+
     fun loadSupportContact() {
         viewModelScope.launch {
             try { _supportContact.value = api.getSupportContact() } catch (_: Exception) {}
+        }
+    }
+
+    fun loadBiometricState() {
+        viewModelScope.launch {
+            authManager.getBiometricEnabled().collect { enabled ->
+                _biometricEnabled.value = enabled
+            }
+        }
+    }
+
+    fun toggleBiometric(enabled: Boolean) {
+        viewModelScope.launch {
+            authManager.setBiometricEnabled(enabled)
+            _biometricEnabled.value = enabled
+        }
+    }
+
+    fun loadSubscription() {
+        if (!authManager.isProfessional()) return
+        viewModelScope.launch {
+            try {
+                // Try to get subscription info - using planos as proxy
+                val planos = api.getPlanos()
+                if (planos.isNotEmpty()) {
+                    _subscription.value = AssinaturaDto(
+                        id = "",
+                        ownerId = user.value?.id ?: "",
+                        planoId = planos.first().id,
+                        status = "active",
+                        planoName = planos.first().name
+                    )
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun loadLegalDocuments() {
+        viewModelScope.launch {
+            try {
+                _legalDocuments.value = api.getLegalDocuments()
+            } catch (_: Exception) {}
         }
     }
 

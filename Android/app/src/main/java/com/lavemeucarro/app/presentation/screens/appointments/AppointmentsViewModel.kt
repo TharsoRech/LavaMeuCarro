@@ -5,12 +5,16 @@ import androidx.lifecycle.viewModelScope
 import com.lavemeucarro.app.data.models.AgendamentoDto
 import com.lavemeucarro.app.data.models.DashboardSummaryDTO
 import com.lavemeucarro.app.data.models.UnidadeDto
+import com.lavemeucarro.app.data.models.UpdateStatusRequest
 import com.lavemeucarro.app.data.remote.LavaMeuCarroApi
 import com.lavemeucarro.app.managers.AuthManager
+import com.lavemeucarro.app.utils.DateFormatter
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -36,6 +40,21 @@ class AppointmentsViewModel @Inject constructor(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing
+
+    // Pending days map: dateStr -> pending count
+    private val _pendingDaysMap = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val pendingDaysMap: StateFlow<Map<String, Int>> = _pendingDaysMap
+
+    // Ready to finalize days map: dateStr -> count
+    private val _readyToFinalizeDaysMap = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val readyToFinalizeDaysMap: StateFlow<Map<String, Int>> = _readyToFinalizeDaysMap
+
+    // Batch processing state
+    private val _isBatchProcessing = MutableStateFlow(false)
+    val isBatchProcessing: StateFlow<Boolean> = _isBatchProcessing
 
     fun loadMyAppointments() {
         viewModelScope.launch {
@@ -92,16 +111,118 @@ class AppointmentsViewModel @Inject constructor(
             try {
                 api.updateAgendamentoStatus(
                     appointmentId,
-                    com.lavemeucarro.app.data.models.UpdateStatusRequest(status)
+                    UpdateStatusRequest(status)
                 )
-                // Refresh list
-                if (_isProfessional.value && _selectedUnit.value != null) {
-                    loadUnitAppointments(_selectedUnit.value!!.id, null)
-                    loadDashboardSummary(_selectedUnit.value!!.id)
-                } else {
-                    loadMyAppointments()
-                }
+                refreshCurrentView()
             } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun batchUpdateStatus(appointmentIds: List<String>, targetStatus: String, onResult: (Int, Int) -> Unit) {
+        viewModelScope.launch {
+            _isBatchProcessing.value = true
+            var successCount = 0
+            var failCount = 0
+            try {
+                val results = appointmentIds.map { id ->
+                    async {
+                        try {
+                            api.updateAgendamentoStatus(id, UpdateStatusRequest(targetStatus))
+                            true
+                        } catch (_: Exception) {
+                            false
+                        }
+                    }
+                }.map { it.await() }
+                successCount = results.count { it }
+                failCount = results.size - successCount
+                refreshCurrentView()
+            } catch (_: Exception) {
+            } finally {
+                _isBatchProcessing.value = false
+                onResult(successCount, failCount)
+            }
+        }
+    }
+
+    fun loadPendingDays(dates: List<Date>, unidadeId: String) {
+        viewModelScope.launch {
+            try {
+                val pendingMap = mutableMapOf<String, Int>()
+                val readyMap = mutableMapOf<String, Int>()
+
+                val results = dates.map { date ->
+                    async {
+                        val dateStr = DateFormatter.formatIso(date)
+                        try {
+                            val appts = api.getUnidadeAgendamentos(unidadeId, dateStr)
+                            val pending = appts.count { it.status == "Pendente" }
+                            val readyToFinalize = appts.count {
+                                it.status == "Confirmado" && canBeMarkedAsCompleted(it)
+                            }
+                            dateStr to (pending to readyToFinalize)
+                        } catch (_: Exception) {
+                            dateStr to (0 to 0)
+                        }
+                    }
+                }.map { it.await() }
+
+                results.forEach { (dateStr, counts) ->
+                    if (counts.first > 0) pendingMap[dateStr] = counts.first
+                    if (counts.second > 0) readyMap[dateStr] = counts.second
+                }
+
+                _pendingDaysMap.value = pendingMap
+                _readyToFinalizeDaysMap.value = readyMap
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun silentRefresh() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                refreshCurrentView()
+            } catch (_: Exception) {
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
+
+    private fun refreshCurrentView() {
+        if (_isProfessional.value && _selectedUnit.value != null) {
+            loadUnitAppointments(_selectedUnit.value!!.id, null)
+            loadDashboardSummary(_selectedUnit.value!!.id)
+        } else {
+            loadMyAppointments()
+        }
+    }
+
+    companion object {
+        fun canBeMarkedAsCompleted(appointment: AgendamentoDto): Boolean {
+            if (appointment.status != "Confirmado") return false
+            val dateStr = appointment.data ?: return false
+            val timeStr = appointment.hora?.take(5) ?: return false
+            return try {
+                val parts = dateStr.split("-")
+                val timeParts = timeStr.split(":")
+                if (parts.size < 3 || timeParts.size < 2) return false
+                val year = parts[0].toInt()
+                val month = parts[1].toInt()
+                val day = parts[2].toInt()
+                val hour = timeParts[0].toInt()
+                val minute = timeParts[1].toInt()
+                val cal = java.util.Calendar.getInstance().apply {
+                    set(year, month - 1, day, hour, minute, 0)
+                }
+                // Add 30 min duration
+                cal.add(java.util.Calendar.MINUTE, 30)
+                cal.timeInMillis <= System.currentTimeMillis()
+            } catch (_: Exception) {
+                false
             }
         }
     }

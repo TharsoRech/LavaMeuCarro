@@ -329,11 +329,21 @@ data class BusinessReportDto(
     val appointmentsOverTime: List<TimeSeriesPoint> = emptyList(),
     val revenueOverTime: List<TimeSeriesPoint> = emptyList(),
     val servicesRanking: List<RankingItem> = emptyList(),
+    val professionalsRanking: List<RankingItem> = emptyList(),
+    val clientsRanking: List<ClientRankingItem> = emptyList(),
     val statusBreakdown: List<StatusCount> = emptyList(),
+    val weekdayDemand: List<WeekdayDemandItem> = emptyList(),
+    val hourlyDemand: List<HourlyDemandItem> = emptyList(),
+    val insights: List<String> = emptyList(),
     val totalAppointments: Int = 0,
     val totalRevenue: Double = 0.0,
     val averageTicket: Double = 0.0,
-    val cancellationRate: Double = 0.0
+    val cancellationRate: Double = 0.0,
+    val uniqueClients: Int = 0,
+    val completedAppointments: Int = 0,
+    val noShowCount: Int = 0,
+    val professionalsCount: Int = 0,
+    val servicesCount: Int = 0
 )
 
 data class TimeSeriesPoint(
@@ -344,7 +354,26 @@ data class TimeSeriesPoint(
 data class RankingItem(
     val name: String,
     val count: Int = 0,
-    val revenue: Double = 0.0
+    val revenue: Double = 0.0,
+    val averageTicket: Double = 0.0,
+    val share: Double = 0.0
+)
+
+data class ClientRankingItem(
+    val name: String,
+    val visits: Int = 0,
+    val revenue: Double = 0.0,
+    val lastVisit: String? = null
+)
+
+data class WeekdayDemandItem(
+    val day: String,
+    val count: Int
+)
+
+data class HourlyDemandItem(
+    val hour: String,
+    val count: Int
 )
 
 data class StatusCount(
