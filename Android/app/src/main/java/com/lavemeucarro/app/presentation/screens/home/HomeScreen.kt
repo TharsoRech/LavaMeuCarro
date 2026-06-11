@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lavemeucarro.app.data.models.*
+import com.lavemeucarro.app.data.remote.ViaCepResponse
 import com.lavemeucarro.app.managers.AuthManager
+import com.lavemeucarro.app.presentation.components.AppointmentDetailModal
 import com.lavemeucarro.app.presentation.theme.AppColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,6 +33,7 @@ fun HomeScreen(
     onNavigateToNotifications: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
+    val promotions by viewModel.promotions.collectAsState()
     val unidades by viewModel.unidades.collectAsState()
     val categorias by viewModel.categorias.collectAsState()
     val notifications by viewModel.notifications.collectAsState()
@@ -43,6 +46,15 @@ fun HomeScreen(
     var selectedUnidade by remember { mutableStateOf<UnidadeDto?>(null) }
     var showUnidadeDetail by remember { mutableStateOf(false) }
     var showNotifications by remember { mutableStateOf(false) }
+    var showAppointmentDetail by remember { mutableStateOf(false) }
+    var showReviewModal by remember { mutableStateOf(false) }
+    var reviewReferenceId by remember { mutableStateOf<String?>(null) }
+    val selectedAppointment by viewModel.selectedAppointment.collectAsState()
+    val userCity by viewModel.userCity.collectAsState()
+    val userState by viewModel.userState.collectAsState()
+    val isLocationLoading by viewModel.isLocationLoading.collectAsState()
+    var showLocationModal by remember { mutableStateOf(false) }
+    var cepInput by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) { viewModel.loadData() }
 
@@ -52,7 +64,56 @@ fun HomeScreen(
             notifications = notifications,
             onDismiss = { showNotifications = false },
             onMarkAsRead = { id -> viewModel.markNotificationRead(id) },
-            onMarkAllRead = { viewModel.markAllNotificationsRead() }
+            onMarkAllRead = { viewModel.markAllNotificationsRead() },
+            onNotificationPress = { notif ->
+                if (!notif.isRead) viewModel.markNotificationRead(notif.id)
+                notif.referenceId?.let { refId ->
+                    val type = notif.type?.lowercase() ?: notif.rawType?.lowercase() ?: ""
+                    if (type == "review") {
+                        reviewReferenceId = refId
+                        showReviewModal = true
+                    } else {
+                        viewModel.fetchAppointmentById(refId)
+                        showAppointmentDetail = true
+                    }
+                }
+            }
+        )
+    }
+
+    // Appointment detail modal from notification
+    if (showAppointmentDetail && selectedAppointment != null) {
+        AppointmentDetailModal(
+            appointment = selectedAppointment!!,
+            onDismiss = {
+                showAppointmentDetail = false
+                viewModel.clearSelectedAppointment()
+            }
+        )
+    }
+
+    // Review/rating modal from notification
+    if (showReviewModal && reviewReferenceId != null) {
+        ReviewRatingModal(
+            agendamentoId = reviewReferenceId!!,
+            onDismiss = { showReviewModal = false },
+            onSubmit = { rating, comment ->
+                viewModel.submitReview(reviewReferenceId!!, rating, comment) {
+                    showReviewModal = false
+                }
+            }
+        )
+    }
+
+    // Location modal
+    if (showLocationModal) {
+        LocationModal(
+            cepInput = cepInput,
+            onCepChange = { cepInput = it },
+            isLoading = isLocationLoading,
+            onDismiss = { showLocationModal = false },
+            onSearchCep = { viewModel.lookupCep(cepInput) },
+            cepResult = viewModel.cepResult.collectAsState().value
         )
     }
 
@@ -97,6 +158,47 @@ fun HomeScreen(
                         Badge(count = unreadCount) {
                             Icon(Icons.Default.Notifications, "Notificações")
                         }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Location section
+                if (userCity != null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("$userCity${userState?.let { " - $it" } ?: ""}", fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium)
+                            }
+                            TextButton(onClick = { viewModel.clearLocationFilter() }) {
+                                Text("Limpar", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Location button
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { showLocationModal = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.LocationOn, null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (userCity != null) "Alterar Local" else "Definir Local")
                     }
                 }
 
@@ -199,6 +301,26 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            // Promotions section
+            if (promotions.isNotEmpty()) {
+                SectionHeader(title = "Promoções", onSeeAll = null)
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(promotions) { promo ->
+                        PromotionCard(
+                            promotion = promo,
+                            onClick = {
+                                // Navigate to the unidade that has this promotion
+                                onNavigateToUnidade(promo.unidadeId.toString())
+                            }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // Popular units section
             SectionHeader(title = "Unidades Populares", onSeeAll = {
                 searchQuery = ""
@@ -268,6 +390,58 @@ fun CategoryChip(categoria: CategoriaDto, onClick: () -> Unit) {
         label = { Text(categoria.nome) },
         icon = { Icon(Icons.Default.Category, null, modifier = Modifier.size(16.dp)) }
     )
+}
+
+@Composable
+fun PromotionCard(promotion: PromotionDto, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .width(220.dp)
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.size(36.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.tertiary
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.LocalOffer, null, tint = MaterialTheme.colorScheme.onTertiary, modifier = Modifier.size(20.dp))
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(promotion.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(promotion.unidadeName, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            promotion.promoDescription?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                promotion.promoPrice?.let { promoP ->
+                    Text("R$ ${"%.2f".format(promoP)}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        "R$ ${"%.2f".format(promotion.originalPrice)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } ?: run {
+                    Text("R$ ${"%.2f".format(promotion.originalPrice)}", fontWeight = FontWeight.Bold)
+                }
+            }
+            promotion.promoEndDate?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Válido até ${it.split("-").reversed().joinToString("/")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
 }
 
 @Composable
@@ -391,7 +565,8 @@ fun NotificationPopup(
     notifications: List<NotificacaoDto>,
     onDismiss: () -> Unit,
     onMarkAsRead: (String) -> Unit,
-    onMarkAllRead: () -> Unit
+    onMarkAllRead: () -> Unit,
+    onNotificationPress: (NotificacaoDto) -> Unit = {}
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -439,7 +614,9 @@ fun NotificationPopup(
                                     ) {}
                                 }
                             },
-                            modifier = Modifier.clickable { if (!notif.isRead) onMarkAsRead(notif.id) }
+                            modifier = Modifier.clickable {
+                                onNotificationPress(notif)
+                            }
                         )
                     }
                 }
@@ -512,6 +689,121 @@ fun UnidadeDetailModal(
             Button(onClick = onBook) { Text("Agendar") }
         },
         dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Fechar") }
+        }
+    )
+}
+
+@Composable
+fun ReviewRatingModal(
+    agendamentoId: String,
+    onDismiss: () -> Unit,
+    onSubmit: (rating: Int, comment: String?) -> Unit
+) {
+    var rating by remember { mutableStateOf(0) }
+    var comment by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Avaliar Serviço") },
+        text = {
+            Column {
+                Text("Como foi sua experiência?", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    (1..5).forEach { star ->
+                        IconButton(onClick = { rating = star }) {
+                            Icon(
+                                if (star <= rating) Icons.Default.Star else Icons.Default.StarBorder,
+                                null,
+                                tint = AppColors.Warning,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = comment,
+                    onValueChange = { comment = it },
+                    label = { Text("Comentário (opcional)") },
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    maxLines = 4
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSubmit(rating, comment.takeIf { it.isNotBlank() }) },
+                enabled = rating > 0
+            ) { Text("Enviar Avaliação") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+@Composable
+fun LocationModal(
+    cepInput: String,
+    onCepChange: (String) -> Unit,
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onSearchCep: () -> Unit,
+    cepResult: ViaCepResponse?
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Definir Localização") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Digite seu CEP para encontrar unidades na sua região", style = MaterialTheme.typography.bodyMedium)
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = cepInput,
+                        onValueChange = { onCepChange(it.filter { c -> c.isDigit() }.take(8)) },
+                        label = { Text("CEP") },
+                        placeholder = { Text("00000-000") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Button(
+                        onClick = onSearchCep,
+                        enabled = cepInput.length >= 8 && !isLoading
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text("Buscar")
+                        }
+                    }
+                }
+
+                if (cepResult != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("${cepResult.localidade} - ${cepResult.uf}", fontWeight = FontWeight.Bold)
+                            cepResult.bairro?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                            cepResult.logradouro?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
             TextButton(onClick = onDismiss) { Text("Fechar") }
         }
     )

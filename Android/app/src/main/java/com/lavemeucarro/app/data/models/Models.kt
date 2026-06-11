@@ -250,7 +250,10 @@ data class VeiculoDto(
     val marca: String? = null,
     val modelo: String? = null,
     val cor: String? = null,
-    val tamanho: String? = null
+    val tamanho: String? = null,
+    val ano: Int? = null,
+    val fotoBase64: String? = null,
+    val createdAt: String? = null
 )
 
 data class CreateVeiculoRequest(
@@ -258,7 +261,19 @@ data class CreateVeiculoRequest(
     val marca: String,
     val modelo: String,
     val cor: String? = null,
-    val tamanho: String? = null
+    val tamanho: String? = null,
+    val ano: Int? = null,
+    val fotoBase64: String? = null
+)
+
+data class UpdateVeiculoRequest(
+    val placa: String? = null,
+    val marca: String? = null,
+    val modelo: String? = null,
+    val cor: String? = null,
+    val tamanho: String? = null,
+    val ano: Int? = null,
+    val fotoBase64: String? = null
 )
 
 // ==================== Categoria ====================
@@ -484,4 +499,21 @@ data class CreateReviewRequest(
     val agendamentoId: String,
     val rating: Int,
     val comment: String? = null
+)
+
+// ==================== Promotions ====================
+data class PromotionDto(
+    val servicoId: Int = 0,
+    val name: String = "",
+    val description: String? = null,
+    val originalPrice: Double = 0.0,
+    val promoPrice: Double? = null,
+    val promoEndDate: String? = null,
+    val promoDescription: String? = null,
+    val durationMinutes: Int = 0,
+    val unidadeId: Int = 0,
+    val unidadeName: String = "",
+    val unidadeCity: String = "",
+    val averageRating: Double? = null,
+    val unidadeLogoUrl: String? = null
 )

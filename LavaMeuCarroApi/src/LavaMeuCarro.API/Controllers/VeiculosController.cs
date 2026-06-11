@@ -21,7 +21,7 @@ public class VeiculosController : ControllerBase
     public async Task<ActionResult<List<VeiculoDTO>>> GetMine()
     {
         var veiculos = await _repo.GetByClientAsync(UserId);
-        return Ok(veiculos.Select(v => new VeiculoDTO(v.Id, v.ClientId, v.Placa, v.Marca, v.Modelo, v.Cor, v.Tamanho, v.CreatedAt)));
+        return Ok(veiculos.Select(v => new VeiculoDTO(v.Id, v.ClientId, v.Placa, v.Marca, v.Modelo, v.Cor, v.Tamanho, v.Ano, v.FotoBase64, v.CreatedAt)));
     }
 
     [HttpPost]
@@ -33,7 +33,7 @@ public class VeiculosController : ControllerBase
         if (existing != null && existing.ClientId != UserId)
             throw new ConflictException("Plate already registered");
 
-        var veiculo = new Veiculo { ClientId = UserId, Placa = placa, Marca = request.Marca, Modelo = request.Modelo, Cor = request.Cor, Tamanho = request.Tamanho };
+        var veiculo = new Veiculo { ClientId = UserId, Placa = placa, Marca = request.Marca, Modelo = request.Modelo, Cor = request.Cor, Tamanho = request.Tamanho, Ano = request.Ano, FotoBase64 = request.FotoBase64 };
         return Ok(await _repo.CreateAsync(veiculo));
     }
 
@@ -47,6 +47,8 @@ public class VeiculosController : ControllerBase
         if (request.Modelo != null) veiculo.Modelo = request.Modelo;
         if (request.Cor != null) veiculo.Cor = request.Cor;
         if (request.Tamanho != null) veiculo.Tamanho = request.Tamanho;
+        if (request.Ano != null) veiculo.Ano = request.Ano;
+        if (request.FotoBase64 != null) veiculo.FotoBase64 = request.FotoBase64;
         if (request.Placa != null) veiculo.Placa = request.Placa.ToUpper().Replace("-", "").Trim();
         await _repo.UpdateAsync(veiculo);
         return Ok();

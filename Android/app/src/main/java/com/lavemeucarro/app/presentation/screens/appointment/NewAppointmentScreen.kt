@@ -19,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lavemeucarro.app.data.models.CreateAgendamentoRequest
+import com.lavemeucarro.app.data.models.CreateVeiculoRequest
 import com.lavemeucarro.app.data.models.FuncionarioDto
 import com.lavemeucarro.app.data.models.ServicoDto
 import com.lavemeucarro.app.data.models.UnidadeDto
@@ -111,6 +112,29 @@ class NewAppointmentViewModel @Inject constructor(
             }
         }
     }
+
+    fun addVehicleInline(
+        placa: String, marca: String, modelo: String,
+        cor: String?, tamanho: String?, ano: Int?,
+        onAdded: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val veiculo = api.createVeiculo(
+                    CreateVeiculoRequest(
+                        placa = placa.uppercase().replace("-", "").trim(),
+                        marca = marca, modelo = modelo,
+                        cor = cor, tamanho = tamanho, ano = ano
+                    )
+                )
+                val veiculos = api.getMyVeiculos()
+                _uiState.value = _uiState.value.copy(veiculos = veiculos)
+                onAdded(veiculo.id)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message ?: "Erro ao adicionar veículo")
+            }
+        }
+    }
 }
 
 // ==================== Screen ====================
@@ -132,6 +156,7 @@ fun NewAppointmentScreen(
     var observacoes by remember { mutableStateOf("") }
     var modalidade by remember { mutableStateOf("NoLocal") }
     var showSuccessDialog by remember { mutableStateOf(false) }
+    var showInlineAddVehicle by remember { mutableStateOf(false) }
 
     LaunchedEffect(unidadeId) {
         viewModel.loadData(unidadeId)
@@ -307,18 +332,49 @@ fun NewAppointmentScreen(
                 )
 
                 // Vehicle selection
-                SectionTitle("5. Escolha o Veículo")
-                if (uiState.veiculos.isEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SectionTitle("5. Escolha o Veículo")
+                    IconButton(onClick = { showInlineAddVehicle = true }) {
+                        Icon(Icons.Default.Add, "Adicionar Veículo", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+
+                // Inline add vehicle form
+                if (showInlineAddVehicle) {
+                    InlineAddVehicleForm(
+                        onAdd = { placa, marca, modelo, cor, tamanho, anoVal ->
+                            viewModel.addVehicleInline(placa, marca, modelo, cor, tamanho, anoVal) { newId ->
+                                selectedVeiculoId = newId
+                                showInlineAddVehicle = false
+                            }
+                        },
+                        onCancel = { showInlineAddVehicle = false }
+                    )
+                }
+
+                if (uiState.veiculos.isEmpty() && !showInlineAddVehicle) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                             Text("Nenhum veículo cadastrado", fontWeight = FontWeight.Medium)
-                            Text("Cadastre um veículo na tela de Perfil > Veículos", style = MaterialTheme.typography.bodySmall)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = { showInlineAddVehicle = true }) {
+                                Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Adicionar Veículo")
+                            }
                         }
                     }
-                } else {
+                } else if (uiState.veiculos.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         uiState.veiculos.forEach { veiculo ->
                             VeiculoCard(
@@ -523,10 +579,89 @@ private fun VeiculoCard(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    listOfNotNull(veiculo.placa, veiculo.cor, veiculo.tamanho).joinToString(" · "),
+                    listOfNotNull(
+                        veiculo.placa,
+                        veiculo.cor,
+                        veiculo.tamanho,
+                        veiculo.ano?.toString()
+                    ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InlineAddVehicleForm(
+    onAdd: (placa: String, marca: String, modelo: String, cor: String?, tamanho: String?, ano: Int?) -> Unit,
+    onCancel: () -> Unit
+) {
+    var placa by remember { mutableStateOf("") }
+    var marca by remember { mutableStateOf("") }
+    var modelo by remember { mutableStateOf("") }
+    var cor by remember { mutableStateOf("") }
+    var tamanho by remember { mutableStateOf("Hatch") }
+    var ano by remember { mutableStateOf("") }
+    val tamanhoOptions = listOf("Hatch", "Sedan", "SUV", "Pickup", "Van", "Moto")
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Novo Veículo", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(
+                value = placa, onValueChange = { placa = it.uppercase() },
+                label = { Text("Placa") }, singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = marca, onValueChange = { marca = it },
+                label = { Text("Marca") }, singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = modelo, onValueChange = { modelo = it },
+                label = { Text("Modelo") }, singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = cor, onValueChange = { cor = it },
+                    label = { Text("Cor") }, singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = ano, onValueChange = { ano = it.filter { c -> c.isDigit() }.take(4) },
+                    label = { Text("Ano") }, singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                tamanhoOptions.forEach { opt ->
+                    FilterChip(
+                        selected = tamanho == opt,
+                        onClick = { tamanho = opt },
+                        label = { Text(opt, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = {
+                        if (placa.isNotBlank() && marca.isNotBlank() && modelo.isNotBlank()) {
+                            onAdd(placa, marca, modelo, cor.trim().takeIf { it.isNotBlank() }, tamanho, ano.toIntOrNull())
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = placa.isNotBlank() && marca.isNotBlank() && modelo.isNotBlank()
+                ) { Text("Adicionar") }
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f)
+                ) { Text("Cancelar") }
             }
         }
     }

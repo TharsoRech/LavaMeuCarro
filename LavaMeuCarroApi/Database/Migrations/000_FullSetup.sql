@@ -150,6 +150,8 @@ BEGIN
         Modelo NVARCHAR(100) NOT NULL,
         Cor NVARCHAR(50),
         Tamanho NVARCHAR(20) NOT NULL DEFAULT N'Hatch',
+        Ano INT NULL,
+        FotoBase64 NVARCHAR(MAX) NULL,
         CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
     );
     CREATE UNIQUE INDEX IX_Veiculos_Placa ON Veiculos(Placa);

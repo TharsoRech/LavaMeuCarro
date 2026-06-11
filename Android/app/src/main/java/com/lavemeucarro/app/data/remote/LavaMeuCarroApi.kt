@@ -131,6 +131,12 @@ interface LavaMeuCarroApi {
     @POST("api/veiculos")
     suspend fun createVeiculo(@Body request: CreateVeiculoRequest): VeiculoDto
 
+    @PUT("api/veiculos/{id}")
+    suspend fun updateVeiculo(
+        @Path("id") id: String,
+        @Body request: UpdateVeiculoRequest
+    )
+
     @DELETE("api/veiculos/{id}")
     suspend fun deleteVeiculo(@Path("id") id: String)
 
@@ -168,7 +174,9 @@ interface LavaMeuCarroApi {
     @GET("api/reports/business")
     suspend fun getBusinessReport(
         @Query("period") period: String = "30d",
-        @Query("unidadeId") unidadeId: String? = null
+        @Query("unidadeId") unidadeId: String? = null,
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null
     ): BusinessReportDto
 
     // ==================== Support ====================
@@ -208,4 +216,8 @@ interface LavaMeuCarroApi {
 
     @GET("api/reviews")
     suspend fun getReviews(@Query("unidadeId") unidadeId: String): List<ReviewDto>
+
+    // ==================== Promotions ====================
+    @GET("api/promotions")
+    suspend fun getPromotions(@Query("limit") limit: Int = 10): List<PromotionDto>
 }

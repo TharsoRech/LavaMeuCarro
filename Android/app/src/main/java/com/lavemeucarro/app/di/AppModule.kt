@@ -10,6 +10,7 @@ import com.google.gson.Gson
 import com.lavemeucarro.app.BuildConfig
 import com.lavemeucarro.app.data.remote.AuthInterceptor
 import com.lavemeucarro.app.data.remote.LavaMeuCarroApi
+import com.lavemeucarro.app.data.remote.ViaCepApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -63,4 +64,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideGson(): Gson = Gson()
+
+    @Provides
+    @Singleton
+    fun provideViaCepApi(): ViaCepApi {
+        return Retrofit.Builder()
+            .baseUrl("https://viacep.com.br/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(ViaCepApi::class.java)
+    }
 }

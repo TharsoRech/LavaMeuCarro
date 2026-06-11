@@ -20,17 +20,34 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet("business")]
-    public async Task<ActionResult> GetBusinessReports([FromQuery] string period = "30d", [FromQuery] int? unidadeId = null)
+    public async Task<ActionResult> GetBusinessReports(
+        [FromQuery] string period = "30d",
+        [FromQuery] int? unidadeId = null,
+        [FromQuery] string? from = null,
+        [FromQuery] string? to = null)
     {
         var now = DateTime.UtcNow;
-        DateTime from;
-        switch (period)
+        DateTime fromDate;
+        DateTime toDate = now;
+
+        if (!string.IsNullOrEmpty(from) && DateTime.TryParse(from, out var parsedFrom))
         {
-            case "7d": from = now.AddDays(-7); break;
-            case "30d": from = now.AddDays(-30); break;
-            case "90d": from = now.AddDays(-90); break;
-            case "12m": from = now.AddMonths(-12); break;
-            default: from = now.AddDays(-30); break;
+            fromDate = parsedFrom.ToUniversalTime();
+            if (!string.IsNullOrEmpty(to) && DateTime.TryParse(to, out var parsedTo))
+            {
+                toDate = parsedTo.ToUniversalTime();
+            }
+        }
+        else
+        {
+            switch (period)
+            {
+                case "7d": fromDate = now.AddDays(-7); break;
+                case "30d": fromDate = now.AddDays(-30); break;
+                case "90d": fromDate = now.AddDays(-90); break;
+                case "12m": fromDate = now.AddMonths(-12); break;
+                default: fromDate = now.AddDays(-30); break;
+            }
         }
 
         int[] unitIds;
@@ -81,13 +98,13 @@ public class ReportsController : ControllerBase
         {
             foreach (AgendamentoStatus status in Enum.GetValues<AgendamentoStatus>())
             {
-                var count = await _agendamentoRepo.CountByStatusAsync(uid, status, from, now);
+                var count = await _agendamentoRepo.CountByStatusAsync(uid, status, fromDate, toDate);
                 var statusName = status.ToString();
                 statusCounts[statusName] = statusCounts.GetValueOrDefault(statusName) + count;
                 totalAppointments += count;
                 if (status == AgendamentoStatus.Cancelado) totalCancelled += count;
             }
-            var revenue = await _agendamentoRepo.SumByUnidadeAsync(uid, from, now);
+            var revenue = await _agendamentoRepo.SumByUnidadeAsync(uid, fromDate, toDate);
             totalRevenue += revenue;
         }
 
@@ -98,33 +115,33 @@ public class ReportsController : ControllerBase
         var statusBreakdown = statusCounts.Select(kv => new { status = kv.Key, count = kv.Value }).ToList();
 
         // Time series
-        var dailyCounts = await _agendamentoRepo.GetDailyCountsAsync(unitIds, from, now);
+        var dailyCounts = await _agendamentoRepo.GetDailyCountsAsync(unitIds, fromDate, toDate);
         var appointmentsOverTime = dailyCounts.Select(d => new { date = ((DateTime)d.Date).ToString("yyyy-MM-dd"), value = (double)(int)d.Count }).ToList();
 
-        var revenueByDate = await _agendamentoRepo.GetRevenueByDateAsync(unitIds, from, now);
+        var revenueByDate = await _agendamentoRepo.GetRevenueByDateAsync(unitIds, fromDate, toDate);
         var revenueOverTime = revenueByDate.Select(d => new { date = ((DateTime)d.Date).ToString("yyyy-MM-dd"), value = (double)(decimal)d.Revenue }).ToList();
 
         // Rankings
-        var serviceRanking = await _agendamentoRepo.GetServiceRankingAsync(unitIds, from, now);
+        var serviceRanking = await _agendamentoRepo.GetServiceRankingAsync(unitIds, fromDate, toDate);
         var servicesRanking = serviceRanking.Select(s => new { name = (string)s.Name, count = (int)s.Count, revenue = (double)(decimal)s.Revenue, averageTicket = (double)(decimal)s.AverageTicket, share = (double)s.Share }).ToList();
 
-        var professionalRanking = await _agendamentoRepo.GetProfessionalRankingAsync(unitIds, from, now);
+        var professionalRanking = await _agendamentoRepo.GetProfessionalRankingAsync(unitIds, fromDate, toDate);
         var professionalsRanking = professionalRanking.Select(p => new { name = (string)p.Name, count = (int)p.Count, revenue = (double)(decimal)p.Revenue, averageTicket = 0.0, share = 0.0 }).ToList();
 
-        var clientRanking = await _agendamentoRepo.GetClientRankingAsync(unitIds, from, now);
+        var clientRanking = await _agendamentoRepo.GetClientRankingAsync(unitIds, fromDate, toDate);
         var clientsRanking = clientRanking.Select(c => new { name = (string)c.Name, visits = (int)c.Visits, revenue = (double)(decimal)c.Revenue, lastVisit = ((DateTime)c.LastVisit).ToString("yyyy-MM-dd") }).ToList();
 
         // Demand patterns
-        var weekdayDemand = await _agendamentoRepo.GetWeekdayDemandAsync(unitIds, from, now);
+        var weekdayDemand = await _agendamentoRepo.GetWeekdayDemandAsync(unitIds, fromDate, toDate);
         var weekdayDemandResult = weekdayDemand.Select(d => new { day = (string)d.Day, count = (int)d.Count }).ToList();
 
-        var hourlyDemand = await _agendamentoRepo.GetHourlyDemandAsync(unitIds, from, now);
+        var hourlyDemand = await _agendamentoRepo.GetHourlyDemandAsync(unitIds, fromDate, toDate);
         var hourlyDemandResult = hourlyDemand.Select(h => new { hour = $"{(int)h.Hour:D2}:00", count = (int)h.Count }).ToList();
 
         // Extra stats
-        var uniqueClients = await _agendamentoRepo.CountUniqueClientsAsync(unitIds, from, now);
+        var uniqueClients = await _agendamentoRepo.CountUniqueClientsAsync(unitIds, fromDate, toDate);
         var completedAppointments = statusCounts.GetValueOrDefault("Finalizado", 0);
-        var noShowCount = await _agendamentoRepo.CountNoShowAsync(unitIds, from, now);
+        var noShowCount = await _agendamentoRepo.CountNoShowAsync(unitIds, fromDate, toDate);
         var professionalsCount = await _agendamentoRepo.CountProfessionalsAsync(unitIds);
         var servicesCount = await _agendamentoRepo.CountServicesAsync(unitIds);
 
