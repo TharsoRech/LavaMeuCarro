@@ -51,7 +51,7 @@ MERGE SupportSettings AS target
 USING (VALUES
     -- New Relic (already exists, but ensure consistency)
     ('newrelic.enabled', 'True'),
-    ('newrelic.apiKey', 'REDACTED_SECRET'),
+    ('newrelic.apiKey', 'CHANGE_ME_IN_PRODUCTION'),
     ('newrelic.appName', 'LavaMeuCarroApi'),
     ('newrelic.endpoint', 'https://log-api.newrelic.com/log/v1'),
     ('newrelic.environment', 'production'),
