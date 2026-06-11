@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using LavaMeuCarro.Application.Commands.Auth;
 using LavaMeuCarro.Application.DTOs;
 using LavaMeuCarro.Application.Queries.Auth;
+using LavaMeuCarro.Infrastructure.Services;
 
 namespace LavaMeuCarro.API.Controllers;
 
@@ -12,7 +13,13 @@ namespace LavaMeuCarro.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
-    public AuthController(IMediator mediator) => _mediator = mediator;
+    private readonly IConfiguration _configuration;
+    
+    public AuthController(IMediator mediator, IConfiguration configuration) 
+    {
+        _mediator = mediator;
+        _configuration = configuration;
+    }
 
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
@@ -67,6 +74,33 @@ public class AuthController : ControllerBase
         var requesterId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
         await _mediator.Send(new DeleteUserCommand(userId, requesterId));
         return Ok();
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        await _mediator.Send(new ForgotPasswordCommand(request));
+        
+        // Return development code if SMTP not configured
+        var smtpConfigured = !string.IsNullOrEmpty(_configuration["Smtp:Host"]);
+        return Ok(new 
+        { 
+            sent = true,
+            developmentCode = smtpConfigured ? null : SmtpEmailService.LastDevelopmentCode
+        });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<ActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        await _mediator.Send(new ResetPasswordCommand(request));
+        
+        var smtpConfigured = !string.IsNullOrEmpty(_configuration["Smtp:Host"]);
+        return Ok(new 
+        { 
+            reset = true,
+            notificationSent = smtpConfigured
+        });
     }
 }
 

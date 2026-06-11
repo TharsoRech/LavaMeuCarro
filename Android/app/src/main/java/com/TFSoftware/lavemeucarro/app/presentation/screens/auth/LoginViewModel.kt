@@ -9,7 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.TFSoftware.lavemeucarro.app.data.remote.AuthInterceptor
 import com.TFSoftware.lavemeucarro.app.data.remote.LavaMeuCarroApi
-import com.TFSoftware.lavemeucarro.app.data.models.LoginRequest
+import com.TFSoftware.lavemeucarro.app.data.models.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,8 +32,21 @@ class LoginViewModel @Inject constructor(
     private val dataStore: DataStore<Preferences>
 ) : ViewModel() {
 
+    // Expose API for AuthHelpModal
+    val getApi: LavaMeuCarroApi = api
+
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState
+
+    private val _rememberedEmail = MutableStateFlow<String?>(null)
+    val rememberedEmail: StateFlow<String?> = _rememberedEmail
+
+    init {
+        viewModelScope.launch {
+            val prefs = dataStore.data.first()
+            _rememberedEmail.value = prefs[stringPreferencesKey("remembered_email")]
+        }
+    }
 
     fun login(email: String, password: String) {
         if (email.isBlank() || password.isBlank()) {
@@ -48,6 +61,7 @@ class LoginViewModel @Inject constructor(
                 dataStore.edit { prefs ->
                     prefs[stringPreferencesKey("access_token")] = response.token
                     prefs[stringPreferencesKey("refresh_token")] = response.refreshToken
+                    prefs[stringPreferencesKey("remembered_email")] = email
                 }
                 _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
             } catch (e: Exception) {
@@ -79,5 +93,15 @@ class LoginViewModel @Inject constructor(
         return dataStore.data.map { prefs ->
             prefs[booleanPreferencesKey("biometric_enabled")] ?: false
         }
+    }
+
+    // ==================== Reset Password ====================
+
+    suspend fun requestPasswordReset(email: String): ForgotPasswordResponse {
+        return api.requestPasswordReset(ForgotPasswordRequest(email))
+    }
+
+    suspend fun confirmPasswordReset(email: String, code: String, newPassword: String): ResetPasswordResponse {
+        return api.confirmPasswordReset(ResetPasswordRequest(email, code, newPassword))
     }
 }

@@ -5,23 +5,35 @@ import android.net.Uri
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.IntOffset
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -45,8 +57,12 @@ fun MyUnitsScreen(
     val services by viewModel.services.collectAsState()
     val funcionarios by viewModel.funcionarios.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val selectedUnit by viewModel.selectedUnit.collectAsState()
     val error by viewModel.error.collectAsState()
+
+    // Enriched unit data (services + professionals counts per unit)
+    val unitStats by viewModel.unitStats.collectAsState()
 
     var showCreateUnit by remember { mutableStateOf(false) }
     var showEditUnit by remember { mutableStateOf(false) }
@@ -54,6 +70,7 @@ fun MyUnitsScreen(
     var showServiceModal by remember { mutableStateOf(false) }
     var showFuncionarioModal by remember { mutableStateOf(false) }
     var showUnitDetail by remember { mutableStateOf(false) }
+    var showOptionsModal by remember { mutableStateOf(false) } // ServiceOptionsModal (bottom sheet)
 
     // Create unit modal
     if (showCreateUnit) {
@@ -119,6 +136,7 @@ fun MyUnitsScreen(
             },
             onDelete = {
                 showUnitDetail = false
+                showOptionsModal = false
                 showDeleteConfirm = true
             },
             onAddService = {
@@ -132,6 +150,22 @@ fun MyUnitsScreen(
             },
             onDeleteFuncionario = { funcId ->
                 viewModel.deleteFuncionario(funcId)
+            }
+        )
+    }
+
+    // ServiceOptionsModal (bottom sheet for Edit/Delete - matching HoraDaBeleza)
+    if (showOptionsModal && selectedUnit != null) {
+        ServiceOptionsModal(
+            unit = selectedUnit!!,
+            onDismiss = { showOptionsModal = false; viewModel.clearSelectedUnit() },
+            onEdit = {
+                showOptionsModal = false
+                showEditUnit = true
+            },
+            onDelete = {
+                showOptionsModal = false
+                showDeleteConfirm = true
             }
         )
     }
@@ -161,6 +195,23 @@ fun MyUnitsScreen(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Refresh on tab return (following HoraDaBeleza useFocusEffect pattern)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val isFirstFocus = remember { mutableStateOf(true) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (isFirstFocus.value) {
+                    isFirstFocus.value = false
+                } else {
+                    viewModel.loadData()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(error) {
         error?.let {
@@ -217,71 +268,132 @@ fun MyUnitsScreen(
                 }
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            // Pull-to-refresh wrapper (following HoraDaBeleza refreshControl pattern)
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = { viewModel.silentRefresh() },
+                modifier = Modifier.fillMaxSize()
             ) {
-                items(units, key = { it.id }) { unit ->
-                    UnitCard(
-                        unit = unit,
-                        onClick = {
-                            viewModel.selectUnit(unit)
-                            viewModel.loadUnitDetails(unit.id)
-                            showUnitDetail = true
-                        }
-                    )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(units, key = { it.id }) { unit ->
+                        val stats = unitStats[unit.id]
+                        UnitCard(
+                            unit = unit,
+                            serviceCount = stats?.serviceCount ?: 0,
+                            professionalCount = stats?.professionalCount ?: 0,
+                            onClick = {
+                                viewModel.selectUnit(unit)
+                                // Open options modal (matching HoraDaBeleza admin flow)
+                                showOptionsModal = true
+                            }
+                        )
+                    }
                 }
-            }
+            } // End PullToRefreshBox
         }
     }
 }
 
 @Composable
-private fun UnitCard(unit: UnidadeDto, onClick: () -> Unit) {
+private fun UnitCard(unit: UnidadeDto, serviceCount: Int, professionalCount: Int, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val bitmap = remember(unit.logoUrl) {
+        unit.logoUrl?.let { logo ->
+            try {
+                val base64Data = if (logo.startsWith("data:image")) {
+                    logo.substringAfter("base64,")
+                } else {
+                    logo
+                }
+                val decoded = Base64.decode(base64Data, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(decoded, 0, decoded.size)?.asImageBitmap()
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = MaterialTheme.shapes.medium,
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Store, null, tint = MaterialTheme.colorScheme.primary)
+            // Unit image or placeholder with status badge
+            Box(modifier = Modifier.size(80.dp)) {
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = unit.nome,
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Surface(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Store, null, modifier = Modifier.size(30.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                
+                // Status badge overlay
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset { IntOffset(4, 4) },
+                    color = if (unit.published) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        if (unit.published) "Publicado" else "Rascunho",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
+
             Spacer(modifier = Modifier.width(12.dp))
+            
             Column(modifier = Modifier.weight(1f)) {
-                Text(unit.nome, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(unit.nome, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 unit.address?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (unit.published) {
-                        Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
-                            Text("Publicado", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                    } else {
-                        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.small) {
-                            Text("Rascunho", modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall)
-                        }
+                Spacer(modifier = Modifier.height(6.dp))
+                
+                // Stats row: services + professionals
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.ContentCut, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("$serviceCount Serviços", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                     }
-                    if (unit.ofereceLevaTraz) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.LocalShipping, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text("Leva e traz", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
-                        }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.People, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("$professionalCount Profissionais", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                     }
                 }
             }
+            
             Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -488,6 +600,21 @@ private fun UnitEditModal(
     var ofereceLevaTraz by remember { mutableStateOf(unit?.ofereceLevaTraz ?: false) }
     var published by remember { mutableStateOf(unit?.published ?: false) }
     var logoBase64 by remember { mutableStateOf(unit?.logoUrl) }
+    var galleryBase64 by remember { mutableStateOf<List<String>>(
+        unit?.gallery?.let { galleryStr ->
+            try {
+                // Parse JSON array or comma-separated string
+                if (galleryStr.startsWith("[")) {
+                    val parsed = kotlinx.serialization.json.Json.decodeFromString<List<String>>(galleryStr)
+                    parsed
+                } else {
+                    galleryStr.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                }
+            } catch (_: Exception) {
+                emptyList()
+            }
+        } ?: emptyList()
+    ) }
     var latitude by remember { mutableStateOf(unit?.latitude) }
     var longitude by remember { mutableStateOf(unit?.longitude) }
     var addressValidated by remember { mutableStateOf(unit?.latitude != null && unit?.longitude != null) }
@@ -496,10 +623,31 @@ private fun UnitEditModal(
     var error by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Email validation
+    // Email validation (matching HoraDaBeleza real-time validation)
     val isEmailValid = email.isBlank() || android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    val showEmailValidation = email.isNotBlank()
 
-    // Photo picker
+    // Phone formatting helper (matching HoraDaBeleza format)
+    fun formatPhone(value: String): String {
+        val digits = value.replace("\\D".toRegex(), "")
+        val match = Regex("^(\\d{2})(\\d{5})(\\d{4})$").find(digits)
+        return if (match != null) {
+            "(${match.groupValues[1]}) ${match.groupValues[2]}-${match.groupValues[3]}"
+        } else if (digits.length > 2 && digits.length <= 6) {
+            "(${digits.substring(0, 2)}) ${digits.substring(2)}"
+        } else if (digits.length > 6) {
+            "(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7)}"
+        } else {
+            digits
+        }
+    }
+
+    fun handlePhoneChange(value: String, type: String): String {
+        val digits = value.replace("\\D".toRegex(), "").take(11)
+        return formatPhone(digits)
+    }
+
+    // Photo picker for cover photo
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -513,6 +661,27 @@ private fun UnitEditModal(
                 scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 60, baos)
                 logoBase64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
             } catch (_: Exception) {}
+        }
+    }
+
+    // Gallery photo picker (multiple selection)
+    val galleryPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            val newGalleryImages = mutableListOf<String>()
+            uris.forEach { uri ->
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
+                    val scaled = android.graphics.Bitmap.createScaledBitmap(bitmap, 800, 600, true)
+                    val baos = ByteArrayOutputStream()
+                    scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, baos)
+                    newGalleryImages.add(Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP))
+                } catch (_: Exception) {}
+            }
+            galleryBase64 = galleryBase64 + newGalleryImages
         }
     }
 
@@ -535,15 +704,77 @@ private fun UnitEditModal(
                 }
 
                 // Cover photo
+                Text("Foto de Capa *", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(onClick = { photoPickerLauncher.launch("image/*") }) {
                         Icon(Icons.Default.CameraAlt, null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (logoBase64 != null) "Trocar foto" else "Foto de capa")
+                        Text(if (logoBase64 != null) "Trocar foto" else "Selecionar foto")
                     }
                     if (logoBase64 != null) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    }
+                }
+
+                // Gallery photos
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Galeria de Fotos", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                
+                // Add gallery button
+                OutlinedButton(onClick = { galleryPickerLauncher.launch("image/*") }) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Adicionar fotos (${galleryBase64.size})")
+                }
+                
+                // Gallery preview
+                if (galleryBase64.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.height(100.dp)
+                    ) {
+                        items(galleryBase64.size) { index ->
+                            val base64 = galleryBase64[index]
+                            val galleryBitmap = remember(base64) {
+                                try {
+                                    val decoded = Base64.decode(base64, Base64.DEFAULT)
+                                    BitmapFactory.decodeByteArray(decoded, 0, decoded.size)
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+                            
+                            if (galleryBitmap != null) {
+                                Box {
+                                    Image(
+                                        bitmap = galleryBitmap.asImageBitmap(),
+                                        contentDescription = "Gallery photo ${index + 1}",
+                                        modifier = Modifier
+                                            .size(100.dp)
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    // Remove button
+                                    IconButton(
+                                        onClick = {
+                                            galleryBase64 = galleryBase64.toMutableList().apply { removeAt(index) }
+                                        },
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -638,13 +869,54 @@ private fun UnitEditModal(
 
                 HorizontalDivider()
                 Text("Contato", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Telefone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                if (email.isNotBlank() && !isEmailValid) {
-                    Text("E-mail inválido", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                }
-                OutlinedTextField(value = whatsApp, onValueChange = { whatsApp = it }, label = { Text("WhatsApp") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                
+                // Phone with formatting
+                Text("Telefone de Contato *", style = MaterialTheme.typography.labelMedium)
+                OutlinedTextField(
+                    value = phone, 
+                    onValueChange = { phone = handlePhoneChange(it, "phone") },
+                    label = { Text("(XX) XXXXX-XXXX") }, 
+                    singleLine = true, 
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Text("WhatsApp Business", style = MaterialTheme.typography.labelMedium)
+                OutlinedTextField(
+                    value = whatsApp, 
+                    onValueChange = { whatsApp = handlePhoneChange(it, "whatsapp") },
+                    label = { Text("(XX) XXXXX-XXXX") }, 
+                    singleLine = true, 
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
                 OutlinedTextField(value = instagram, onValueChange = { instagram = it }, label = { Text("Instagram") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                
+                // Email with real-time validation feedback
+                OutlinedTextField(
+                    value = email, 
+                    onValueChange = { email = it.replace("\\s+".toRegex(), "").trim().lowercase() }, 
+                    label = { Text("E-mail da Unidade") }, 
+                    singleLine = true, 
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = showEmailValidation && !isEmailValid,
+                    trailingIcon = {
+                        if (showEmailValidation) {
+                            Icon(
+                                if (isEmailValid) Icons.Default.CheckCircle else Icons.Default.Error,
+                                null,
+                                tint = if (isEmailValid) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                )
+                if (showEmailValidation) {
+                    Text(
+                        if (isEmailValid) "✓ E-mail válido" else "E-mail inválido",
+                        fontSize = 12.sp,
+                        color = if (isEmailValid) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                    )
+                }
+                
                 OutlinedTextField(value = businessHours, onValueChange = { businessHours = it }, label = { Text("Horário de funcionamento") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = ofereceLevaTraz, onCheckedChange = { ofereceLevaTraz = it })
@@ -672,6 +944,12 @@ private fun UnitEditModal(
                                 name = name,
                                 description = description.ifBlank { null },
                                 logoUrl = logoBase64,
+                                gallery = if (galleryBase64.isNotEmpty()) {
+                                    // Convert to JSON array string
+                                    "[${galleryBase64.joinToString(",") { "\"$it\"" }}]"
+                                } else {
+                                    null
+                                },
                                 address = address.ifBlank { null },
                                 number = number.ifBlank { null },
                                 complement = complement.ifBlank { null },
@@ -696,6 +974,12 @@ private fun UnitEditModal(
                                 name = name,
                                 description = description.ifBlank { null },
                                 logoUrl = logoBase64,
+                                gallery = if (galleryBase64.isNotEmpty()) {
+                                    // Convert to JSON array string
+                                    "[${galleryBase64.joinToString(",") { "\"$it\"" }}]"
+                                } else {
+                                    "[]" // Send empty array to clear gallery
+                                },
                                 address = address.ifBlank { null },
                                 number = number.ifBlank { null },
                                 complement = complement.ifBlank { null },
@@ -709,7 +993,6 @@ private fun UnitEditModal(
                                 phone = phone.ifBlank { null },
                                 email = email.ifBlank { null },
                                 businessHours = businessHours.ifBlank { null },
-                                gallery = null,
                                 whatsApp = whatsApp.ifBlank { null },
                                 instagramUrl = instagram.ifBlank { null },
                                 published = published,
@@ -832,8 +1115,15 @@ class MyUnitsViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
+
+    // Background enrichment: service/professional counts per unit (matching HoraDaBeleza N+1 pattern)
+    private val _unitStats = MutableStateFlow<Map<String, UnitStats>>(emptyMap())
+    val unitStats: StateFlow<Map<String, UnitStats>> = _unitStats
 
     init { loadUnits() }
 
@@ -842,10 +1132,58 @@ class MyUnitsViewModel @Inject constructor(
             _isLoading.value = true
             try {
                 _units.value = api.getMyUnidades()
+                // Enrich with background N+1 queries (matching HoraDaBeleza pattern)
+                enrichUnitStats()
             } catch (e: Exception) {
                 _error.value = "Erro ao carregar unidades: ${e.message}"
             }
             _isLoading.value = false
+        }
+    }
+
+    // Silent refresh for pull-to-refresh
+    fun silentRefresh() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                _units.value = api.getMyUnidades()
+                enrichUnitStats()
+            } catch (_: Exception) {
+            }
+            _isRefreshing.value = false
+        }
+    }
+
+    // Alias for lifecycle-based refresh
+    fun loadData() = silentRefresh()
+
+    // Background enrichment: fetch service & professional counts in parallel (matching HoraDaBeleza Promise.allSettled)
+    private fun enrichUnitStats() {
+        viewModelScope.launch {
+            val currentUnits = _units.value
+            if (currentUnits.isEmpty()) return@launch
+
+            val enrichedStats = mutableMapOf<String, UnitStats>()
+
+            currentUnits.forEach { unit ->
+                val serviceCount = try {
+                    val services = api.getServicos(unit.id)
+                    services.size
+                } catch (_: Exception) {
+                    0
+                }
+
+                val professionalCount = try {
+                    val funcs = api.getFuncionarios(unit.id)
+                    funcs.size
+                } catch (_: Exception) {
+                    0
+                }
+
+                enrichedStats[unit.id] = UnitStats(serviceCount, professionalCount)
+            }
+
+            _unitStats.value = enrichedStats
         }
     }
 
@@ -889,7 +1227,10 @@ class MyUnitsViewModel @Inject constructor(
 
     fun deleteUnit(id: String) {
         viewModelScope.launch {
-            try { api.deleteUnidade(id); loadUnits() } catch (_: Exception) {}
+            try { 
+                api.deleteUnidade(id)
+                loadUnits() 
+            } catch (_: Exception) {}
         }
     }
 
@@ -1067,6 +1408,119 @@ class MyUnitsViewModel @Inject constructor(
     }
 }
 
+// ServiceOptionsModal (bottom sheet for Edit/Delete - matching HoraDaBeleza)
+@Composable
+private fun ServiceOptionsModal(
+    unit: UnidadeDto,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 24.dp)
+        ) {
+            // Title
+            Text(
+                "Gerenciar Unidade",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                unit.nome,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // Edit option
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onEdit()
+                    }
+                    .padding(vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = Color(0xFFE3F2FD)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Edit,
+                            null,
+                            tint = Color(0xFF1976D2),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    "Editar Unidade",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            // Delete option
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onDelete()
+                    }
+                    .padding(vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = Color(0xFFFFEBEE)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Delete,
+                            null,
+                            tint = Color(0xFFD32F2F),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    "Remover Unidade",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color(0xFFD32F2F),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider()
+            
+            // Cancel button
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                Text("Cancelar")
+            }
+        }
+    }
+}
+
 data class CepLookupResult(
     val street: String,
     val neighborhood: String,
@@ -1081,4 +1535,10 @@ data class GeocodingResult(
     val longitude: Double,
     val city: String,
     val state: String
+)
+
+// Background enrichment stats (matching HoraDaBeleza N+1 enrichment pattern)
+data class UnitStats(
+    val serviceCount: Int,
+    val professionalCount: Int
 )

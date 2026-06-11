@@ -6,6 +6,7 @@ public interface IUnidadeRepository
 {
     Task<Unidade?> GetByIdAsync(int id);
     Task<List<Unidade>> GetAllAsync(string? city, string? search);
+    Task<(List<Unidade> Items, int Total)> GetPagedAsync(int page, int pageSize, string? city, string? search);
     Task<List<Unidade>> GetByOwnerAsync(int ownerId);
     Task<int> CreateAsync(Unidade unidade);
     Task UpdateAsync(Unidade unidade);

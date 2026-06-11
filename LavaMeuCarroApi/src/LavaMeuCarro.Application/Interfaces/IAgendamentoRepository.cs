@@ -29,4 +29,9 @@ public interface IAgendamentoRepository
     Task<int> CountProfessionalsAsync(int[] unidadeIds);
     Task<int> CountServicesAsync(int[] unidadeIds);
     Task<List<Agendamento>> GetByClientAndUnidadeAsync(int clientId, int unidadeId);
+    
+    // Additional metrics for enhanced reports
+    Task<decimal> SumScheduledRevenueAsync(int[] unidadeIds, DateTime from, DateTime to);
+    Task<int> CountNewClientsAsync(int[] unidadeIds, DateTime from, DateTime to);
+    Task<decimal> SumLostRevenueAsync(int[] unidadeIds, DateTime from, DateTime to);
 }

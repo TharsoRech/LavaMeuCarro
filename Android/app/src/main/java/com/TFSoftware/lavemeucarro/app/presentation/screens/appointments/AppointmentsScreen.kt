@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -393,6 +394,33 @@ fun AppointmentsScreen(
             }
         }
 
+        // Quick sync banner (following HoraDaBeleza isQuickActionSyncing pattern)
+        if (isProfessional && (isBatchProcessing || processingAppointmentIds.isNotEmpty())) {
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                tonalElevation = 1.dp
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Sincronizando alterações...",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
         // Content based on active tab
         if (activeSubTab == "unidade" && isProfessional) {
             // === UNIDADE TAB ===
@@ -477,6 +505,11 @@ fun AppointmentsScreen(
                         CircularProgressIndicator()
                     }
                 } else {
+                    PullToRefreshBox(
+                        isRefreshing = isRefreshing,
+                        onRefresh = { viewModel.silentRefresh() },
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                     LazyColumn(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -516,6 +549,7 @@ fun AppointmentsScreen(
                             )
                         }
                     }
+                    } // End PullToRefreshBox
                 }
             }
         } else {
@@ -565,6 +599,11 @@ fun AppointmentsScreen(
                     }
                 } else {
                     val displayList = if (activeSubTab == "pessoal" || !isProfessional) pessoalAppointments else filteredAppointments
+                    PullToRefreshBox(
+                        isRefreshing = isRefreshing,
+                        onRefresh = { viewModel.silentRefresh() },
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                     LazyColumn(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -581,6 +620,7 @@ fun AppointmentsScreen(
                             )
                         }
                     }
+                    } // End PullToRefreshBox
                 }
             }
         }

@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISupportSettingRepository, SupportSettingRepository>();
         services.AddScoped<IAdicionalRepository, AdicionalRepository>();
         services.AddScoped<IEmailVerificationTokenRepository, EmailVerificationTokenRepository>();
+        services.AddScoped<IPasswordResetCodeRepository, PasswordResetCodeRepository>();
         services.AddScoped<IAsaasPaymentRecordRepository, AsaasPaymentRecordRepository>();
 
         // Services

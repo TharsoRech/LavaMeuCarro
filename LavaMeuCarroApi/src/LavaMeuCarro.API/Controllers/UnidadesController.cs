@@ -25,6 +25,13 @@ public class UnidadesController : ControllerBase
     public async Task<ActionResult<List<UnidadeDTO>>> GetAll([FromQuery] string? city, [FromQuery] string? search)
         => Ok(await _mediator.Send(new GetAllUnidadesQuery(city, search)));
 
+    [HttpGet("paged")]
+    public async Task<ActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? city = null, [FromQuery] string? search = null)
+    {
+        var (items, total) = await _mediator.Send(new GetPagedUnidadesQuery(page, pageSize, city, search));
+        return Ok(new { items, total, page, pageSize });
+    }
+
     [HttpGet("{id}")]
     public async Task<ActionResult<UnidadeDTO>> GetById(int id)
         => Ok(await _mediator.Send(new GetUnidadeByIdQuery(id)));

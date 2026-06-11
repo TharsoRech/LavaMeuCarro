@@ -35,6 +35,23 @@ public class FuncionariosController : ControllerBase
         }));
     }
 
+    [AllowAnonymous]
+    [HttpGet("popular")]
+    public async Task<ActionResult> GetPopular([FromQuery] int limit = 10)
+    {
+        var results = await _repo.GetPopularAsync(limit);
+        return Ok(results.Select(r => new PopularProfessionalDTO(
+            r.Funcionario.Id,
+            r.Funcionario.UserId,
+            r.Funcionario.UnidadeId,
+            r.UserName,
+            r.UnidadeName,
+            r.Funcionario.Specialty,
+            r.Funcionario.AverageRating,
+            r.Funcionario.TotalReviews
+        )));
+    }
+
     [HttpPost]
     public async Task<ActionResult<int>> Create([FromBody] CreateFuncionarioByNomeRequest request)
     {

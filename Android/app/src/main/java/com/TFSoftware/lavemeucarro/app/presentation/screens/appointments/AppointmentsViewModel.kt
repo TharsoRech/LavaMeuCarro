@@ -11,6 +11,7 @@ import com.TFSoftware.lavemeucarro.app.data.models.UnidadeDto
 import com.TFSoftware.lavemeucarro.app.data.models.UpdateStatusRequest
 import com.TFSoftware.lavemeucarro.app.data.remote.LavaMeuCarroApi
 import com.TFSoftware.lavemeucarro.app.managers.AuthManager
+import com.TFSoftware.lavemeucarro.app.managers.NotificationManager
 import com.TFSoftware.lavemeucarro.app.utils.DateFormatter
 import com.TFSoftware.lavemeucarro.app.utils.NewRelicLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +25,8 @@ import javax.inject.Inject
 @HiltViewModel
 class AppointmentsViewModel @Inject constructor(
     private val api: LavaMeuCarroApi,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
+    private val notificationManager: NotificationManager
 ) : ViewModel() {
 
     private val _appointments = MutableStateFlow<List<AgendamentoDto>>(emptyList())
@@ -60,9 +62,15 @@ class AppointmentsViewModel @Inject constructor(
     private val _isBatchProcessing = MutableStateFlow(false)
     val isBatchProcessing: StateFlow<Boolean> = _isBatchProcessing
 
-    fun loadMyAppointments() {
+    // Request tracking for action days (to abandon stale requests)
+    private var latestActionDaysRequestId = 0
+
+    // Refresh queue for serializing async operations
+    private var refreshQueue: kotlinx.coroutines.Deferred<Unit>? = null
+
+    fun loadMyAppointments(silent: Boolean = false) {
         viewModelScope.launch {
-            _isLoading.value = true
+            if (!silent) _isLoading.value = true
             try {
                 _appointments.value = api.getMyAgendamentos()
             } catch (e: Exception) {
@@ -72,7 +80,7 @@ class AppointmentsViewModel @Inject constructor(
                     "Failed to load my appointments"
                 )
             } finally {
-                _isLoading.value = false
+                if (!silent) _isLoading.value = false
             }
         }
     }
@@ -80,10 +88,10 @@ class AppointmentsViewModel @Inject constructor(
     // Currently selected date for refresh context
     private var _currentDate: String? = null
 
-    fun loadUnitAppointments(unidadeId: String, date: String?) {
+    fun loadUnitAppointments(unidadeId: String, date: String?, silent: Boolean = false) {
         _currentDate = date
         viewModelScope.launch {
-            _isLoading.value = true
+            if (!silent) _isLoading.value = true
             try {
                 _appointments.value = api.getUnidadeAgendamentos(unidadeId, date)
             } catch (e: Exception) {
@@ -94,7 +102,7 @@ class AppointmentsViewModel @Inject constructor(
                     mapOf("unidadeId" to unidadeId, "date" to date)
                 )
             } finally {
-                _isLoading.value = false
+                if (!silent) _isLoading.value = false
             }
         }
     }
@@ -133,6 +141,8 @@ class AppointmentsViewModel @Inject constructor(
                     UpdateStatusRequest(status)
                 )
                 refreshCurrentView()
+                // Refresh notifications after status change (following HoraDaBeleza pattern)
+                notificationManager.refreshNotifications()
             } catch (_: Exception) {
             }
         }
@@ -157,6 +167,8 @@ class AppointmentsViewModel @Inject constructor(
                 successCount = results.count { it }
                 failCount = results.size - successCount
                 refreshCurrentView()
+                // Refresh notifications after batch status change
+                notificationManager.refreshNotifications()
             } catch (_: Exception) {
             } finally {
                 _isBatchProcessing.value = false
@@ -165,8 +177,13 @@ class AppointmentsViewModel @Inject constructor(
         }
     }
 
-    fun loadPendingDays(dates: List<Date>, unidadeId: String) {
+    fun loadPendingDays(dates: List<Date>, unidadeId: String, silent: Boolean = false) {
+        val requestId = ++latestActionDaysRequestId
         viewModelScope.launch {
+            if (!silent) {
+                _pendingDaysMap.value = emptyMap()
+                _readyToFinalizeDaysMap.value = emptyMap()
+            }
             try {
                 val pendingMap = mutableMapOf<String, Int>()
                 val readyMap = mutableMapOf<String, Int>()
@@ -174,6 +191,9 @@ class AppointmentsViewModel @Inject constructor(
                 // Fetch in batches of 4 to reduce server load
                 val batchSize = 4
                 for (i in dates.indices step batchSize) {
+                    // Check if this request is still the latest
+                    if (requestId != latestActionDaysRequestId) return@launch
+                    
                     val batch = dates.subList(i, minOf(i + batchSize, dates.size))
                     val results = batch.map { date ->
                         async {
@@ -191,6 +211,9 @@ class AppointmentsViewModel @Inject constructor(
                         }
                     }.map { it.await() }
 
+                    // Check again after async operations
+                    if (requestId != latestActionDaysRequestId) return@launch
+
                     results.forEach { (dateStr, counts) ->
                         if (counts.first > 0) pendingMap[dateStr] = counts.first
                         if (counts.second > 0) readyMap[dateStr] = counts.second
@@ -201,6 +224,10 @@ class AppointmentsViewModel @Inject constructor(
                     _readyToFinalizeDaysMap.value = readyMap.toMap()
                 }
             } catch (_: Exception) {
+                if (requestId == latestActionDaysRequestId && !silent) {
+                    _pendingDaysMap.value = emptyMap()
+                    _readyToFinalizeDaysMap.value = emptyMap()
+                }
             }
         }
     }
@@ -210,6 +237,7 @@ class AppointmentsViewModel @Inject constructor(
             try {
                 api.cancelAgendamento(appointmentId, reason)
                 refreshCurrentView()
+                notificationManager.refreshNotifications()
                 onResult(true)
             } catch (_: Exception) {
                 onResult(false)
@@ -255,7 +283,7 @@ class AppointmentsViewModel @Inject constructor(
         viewModelScope.launch {
             _isRefreshing.value = true
             try {
-                refreshCurrentView()
+                refreshCurrentView(silent = true)
             } catch (_: Exception) {
             } finally {
                 _isRefreshing.value = false
@@ -263,12 +291,34 @@ class AppointmentsViewModel @Inject constructor(
         }
     }
 
-    private fun refreshCurrentView() {
+    fun handleRefreshAfterChanges(dates: List<Date>? = null) {
+        viewModelScope.launch {
+            // Queue the refresh operation
+            val previousQueue = refreshQueue
+            val deferred = async {
+                try {
+                    previousQueue?.await()
+                } catch (_: Exception) {
+                    // Ignore previous queue failures
+                }
+                silentRefresh()
+                dates?.let { 
+                    _selectedUnit.value?.let { unit ->
+                        loadPendingDays(it, unit.id, silent = true)
+                    }
+                }
+            }
+            refreshQueue = deferred
+            deferred.await()
+        }
+    }
+
+    private fun refreshCurrentView(silent: Boolean = false) {
         if (_isProfessional.value && _selectedUnit.value != null) {
-            loadUnitAppointments(_selectedUnit.value!!.id, _currentDate)
+            loadUnitAppointments(_selectedUnit.value!!.id, _currentDate, silent)
             loadDashboardSummary(_selectedUnit.value!!.id)
         } else {
-            loadMyAppointments()
+            loadMyAppointments(silent)
         }
     }
 

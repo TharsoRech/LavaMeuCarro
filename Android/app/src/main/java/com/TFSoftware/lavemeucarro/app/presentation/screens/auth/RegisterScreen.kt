@@ -29,6 +29,7 @@ import com.TFSoftware.lavemeucarro.app.data.models.RegisterRequest
 import com.TFSoftware.lavemeucarro.app.presentation.theme.AppColors
 import com.TFSoftware.lavemeucarro.app.utils.DateFormatter
 import com.TFSoftware.lavemeucarro.app.utils.DocumentValidator
+import com.TFSoftware.lavemeucarro.app.utils.FormatHelper
 
 data class RegisterUiState(
     val isLoading: Boolean = false,
@@ -61,6 +62,7 @@ fun RegisterScreen(
     var isProfessional by remember { mutableStateOf(false) }
     var acceptedDocs by remember { mutableStateOf(setOf<String>()) }
     var selectedLegalDoc by remember { mutableStateOf<LegalDocumentDto?>(null) }
+    var base64Image by remember { mutableStateOf<String?>(null) }
 
     // Validation
     val isNameValid = name.trim().length > 3
@@ -246,10 +248,11 @@ fun RegisterScreen(
             // Phone
             OutlinedTextField(
                 value = phone,
-                onValueChange = { phone = it },
+                onValueChange = { phone = FormatHelper.formatPhone(it) },
                 label = { Text("Telefone") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
+                placeholder = { Text("(XX) XXXXX-XXXX") },
                 isError = phone.isNotEmpty() && !isPhoneValid,
                 supportingText = {
                     if (phone.isNotEmpty()) {

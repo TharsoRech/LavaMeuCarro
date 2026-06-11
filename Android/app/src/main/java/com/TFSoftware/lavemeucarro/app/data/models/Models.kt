@@ -37,6 +37,18 @@ data class EmailVerificationResponse(
     val developmentCode: String? = null
 )
 
+data class ForgotPasswordRequest(val email: String)
+data class ForgotPasswordResponse(
+    val sent: Boolean,
+    val developmentCode: String? = null
+)
+
+data class ResetPasswordRequest(val email: String, val code: String, val newPassword: String)
+data class ResetPasswordResponse(
+    val reset: Boolean,
+    val notificationSent: Boolean = false
+)
+
 // ==================== User ====================
 data class UserDto(
     val id: String,
@@ -315,6 +327,17 @@ data class FuncionarioDto(
     val avatarUrl: String? = null
 )
 
+data class PopularProfessionalDto(
+    val id: Int,
+    val userId: Int,
+    val unidadeId: Int,
+    val name: String,
+    val unidadeName: String,
+    val specialty: String? = null,
+    val averageRating: Double? = null,
+    val totalReviews: Int = 0
+)
+
 data class CreateFuncionarioRequest(
     val nome: String,
     val specialty: String? = null,
@@ -408,11 +431,16 @@ data class BusinessReportDto(
     val insights: List<String> = emptyList(),
     val totalAppointments: Int = 0,
     val totalRevenue: Double = 0.0,
+    val scheduledRevenue: Double = 0.0,
     val averageTicket: Double = 0.0,
+    val lostRevenue: Double = 0.0,
     val cancellationRate: Double = 0.0,
     val uniqueClients: Int = 0,
+    val newClients: Int = 0,
     val completedAppointments: Int = 0,
+    val completionRate: Double = 0.0,
     val noShowCount: Int = 0,
+    val noShowRate: Double = 0.0,
     val professionalsCount: Int = 0,
     val servicesCount: Int = 0
 )
@@ -524,6 +552,27 @@ data class ReviewDto(
 
 data class CreateReviewRequest(
     val agendamentoId: String,
+    val rating: Int,
+    val comment: String? = null
+)
+
+data class AppointmentFeedbackRequest(
+    val appointmentId: Int,
+    val salonRating: Int? = null,
+    val professionalRating: Int? = null,
+    val comment: String? = null
+)
+
+data class FeedbackResponse(
+    val status: String,
+    val message: String? = null
+)
+
+data class NpsShouldShowResponse(
+    val shouldShow: Boolean
+)
+
+data class NpsFeedbackRequest(
     val rating: Int,
     val comment: String? = null
 )

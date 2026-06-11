@@ -21,11 +21,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.TFSoftware.lavemeucarro.app.data.models.SupportContactDto
 import com.TFSoftware.lavemeucarro.app.managers.AuthManager
 import com.TFSoftware.lavemeucarro.app.managers.BiometricHelper
@@ -51,10 +54,33 @@ fun ProfileScreen(
     val biometricEnabled by viewModel.biometricEnabled.collectAsState()
     val subscription by viewModel.subscription.collectAsState()
     val legalDocuments by viewModel.legalDocuments.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val biometricHelper = remember { BiometricHelper(context) }
     val biometricAvailable = remember { biometricHelper.isBiometricAvailable() }
+
+    // Refresh on tab return (following HoraDaBeleza useFocusEffect pattern)
+    val isFirstFocus = remember { mutableStateOf(true) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (isFirstFocus.value) {
+                    isFirstFocus.value = false
+                } else {
+                    // Reload profile data from API on tab return
+                    viewModel.loadProfileFromAPI()
+                    viewModel.loadBiometricState()
+                    if (isProfessional) {
+                        viewModel.loadSubscription()
+                    }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     var showChangePassword by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -236,6 +262,11 @@ fun ProfileScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
+        // Initial loading indicator
+        if (isLoading) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+
         // Profile header
         Surface(tonalElevation = 1.dp) {
             Column(
@@ -399,8 +430,20 @@ fun ProfileScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
+        
+        // Get version from BuildConfig
+        val appVersion = remember {
+            try {
+                val context = LocalContext.current
+                val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                "v${packageInfo.versionName}"
+            } catch (_: Exception) {
+                "v1.0.0"
+            }
+        }
+        
         Text(
-            "v1.0.0",
+            appVersion,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.SemiBold,

@@ -11,4 +11,5 @@ public interface IFuncionarioRepository
     Task UpdateAsync(Funcionario funcionario);
     Task DeleteAsync(int id);
     Task<Funcionario?> GetByUserIdAndUnidadeAsync(int userId, int unidadeId);
+    Task<List<(Funcionario Funcionario, string UserName, string UnidadeName)>> GetPopularAsync(int limit = 10);
 }

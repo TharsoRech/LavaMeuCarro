@@ -5,6 +5,7 @@ using LavaMeuCarro.Domain.Entities;
 using LavaMeuCarro.Domain.Enums;
 using LavaMeuCarro.Domain.Exceptions;
 using System.Security.Cryptography;
+using Microsoft.Extensions.Configuration;
 
 namespace LavaMeuCarro.Application.Commands.Auth;
 
@@ -201,6 +202,83 @@ public class DeleteUserHandler : IRequestHandler<DeleteUserCommand, Unit>
 
         user.Active = false;
         await _users.UpdateAsync(user);
+        return Unit.Value;
+    }
+}
+
+public class ForgotPasswordHandler : IRequestHandler<ForgotPasswordCommand, Unit>
+{
+    private readonly IUserRepository _users;
+    private readonly IEmailService _emailService;
+    private readonly IPasswordResetCodeRepository _codeRepo;
+    private readonly IConfiguration _config;
+
+    public ForgotPasswordHandler(IUserRepository users, IEmailService emailService, IPasswordResetCodeRepository codeRepo, IConfiguration config)
+    {
+        _users = users;
+        _emailService = emailService;
+        _codeRepo = codeRepo;
+        _config = config;
+    }
+
+    public async Task<Unit> Handle(ForgotPasswordCommand cmd, CancellationToken ct)
+    {
+        var user = await _users.GetByEmailAsync(cmd.Request.Email)
+            ?? throw new BusinessException("Email not found", 404);
+
+        // Generate 6-digit code
+        var code = new Random().Next(100000, 999999).ToString();
+        var expiresAt = DateTime.UtcNow.AddMinutes(15);
+
+        // Store code
+        await _codeRepo.CreateAsync(user.Id, code, expiresAt);
+
+        // Send email
+        await _emailService.SendPasswordResetCodeAsync(user.Email, user.Name, code);
+
+        // Log code for development if SMTP not configured
+        var smtpConfigured = !string.IsNullOrEmpty(_config["Smtp:Host"]);
+        if (!smtpConfigured)
+        {
+            // Code is already logged by EmailService
+            // Mobile will show it in the response via developmentCode field
+        }
+
+        return Unit.Value;
+    }
+}
+
+public class ResetPasswordHandler : IRequestHandler<ResetPasswordCommand, Unit>
+{
+    private readonly IUserRepository _users;
+    private readonly IPasswordHasher _hasher;
+    private readonly IPasswordResetCodeRepository _codeRepo;
+
+    public ResetPasswordHandler(IUserRepository users, IPasswordHasher hasher, IPasswordResetCodeRepository codeRepo)
+    {
+        _users = users;
+        _hasher = hasher;
+        _codeRepo = codeRepo;
+    }
+
+    public async Task<Unit> Handle(ResetPasswordCommand cmd, CancellationToken ct)
+    {
+        var user = await _users.GetByEmailAsync(cmd.Request.Email)
+            ?? throw new BusinessException("Invalid code or email", 400);
+
+        // Verify code
+        var isValid = await _codeRepo.ValidateAndConsumeAsync(user.Id, cmd.Request.Code);
+        if (!isValid)
+            throw new BusinessException("Invalid or expired code", 400);
+
+        // Update password
+        user.PasswordHash = _hasher.HashPassword(cmd.Request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _users.UpdateAsync(user);
+
+        // Revoke all refresh tokens (force re-login)
+        // This is handled by the caller if needed
+
         return Unit.Value;
     }
 }

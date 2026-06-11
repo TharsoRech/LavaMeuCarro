@@ -199,4 +199,45 @@ public class AgendamentoRepository : IAgendamentoRepository
             "SELECT * FROM Agendamentos WHERE ClientId = @ClientId AND UnidadeId = @UnidadeId ORDER BY ScheduledAt DESC",
             new { ClientId = clientId, UnidadeId = unidadeId })).ToList();
     }
+
+    public async Task<decimal> SumScheduledRevenueAsync(int[] unidadeIds, DateTime from, DateTime to)
+    {
+        using var db = _factory.CreateConnection();
+        return await db.QuerySingleOrDefaultAsync<decimal>(@"
+            SELECT COALESCE(SUM(Preco), 0)
+            FROM Agendamentos
+            WHERE UnidadeId IN @UnidadeIds
+              AND DataHora BETWEEN @From AND @To
+              AND Status IN ('Agendado', 'Confirmado', 'Finalizado')",
+            new { UnidadeIds = unidadeIds, From = from, To = to });
+    }
+
+    public async Task<int> CountNewClientsAsync(int[] unidadeIds, DateTime from, DateTime to)
+    {
+        using var db = _factory.CreateConnection();
+        return await db.QuerySingleOrDefaultAsync<int>(@"
+            SELECT COUNT(DISTINCT ClientId)
+            FROM Agendamentos
+            WHERE UnidadeId IN @UnidadeIds
+              AND DataHora BETWEEN @From AND @To
+              AND ClientId NOT IN (
+                  SELECT DISTINCT ClientId
+                  FROM Agendamentos
+                  WHERE UnidadeId IN @UnidadeIds
+                    AND DataHora < @From
+              )",
+            new { UnidadeIds = unidadeIds, From = from, To = to });
+    }
+
+    public async Task<decimal> SumLostRevenueAsync(int[] unidadeIds, DateTime from, DateTime to)
+    {
+        using var db = _factory.CreateConnection();
+        return await db.QuerySingleOrDefaultAsync<decimal>(@"
+            SELECT COALESCE(SUM(Preco), 0)
+            FROM Agendamentos
+            WHERE UnidadeId IN @UnidadeIds
+              AND DataHora BETWEEN @From AND @To
+              AND Status IN ('Cancelado', 'NaoCompareceu')",
+            new { UnidadeIds = unidadeIds, From = from, To = to });
+    }
 }

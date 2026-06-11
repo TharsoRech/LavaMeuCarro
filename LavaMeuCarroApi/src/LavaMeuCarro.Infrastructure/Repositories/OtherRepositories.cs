@@ -171,6 +171,37 @@ public class EmailVerificationTokenRepository : IEmailVerificationTokenRepositor
     public async Task MarkUsedAsync(int id) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("UPDATE EmailVerificationTokens SET Used = 1 WHERE Id = @Id", new { Id = id }); }
 }
 
+public class PasswordResetCodeRepository : IPasswordResetCodeRepository
+{
+    private readonly IDbConnectionFactory _factory;
+    public PasswordResetCodeRepository(IDbConnectionFactory factory) => _factory = factory;
+
+    public async Task CreateAsync(int userId, string code, DateTime expiresAt)
+    {
+        using var db = _factory.CreateConnection();
+        // Invalidate any existing codes for this user
+        await db.ExecuteAsync("UPDATE PasswordResetCodes SET Used = 1 WHERE UserId = @UserId AND Used = 0", new { UserId = userId });
+        // Create new code
+        await db.ExecuteAsync(
+            "INSERT INTO PasswordResetCodes (UserId, Code, ExpiresAt, CreatedAt) VALUES (@UserId, @Code, @ExpiresAt, @CreatedAt)",
+            new { UserId = userId, Code = code, ExpiresAt = expiresAt, CreatedAt = DateTime.UtcNow });
+    }
+
+    public async Task<bool> ValidateAndConsumeAsync(int userId, string code)
+    {
+        using var db = _factory.CreateConnection();
+        var record = await db.QueryFirstOrDefaultAsync<PasswordResetCode>(
+            "SELECT * FROM PasswordResetCodes WHERE UserId = @UserId AND Code = @Code AND Used = 0 AND ExpiresAt > GETUTCDATE()",
+            new { UserId = userId, Code = code });
+
+        if (record == null) return false;
+
+        // Mark as used
+        await db.ExecuteAsync("UPDATE PasswordResetCodes SET Used = 1 WHERE Id = @Id", new { Id = record.Id });
+        return true;
+    }
+}
+
 public class AsaasPaymentRecordRepository : IAsaasPaymentRecordRepository
 {
     private readonly IDbConnectionFactory _factory;

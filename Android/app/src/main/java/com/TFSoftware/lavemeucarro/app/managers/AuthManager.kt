@@ -118,6 +118,15 @@ class AuthManager @Inject constructor(
         }
     }
 
+    suspend fun refreshProfile() {
+        try {
+            val user = api.getMe()
+            _currentUser.update { user }
+        } catch (_: Exception) {
+            // Silent fail for background refresh
+        }
+    }
+
     suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit> {
         return try {
             api.changePassword(

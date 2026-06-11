@@ -40,6 +40,25 @@ class ProfileViewModel @Inject constructor(
     private val _legalDocuments = MutableStateFlow<List<LegalDocumentDto>>(emptyList())
     val legalDocuments: StateFlow<List<LegalDocumentDto>> = _legalDocuments
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
+    private val _isActionLoading = MutableStateFlow(false)
+    val isActionLoading: StateFlow<Boolean> = _isActionLoading
+
+    fun loadProfileFromAPI() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Reload user data from API to get latest updates
+                authManager.refreshProfile()
+            } catch (_: Exception) {
+                // Silent fail for background refresh
+            }
+            _isLoading.value = false
+        }
+    }
+
     fun loadSupportContact() {
         viewModelScope.launch {
             try { _supportContact.value = api.getSupportContact() } catch (_: Exception) {}
@@ -118,6 +137,44 @@ class ProfileViewModel @Inject constructor(
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 })
             } catch (_: Exception) {}
+        }
+    }
+
+    // ==================== Formatting Utilities ====================
+
+    fun formatCPF(cpf: String?): String {
+        if (cpf.isNullOrBlank()) return ""
+        val digits = cpf.replace("\\D".toRegex(), "")
+        return when {
+            digits.length >= 11 -> "${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9, 11)}"
+            digits.length > 9 -> "${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9)}"
+            digits.length > 6 -> "${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6)}"
+            digits.length > 3 -> "${digits.substring(0, 3)}.${digits.substring(3)}"
+            else -> digits
+        }
+    }
+
+    fun formatPhone(phone: String?): String {
+        if (phone.isNullOrBlank()) return ""
+        val digits = phone.replace("\\D".toRegex(), "")
+        return when {
+            digits.length >= 11 -> "(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7, 11)}"
+            digits.length > 6 -> "(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7)}"
+            digits.length > 2 -> "(${digits.substring(0, 2)}) ${digits.substring(2)}"
+            else -> digits
+        }
+    }
+
+    fun formatDOB(dob: String?): String {
+        if (dob.isNullOrBlank()) return ""
+        // If already in DD/MM/YYYY format, return as is
+        if (dob.matches(Regex("\\d{2}/\\d{2}/\\d{4}"))) return dob
+        // Convert from YYYY-MM-DD to DD/MM/YYYY
+        val match = Regex("^(\\d{4})-(\\d{2})-(\\d{2})").find(dob)
+        return if (match != null) {
+            "${match.groupValues[3]}/${match.groupValues[2]}/${match.groupValues[1]}"
+        } else {
+            dob
         }
     }
 }

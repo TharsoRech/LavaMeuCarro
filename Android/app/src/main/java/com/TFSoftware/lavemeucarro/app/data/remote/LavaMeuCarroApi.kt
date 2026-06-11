@@ -33,6 +33,12 @@ interface LavaMeuCarroApi {
     @POST("api/auth/verify-email")
     suspend fun requestEmailVerification(@Body request: EmailVerificationRequest): EmailVerificationResponse
 
+    @POST("api/auth/forgot-password")
+    suspend fun requestPasswordReset(@Body request: ForgotPasswordRequest): ForgotPasswordResponse
+
+    @POST("api/auth/reset-password")
+    suspend fun confirmPasswordReset(@Body request: ResetPasswordRequest): ResetPasswordResponse
+
     // ==================== Unidades ====================
     @GET("api/unidades")
     suspend fun getUnidades(
@@ -42,6 +48,14 @@ interface LavaMeuCarroApi {
         @Query("lng") lng: Double? = null,
         @Query("radius") radius: Int? = null
     ): List<UnidadeDto>
+
+    @GET("api/unidades/paged")
+    suspend fun getUnidadesPaged(
+        @Query("page") page: Int = 1,
+        @Query("pageSize") pageSize: Int = 20,
+        @Query("city") city: String? = null,
+        @Query("search") search: String? = null
+    ): PagedResult<UnidadeDto>
 
     @GET("api/unidades/{id}")
     suspend fun getUnidadeById(@Path("id") id: String): UnidadeDto
@@ -154,6 +168,9 @@ interface LavaMeuCarroApi {
     @GET("api/funcionarios")
     suspend fun getFuncionarios(@Query("unidadeId") unidadeId: String): List<FuncionarioDto>
 
+    @GET("api/funcionarios/popular")
+    suspend fun getPopularProfessionals(@Query("limit") limit: Int = 10): List<PopularProfessionalDto>
+
     @POST("api/funcionarios")
     suspend fun createFuncionario(@Body request: CreateFuncionarioRequest): FuncionarioDto
 
@@ -222,6 +239,16 @@ interface LavaMeuCarroApi {
 
     @GET("api/reviews")
     suspend fun getReviews(@Query("unidadeId") unidadeId: String): List<ReviewDto>
+
+    @POST("api/reviews/appointment-feedback")
+    suspend fun submitAppointmentFeedback(@Body request: AppointmentFeedbackRequest): FeedbackResponse
+
+    // ==================== NPS ====================
+    @GET("api/nps/should-show")
+    suspend fun shouldShowNps(): NpsShouldShowResponse
+
+    @POST("api/nps/feedback")
+    suspend fun submitNpsFeedback(@Body request: NpsFeedbackRequest): FeedbackResponse
 
     // ==================== Promotions ====================
     @GET("api/promotions")

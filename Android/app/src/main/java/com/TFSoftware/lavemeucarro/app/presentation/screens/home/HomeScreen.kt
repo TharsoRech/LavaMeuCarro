@@ -8,29 +8,41 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.TFSoftware.lavemeucarro.app.data.models.*
 import com.TFSoftware.lavemeucarro.app.data.remote.ViaCepResponse
 import com.TFSoftware.lavemeucarro.app.managers.AuthManager
+import com.TFSoftware.lavemeucarro.app.managers.BiometricHelper
 import com.TFSoftware.lavemeucarro.app.presentation.components.AppointmentDetailModal
+import com.TFSoftware.lavemeucarro.app.presentation.components.AppointmentFeedbackModal
 import com.TFSoftware.lavemeucarro.app.presentation.theme.AppColors
 import kotlinx.coroutines.launch
 
@@ -45,6 +57,7 @@ fun HomeScreen(
     val promotions by viewModel.promotions.collectAsState()
     val unidades by viewModel.unidades.collectAsState()
     val categorias by viewModel.categorias.collectAsState()
+    val professionals by viewModel.professionals.collectAsState()
     val notifications by viewModel.notifications.collectAsState()
     val unreadCount by viewModel.unreadCount.collectAsState()
     val userName by viewModel.userName.collectAsState()
@@ -64,6 +77,12 @@ fun HomeScreen(
     val isLocationLoading by viewModel.isLocationLoading.collectAsState()
     var showLocationModal by remember { mutableStateOf(false) }
     var cepInput by remember { mutableStateOf("") }
+    // Feedback modal state
+    var showFeedbackModal by remember { mutableStateOf(false) }
+    var feedbackAppointment by remember { mutableStateOf<AgendamentoDto?>(null) }
+    // Search pagination state
+    var searchPage by remember { mutableIntStateOf(1) }
+    var hasMoreResults by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val locationManager = context.getSystemService(LocationManager::class.java)
@@ -104,7 +123,74 @@ fun HomeScreen(
         }
     }
 
+    // Search debounce (350ms, following HoraDaBeleza pattern)
+    LaunchedEffect(searchQuery, searchFilter, isSearching) {
+        if (isSearching && searchQuery.isNotBlank()) {
+            kotlinx.coroutines.delay(350)
+            viewModel.search(searchQuery, searchFilter)
+        }
+    }
+
     LaunchedEffect(Unit) { viewModel.loadData() }
+
+    // Refresh on tab return (following HoraDaBeleza useFocusEffect pattern)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val isFirstFocus = remember { mutableStateOf(true) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (isFirstFocus.value) {
+                    isFirstFocus.value = false
+                } else {
+                    viewModel.loadData()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    // Biometric setup prompt (following HoraDaBeleza pattern)
+    val biometricHelper = remember { BiometricHelper(context) }
+    val showBiometricPromptState by viewModel.showBiometricPrompt.collectAsState()
+    val biometricPrompted by viewModel.biometricPrompted.collectAsState()
+    val biometricEnabled by viewModel.biometricEnabled.collectAsState()
+    
+    LaunchedEffect(Unit) {
+        viewModel.checkBiometricPrompt()
+    }
+    
+    LaunchedEffect(biometricPrompted, biometricEnabled) {
+        val available = biometricHelper.isBiometricAvailable()
+        if (!biometricPrompted && !biometricEnabled && available) {
+            viewModel.setShowBiometricPrompt(true)
+        }
+    }
+    
+    if (showBiometricPromptState) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowBiometricPrompt(false) },
+            title = { Text("Ativar biometria?", fontWeight = FontWeight.Bold) },
+            text = { Text("Voce pode usar biometria para entrar mais rapido no app.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        viewModel.setBiometricPrompted(true)
+                        viewModel.setBiometricEnabled(true)
+                        viewModel.setShowBiometricPrompt(false)
+                    }
+                }) { Text("Ativar") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        viewModel.setBiometricPrompted(true)
+                        viewModel.setShowBiometricPrompt(false)
+                    }
+                }) { Text("Agora nao") }
+            }
+        )
+    }
 
     // Notification popup
     if (showNotifications) {
@@ -117,9 +203,19 @@ fun HomeScreen(
                 if (!notif.isRead) viewModel.markNotificationRead(notif.id)
                 notif.referenceId?.let { refId ->
                     val type = notif.type?.lowercase() ?: notif.rawType?.lowercase() ?: ""
-                    if (type == "review") {
-                        reviewReferenceId = refId
-                        showReviewModal = true
+                    if (type == "review" || type == "newreview") {
+                        // Open feedback modal (following HoraDaBeleza pattern)
+                        scope.launch {
+                            try {
+                                val appt = viewModel.api2.getAgendamentoById(refId)
+                                feedbackAppointment = appt
+                                showFeedbackModal = true
+                            } catch (_: Exception) {
+                                // Fallback to simple review modal
+                                reviewReferenceId = refId
+                                showReviewModal = true
+                            }
+                        }
                     } else {
                         viewModel.fetchAppointmentById(refId)
                         showAppointmentDetail = true
@@ -150,6 +246,15 @@ fun HomeScreen(
                     showReviewModal = false
                 }
             }
+        )
+    }
+
+    // Feedback modal (from notification review tap)
+    if (showFeedbackModal && feedbackAppointment != null) {
+        AppointmentFeedbackModal(
+            appointment = feedbackAppointment!!,
+            onDismiss = { showFeedbackModal = false },
+            onSubmitted = { viewModel.loadData() }
         )
     }
 
@@ -216,11 +321,17 @@ fun HomeScreen(
         )
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
+        // Pull-to-refresh wrapper (following HoraDaBeleza refreshControl pattern)
+        PullToRefreshBox(
+            isRefreshing = isLoading && unidades.isNotEmpty(),
+            onRefresh = { viewModel.loadData() },
+            modifier = Modifier.fillMaxSize()
+        ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
         // Header
         Surface(
             color = MaterialTheme.colorScheme.surface,
@@ -301,7 +412,6 @@ fun HomeScreen(
                         searchQuery = it
                         if (it.isNotEmpty()) {
                             isSearching = true
-                            viewModel.search(it, searchFilter)
                         } else {
                             isSearching = false
                         }
@@ -351,7 +461,7 @@ fun HomeScreen(
                 CircularProgressIndicator()
             }
         } else if (isSearching) {
-            // Search results
+            // Search results with pagination
             if (unidades.isEmpty()) {
                 EmptyState(
                     icon = Icons.Default.SearchOff,
@@ -359,12 +469,47 @@ fun HomeScreen(
                     subtitle = "Tente buscar por outro termo"
                 )
             } else {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    unidades.forEach { unidade ->
+                val listState = rememberLazyListState()
+                val hasMore by viewModel.hasMoreResults.collectAsState()
+                
+                // Detect when user reaches end of list
+                val shouldLoadMore = remember {
+                    derivedStateOf {
+                        val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                        val totalItems = listState.layoutInfo.totalItemsCount
+                        lastVisibleItem >= totalItems - 3 && hasMore && !isLoading
+                    }
+                }
+                
+                LaunchedEffect(shouldLoadMore.value) {
+                    if (shouldLoadMore.value) {
+                        viewModel.loadMoreSearchResults()
+                    }
+                }
+                
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(unidades) { unidade ->
                         SearchResultCard(unidade = unidade, onClick = {
                             selectedUnidade = unidade
                             showUnidadeDetail = true
                         })
+                    }
+                    
+                    // Loading indicator at bottom
+                    if (isLoading) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            }
+                        }
                     }
                 }
             }
@@ -393,7 +538,14 @@ fun HomeScreen(
 
             // Promotions section
             if (promotions.isNotEmpty()) {
-                SectionHeader(title = "Promoções", onSeeAll = null)
+                SectionHeader(title = "Promoções para você", onSeeAll = {
+                    // Navigate to promotions list (following HoraDaBeleza pattern)
+                    // For now, trigger a search with empty query to show all units with promotions
+                    searchQuery = ""
+                    searchFilter = "Unidade"
+                    isSearching = true
+                    viewModel.search("", "Unidade")
+                })
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -442,6 +594,31 @@ fun HomeScreen(
                 }
             }
 
+            // Melhores Profissionais section (following HoraDaBeleza pattern)
+            if (professionals.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                SectionHeader(title = "Melhores Profissionais", onSeeAll = {
+                    searchQuery = ""
+                    searchFilter = "Profissional"
+                    isSearching = true
+                    viewModel.search("", "Profissional")
+                })
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(professionals) { prof ->
+                        ProfessionalCard(
+                            professional = prof,
+                            onClick = {
+                                // Navigate to the unidade of this professional
+                                onNavigateToUnidade(prof.unidadeId.toString())
+                            }
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
             // Pull to refresh hint
@@ -457,6 +634,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
+    } // End PullToRefreshBox
 }
 
 @Composable
@@ -716,6 +894,106 @@ fun NotificationPopup(
             TextButton(onClick = onDismiss) { Text("Fechar") }
         }
     )
+}
+
+@Composable
+fun ProfessionalCard(professional: PopularProfessionalDto, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .width(150.dp)
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Avatar with rating badge
+            Box {
+                Surface(
+                    modifier = Modifier.size(60.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Person,
+                            null,
+                            modifier = Modifier.size(30.dp),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+                // Rating badge
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFFFFF3E0)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Star, null, modifier = Modifier.size(10.dp), tint = AppColors.Warning)
+                        Text(
+                            " %.1f".format(professional.averageRating ?: 0.0),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AppColors.Warning
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                professional.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
+            )
+            professional.specialty?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Icons.Default.Store,
+                    null,
+                    modifier = Modifier.size(10.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    professional.unidadeName,
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            if (professional.totalReviews > 0) {
+                Text(
+                    "${professional.totalReviews} avaliações",
+                    fontSize = 9.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
 }
 
 @Composable

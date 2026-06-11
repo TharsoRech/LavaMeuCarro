@@ -42,6 +42,48 @@ import javax.inject.Inject
 private const val ROLE_CLIENT = 0
 private const val ROLE_PROFISSIONAL = 1
 
+// ==================== Formatting Functions ====================
+
+fun formatCPFInput(value: String): String {
+    val digits = value.replace("\\D".toRegex(), "").take(11)
+    return when {
+        digits.length >= 11 -> "${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9, 11)}"
+        digits.length > 9 -> "${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9)}"
+        digits.length > 6 -> "${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6)}"
+        digits.length > 3 -> "${digits.substring(0, 3)}.${digits.substring(3)}"
+        else -> digits
+    }
+}
+
+fun formatPhoneInput(value: String): String {
+    val digits = value.replace("\\D".toRegex(), "").take(11)
+    return when {
+        digits.length >= 11 -> "(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7, 11)}"
+        digits.length > 6 -> "(${digits.substring(0, 2)}) ${digits.substring(2, 7)}-${digits.substring(7)}"
+        digits.length > 2 -> "(${digits.substring(0, 2)}) ${digits.substring(2)}"
+        else -> digits
+    }
+}
+
+fun formatDOBInput(value: String): String {
+    val digits = value.replace("\\D".toRegex(), "").take(8)
+    return when {
+        digits.length >= 8 -> "${digits.substring(0, 2)}/${digits.substring(2, 4)}/${digits.substring(4, 8)}"
+        digits.length > 4 -> "${digits.substring(0, 2)}/${digits.substring(2, 4)}/${digits.substring(4)}"
+        digits.length > 2 -> "${digits.substring(0, 2)}/${digits.substring(2)}"
+        else -> digits
+    }
+}
+
+fun convertDOBToISO(displayDOB: String): String {
+    val match = Regex("^(\\d{2})/(\\d{2})/(\\d{4})$").find(displayDOB)
+    return if (match != null) {
+        "${match.groupValues[3]}-${match.groupValues[2]}-${match.groupValues[1]}"
+    } else {
+        displayDOB
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
@@ -55,10 +97,10 @@ fun EditProfileScreen(
     val context = LocalContext.current
 
     var name by remember(user) { mutableStateOf(user?.nome ?: "") }
-    var phone by remember(user) { mutableStateOf(user?.telefone ?: "") }
+    var phone by remember(user) { mutableStateOf(formatPhoneInput(user?.telefone ?: "")) }
     var email by remember(user) { mutableStateOf(user?.email ?: "") }
-    var doc by remember(user) { mutableStateOf(user?.doc ?: "") }
-    var dob by remember(user) { mutableStateOf(user?.dob ?: "") }
+    var doc by remember(user) { mutableStateOf(formatCPFInput(user?.doc ?: "")) }
+    var dob by remember(user) { mutableStateOf(user?.dob?.let { convertDOBToISO(it) } ?: "") }
     var country by remember(user) { mutableStateOf(user?.country ?: "") }
     var selectedRole by remember(user) {
         mutableIntStateOf(
@@ -92,6 +134,8 @@ fun EditProfileScreen(
 
     LaunchedEffect(message) {
         if (message != null) {
+            // Show success/error feedback before navigating back
+            kotlinx.coroutines.delay(500)
             onBack()
         }
     }
@@ -111,8 +155,8 @@ fun EditProfileScreen(
                                     name = name,
                                     phone = phone,
                                     base64Image = base64Image,
-                                    doc = doc,
-                                    dob = dob,
+                                    doc = doc.replace("\\D".toRegex(), ""), // Send only digits
+                                    dob = convertDOBToISO(dob), // Convert DD/MM/YYYY to YYYY-MM-DD
                                     country = country,
                                     tipo = selectedRole
                                 )
@@ -185,16 +229,18 @@ fun EditProfileScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
-                value = phone, onValueChange = { phone = it },
+                value = phone, onValueChange = { phone = formatPhoneInput(it) },
                 label = { Text("Telefone") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 singleLine = true,
+                placeholder = { Text("(XX) XXXXX-XXXX") },
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
-                value = doc, onValueChange = { doc = it },
-                label = { Text("CPF/CNPJ") }, singleLine = true,
+                value = doc, onValueChange = { doc = formatCPFInput(it) },
+                label = { Text("CPF") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                placeholder = { Text("XXX.XXX.XXX-XX") },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -228,9 +274,9 @@ fun EditProfileScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 OutlinedTextField(
-                    value = dob, onValueChange = { dob = it },
+                    value = dob, onValueChange = { dob = formatDOBInput(it) },
                     label = { Text("Nascimento") }, singleLine = true,
-                    placeholder = { Text("YYYY-MM-DD") },
+                    placeholder = { Text("DD/MM/YYYY") },
                     modifier = Modifier.weight(1f)
                 )
                 OutlinedTextField(

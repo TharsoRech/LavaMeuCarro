@@ -34,5 +34,12 @@ public interface IEmailService
 {
     Task SendVerificationEmailAsync(string email, string code);
     Task SendPasswordResetEmailAsync(string email, string code);
+    Task SendPasswordResetCodeAsync(string email, string name, string code);
     Task SendAppointmentEmailAsync(string email, string subject, string body);
+}
+
+public interface IPasswordResetCodeRepository
+{
+    Task CreateAsync(int userId, string code, DateTime expiresAt);
+    Task<bool> ValidateAndConsumeAsync(int userId, string code);
 }

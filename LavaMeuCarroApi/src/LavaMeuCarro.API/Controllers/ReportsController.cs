@@ -145,6 +145,13 @@ public class ReportsController : ControllerBase
         var professionalsCount = await _agendamentoRepo.CountProfessionalsAsync(unitIds);
         var servicesCount = await _agendamentoRepo.CountServicesAsync(unitIds);
 
+        // Additional metrics for enhanced summary cards
+        var scheduledRevenue = await _agendamentoRepo.SumScheduledRevenueAsync(unitIds, fromDate, toDate);
+        var newClients = await _agendamentoRepo.CountNewClientsAsync(unitIds, fromDate, toDate);
+        var lostRevenue = await _agendamentoRepo.SumLostRevenueAsync(unitIds, fromDate, toDate);
+        var completionRate = totalAppointments > 0 ? (double)completedAppointments / totalAppointments * 100 : 0;
+        var noShowRate = totalAppointments > 0 ? (double)noShowCount / totalAppointments * 100 : 0;
+
         // Auto insights
         var insights = new List<string>();
         if (cancellationRate > 20)
@@ -181,11 +188,16 @@ public class ReportsController : ControllerBase
             insights,
             totalAppointments,
             totalRevenue = (double)totalRevenue,
+            scheduledRevenue = (double)scheduledRevenue,
             averageTicket = (double)averageTicket,
+            lostRevenue = (double)lostRevenue,
             cancellationRate,
             uniqueClients,
+            newClients,
             completedAppointments,
+            completionRate,
             noShowCount,
+            noShowRate,
             professionalsCount,
             servicesCount
         });

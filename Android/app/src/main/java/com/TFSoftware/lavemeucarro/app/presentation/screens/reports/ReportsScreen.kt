@@ -1,6 +1,7 @@
 package com.TFSoftware.lavemeucarro.app.presentation.screens.reports
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,11 +16,14 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.TFSoftware.lavemeucarro.app.data.models.*
@@ -30,6 +34,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 
 
@@ -46,12 +51,32 @@ fun ReportsScreen(
     val customFrom by viewModel.customFrom.collectAsState()
     val customTo by viewModel.customTo.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isRefreshing by viewModel.isRefreshing.collectAsState()
     val error by viewModel.error.collectAsState()
+    val loadingStage by viewModel.loadingStage.collectAsState()
+    val loadingProgress by viewModel.loadingProgress.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     var showDatePicker by remember { mutableStateOf(false) }
     var dateRangeFrom by remember { mutableStateOf<java.time.LocalDate?>(null) }
     var dateRangeTo by remember { mutableStateOf<java.time.LocalDate?>(null) }
+
+    // Refresh on tab return (following HoraDaBeleza useFocusEffect pattern)
+    val isFirstFocus = remember { mutableStateOf(true) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (isFirstFocus.value) {
+                    isFirstFocus.value = false
+                } else {
+                    viewModel.silentRefresh()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(Unit) { viewModel.loadData() }
 
@@ -69,21 +94,21 @@ fun ReportsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Relatórios") },
-                actions = {
-                    IconButton(onClick = { viewModel.loadData() }) {
-                        Icon(Icons.Default.Refresh, "Atualizar")
-                    }
-                }
+                title = { Text("Relatórios") }
             )
         }
     ) { padding ->
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.silentRefresh() },
+            modifier = Modifier.fillMaxSize()
         ) {
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+            ) {
             // Period selector
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -147,31 +172,22 @@ fun ReportsScreen(
                 }
             }
 
-            // Unit selector
-            if (units.size > 1) {
-                var expanded by remember { mutableStateOf(false) }
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    OutlinedTextField(
-                        value = units.find { it.id == selectedUnitId }?.nome ?: "Todas as unidades",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Unidade") },
-                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (expanded) {
-                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                            DropdownMenuItem(
-                                text = { Text("Todas as unidades") },
-                                onClick = { viewModel.selectUnit(null); expanded = false }
-                            )
-                            units.forEach { unit ->
-                                DropdownMenuItem(
-                                    text = { Text(unit.nome) },
-                                    onClick = { viewModel.selectUnit(unit.id); expanded = false }
-                                )
-                            }
-                        }
+            // Unit selector with horizontal chips
+            if (units.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    units.forEach { unit ->
+                        val isSelected = unit.id.toString() == selectedUnitId
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.selectUnit(unit.id.toString()) },
+                            label = { Text(unit.nome, fontSize = 12.sp, maxLines = 1) }
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -179,11 +195,40 @@ fun ReportsScreen(
 
             when {
                 isLoading && report == null -> {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(48.dp),
-                        contentAlignment = Alignment.Center
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
-                        CircularProgressIndicator()
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(48.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                loadingStage,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            // Progress bar
+                            LinearProgressIndicator(
+                                progress = { loadingProgress / 100f },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            // Cancel button
+                            OutlinedButton(
+                                onClick = { viewModel.cancelLoading() },
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            ) {
+                                Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Cancelar carregamento", fontSize = 12.sp)
+                            }
+                        }
                     }
                 }
                 error != null -> {
@@ -201,7 +246,7 @@ fun ReportsScreen(
                 report != null -> {
                     val r = report!!
 
-                    // === 6 Summary Cards ===
+                    // === 6 Summary Cards with enhanced info ===
                     SectionTitle("Resumo")
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -210,6 +255,7 @@ fun ReportsScreen(
                         MetricCard(
                             title = "Faturamento",
                             value = "R$ %.0f".format(r.totalRevenue),
+                            helper = "Agendado: R$ %.0f".format(r.scheduledRevenue),
                             icon = Icons.Default.AttachMoney,
                             color = AppColors.Success,
                             modifier = Modifier.weight(1f)
@@ -217,6 +263,7 @@ fun ReportsScreen(
                         MetricCard(
                             title = "Clientes",
                             value = r.uniqueClients.toString(),
+                            helper = "${r.newClients} novos",
                             icon = Icons.Default.People,
                             modifier = Modifier.weight(1f)
                         )
@@ -229,12 +276,14 @@ fun ReportsScreen(
                         MetricCard(
                             title = "Agendamentos",
                             value = r.totalAppointments.toString(),
+                            helper = "${r.completedAppointments} concluídos",
                             icon = Icons.Default.CalendarMonth,
                             modifier = Modifier.weight(1f)
                         )
                         MetricCard(
                             title = "Ticket Médio",
                             value = "R$ %.2f".format(r.averageTicket),
+                            helper = "Perdido: R$ %.0f".format(r.lostRevenue),
                             icon = Icons.Default.Receipt,
                             modifier = Modifier.weight(1f)
                         )
@@ -247,13 +296,14 @@ fun ReportsScreen(
                         MetricCard(
                             title = "Profissionais",
                             value = r.professionalsCount.toString(),
+                            helper = "${r.servicesCount} serviços",
                             icon = Icons.Default.Badge,
                             modifier = Modifier.weight(1f)
                         )
-                        val completionRate = if (r.totalAppointments > 0) r.completedAppointments.toDouble() / r.totalAppointments else 0.0
                         MetricCard(
                             title = "Saúde Operacional",
-                            value = "%.0f%%".format(completionRate * 100),
+                            value = "%.0f%%".format(r.completionRate),
+                            helper = "No-show %.1f%%".format(r.noShowRate),
                             icon = Icons.Default.HealthAndSafety,
                             color = AppColors.Success,
                             modifier = Modifier.weight(1f)
@@ -396,6 +446,7 @@ private fun MetricCard(
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color = MaterialTheme.colorScheme.primary,
+    helper: String? = null,
     modifier: Modifier = Modifier
 ) {
     Card(modifier = modifier) {
@@ -407,6 +458,15 @@ private fun MetricCard(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (helper != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    helper,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    fontSize = 10.sp
+                )
+            }
         }
     }
 }
@@ -818,13 +878,63 @@ class ReportsViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    private val _loadingStage = MutableStateFlow("Preparando consulta...")
+    val loadingStage: StateFlow<String> = _loadingStage
+
+    private val _loadingProgress = MutableStateFlow(0)
+    val loadingProgress: StateFlow<Int> = _loadingProgress
+
+    private val latestLoadRequestRef = AtomicInteger(0)
+
     fun loadData() {
         viewModelScope.launch {
+            val requestId = latestLoadRequestRef.incrementAndGet()
             _isLoading.value = true
             _error.value = null
+            _loadingStage.value = "Preparando consulta..."
+            _loadingProgress.value = 8
+
+            try {
+                _loadingStage.value = "Carregando unidades..."
+                _loadingProgress.value = 20
+                val unitsDeferred = async { api.getMyUnidades() }
+
+                _loadingStage.value = "Carregando dados do relatório..."
+                _loadingProgress.value = 50
+                val reportDeferred = async {
+                    api.getBusinessReport(
+                        period = _selectedPeriod.value,
+                        unidadeId = _selectedUnitId.value,
+                        from = _customFrom.value,
+                        to = _customTo.value
+                    )
+                }
+
+                _loadingStage.value = "Consolidando indicadores e gráficos..."
+                _loadingProgress.value = 92
+
+                if (requestId != latestLoadRequestRef.get()) return@launch
+
+                _units.value = unitsDeferred.await()
+                _report.value = reportDeferred.await()
+                _loadingProgress.value = 100
+            } catch (e: Exception) {
+                if (requestId != latestLoadRequestRef.get()) return@launch
+                _error.value = "Erro ao carregar relatório: ${e.message}"
+            }
+            _isLoading.value = false
+        }
+    }
+
+    fun silentRefresh() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
             try {
                 val unitsDeferred = async { api.getMyUnidades() }
                 val reportDeferred = async {
@@ -835,14 +945,21 @@ class ReportsViewModel @Inject constructor(
                         to = _customTo.value
                     )
                 }
-
                 _units.value = unitsDeferred.await()
                 _report.value = reportDeferred.await()
-            } catch (e: Exception) {
-                _error.value = "Erro ao carregar relatório: ${e.message}"
+            } catch (_: Exception) {
+                // Silent fail for refresh
             }
-            _isLoading.value = false
+            _isRefreshing.value = false
         }
+    }
+
+    fun cancelLoading() {
+        latestLoadRequestRef.incrementAndGet()
+        _isLoading.value = false
+        _isRefreshing.value = false
+        _loadingStage.value = "Carregamento cancelado."
+        _loadingProgress.value = 0
     }
 
     fun selectPeriod(period: String) {

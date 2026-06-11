@@ -23,6 +23,16 @@ public class UnidadeRepository : IUnidadeRepository
         return (await db.QueryAsync<Unidade>(sql, new { City = city, Search = search != null ? $"%{search}%" : null })).ToList();
     }
 
+    public async Task<(List<Unidade> Items, int Total)> GetPagedAsync(int page, int pageSize, string? city, string? search)
+    {
+        using var db = _factory.CreateConnection();
+        var where = "WHERE Active = 1 AND (@City IS NULL OR City = @City) AND (@Search IS NULL OR Name LIKE @Search)";
+        var total = await db.QuerySingleAsync<int>($"SELECT COUNT(*) FROM Unidades {where}", new { City = city, Search = search != null ? $"%{search}%" : null });
+        var sql = $"SELECT * FROM Unidades {where} ORDER BY Name OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+        var items = (await db.QueryAsync<Unidade>(sql, new { City = city, Search = search != null ? $"%{search}%" : null, Offset = (page - 1) * pageSize, PageSize = pageSize })).ToList();
+        return (items, total);
+    }
+
     public async Task<List<Unidade>> GetByOwnerAsync(int ownerId)
     {
         using var db = _factory.CreateConnection();
