@@ -59,7 +59,11 @@ public class CreateAgendamentoHandler : IRequestHandler<CreateAgendamentoCommand
             a.TaxaDeslocamento, a.PrecoBruto, a.Desconto, a.PrecoAdicionais, a.Notes,
             a.CancellationReason, a.CreatedAt, a.VistoriaFotos, a.VistoriaObservacoes,
             a.VistoriaData, a.RetiradoPor, a.NomeAutorizado, a.DocumentoAutorizado,
-            a.RetiradaEm, null, null, null, null, null, null, servico?.Name, null, null, null,
+            a.RetiradaEm,
+            null, null, null, null,  // ClientName, ClientPhone, ClientCity, ClientImage
+            null, null,              // FuncionarioName, FuncionarioImage
+            servico?.Name,           // ServicoName
+            null, null, null, null,  // UnidadeName, UnidadeLogoUrl, UnidadeWhatsApp, UnidadeAddress
             veiculo?.Placa, veiculo?.Modelo);
     }
 }
