@@ -4,6 +4,7 @@ using LavaMeuCarro.Application.Interfaces;
 using LavaMeuCarro.Infrastructure.Data;
 using LavaMeuCarro.Infrastructure.Repositories;
 using LavaMeuCarro.Infrastructure.Services;
+using Microsoft.Extensions.Options;
 
 namespace LavaMeuCarro.Infrastructure.Extensions;
 
@@ -44,6 +45,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddSingleton<IPushNotificationService, FirebasePushNotificationService>();
+        
+        // New Relic Telemetry (configured at runtime from database)
+        services.AddHttpClient("NewRelicIngest");
+        services.AddSingleton<INewRelicLogService, NewRelicLogService>();
+        services.AddSingleton<IPostConfigureOptions<NewRelicOptions>, NewRelicOptionsPostConfigureOptions>();
 
         return services;
     }

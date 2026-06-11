@@ -231,4 +231,11 @@ interface LavaMeuCarroApi {
         @Query("lng") lng: Double? = null,
         @Query("radius") radius: Double? = null
     ): List<PromotionDto>
+    
+    // ==================== Telemetry ====================
+    @POST("telemetry/mobile-log")
+    suspend fun sendTelemetry(
+        @Header("Authorization") authorization: String,
+        @Body request: MobileTelemetryRequest
+    ): retrofit2.Response<Unit>
 }

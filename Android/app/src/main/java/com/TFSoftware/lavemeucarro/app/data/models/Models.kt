@@ -546,3 +546,17 @@ data class PromotionDto(
     val unidadeLatitude: Double? = null,
     val unidadeLongitude: Double? = null
 )
+
+// ==================== Telemetry ====================
+data class MobileTelemetryRequest(
+    val level: String,
+    val message: String,
+    val context: String?,
+    val stack: String?,
+    val platform: String,
+    val appVersion: String?,
+    val appBuildNumber: String?,
+    val appVersionLabel: String?,
+    val clientTimestamp: String?,
+    val device: Map<String, Any?>?
+)

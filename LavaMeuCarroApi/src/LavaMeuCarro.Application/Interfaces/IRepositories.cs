@@ -86,8 +86,8 @@ public interface ICardRepository
 
 public interface ISupportSettingRepository
 {
-    Task<string?> GetValueAsync(string key);
-    Task SetValueAsync(string key, string value);
+    Task<string?> GetValueAsync(string code);
+    Task SetValueAsync(string code, string value);
     Task<Dictionary<string, string>> GetAllAsync();
 }
 

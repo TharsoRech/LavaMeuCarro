@@ -468,6 +468,20 @@ BEGIN
 END
 GO
 
+-- SupportSettings (System Configuration)
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'SupportSettings') AND type = N'U')
+BEGIN
+    CREATE TABLE SupportSettings (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        Code NVARCHAR(100) NOT NULL UNIQUE,
+        Value NVARCHAR(MAX),
+        Active BIT NOT NULL DEFAULT 1,
+        CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        UpdatedAt DATETIME2
+    );
+END
+GO
+
 -- Seed default categories
 IF NOT EXISTS (SELECT 1 FROM Categorias WHERE Name = N'Lavagem')
 BEGIN
@@ -484,6 +498,18 @@ BEGIN
     INSERT INTO Planos (Name, Description, Price, PeriodDays, AppointmentLimit) VALUES (N'Aut\u00f4nomo', N'At\u00e9 50 agendamentos/m\u00eas', 50.00, 30, 50);
     INSERT INTO Planos (Name, Description, Price, PeriodDays, AppointmentLimit) VALUES (N'Crescimento', N'At\u00e9 100 agendamentos/m\u00eas', 100.00, 30, 100);
     INSERT INTO Planos (Name, Description, Price, PeriodDays, AppointmentLimit) VALUES (N'Lava Meu Carro Ilimitado', N'Sem limite de agendamentos', 200.00, 30, NULL);
+END
+GO
+
+-- Seed New Relic configuration
+IF NOT EXISTS (SELECT 1 FROM SupportSettings WHERE Code = 'newrelic.enabled')
+BEGIN
+    INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.enabled', 'True');
+    INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.apiKey', 'REDACTED_SECRET');
+    INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.appName', 'LavaMeuCarroApi');
+    INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.endpoint', 'https://log-api.newrelic.com/log/v1');
+    INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.environment', 'production');
+    INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.region', 'US');
 END
 GO
 

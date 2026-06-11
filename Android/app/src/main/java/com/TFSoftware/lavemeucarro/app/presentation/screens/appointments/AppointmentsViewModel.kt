@@ -12,6 +12,7 @@ import com.TFSoftware.lavemeucarro.app.data.models.UpdateStatusRequest
 import com.TFSoftware.lavemeucarro.app.data.remote.LavaMeuCarroApi
 import com.TFSoftware.lavemeucarro.app.managers.AuthManager
 import com.TFSoftware.lavemeucarro.app.utils.DateFormatter
+import com.TFSoftware.lavemeucarro.app.utils.NewRelicLogger
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,7 +65,12 @@ class AppointmentsViewModel @Inject constructor(
             _isLoading.value = true
             try {
                 _appointments.value = api.getMyAgendamentos()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                NewRelicLogger.reportErrorWithMessage(
+                    e,
+                    "AppointmentsViewModel.loadMyAppointments",
+                    "Failed to load my appointments"
+                )
             } finally {
                 _isLoading.value = false
             }
@@ -80,7 +86,13 @@ class AppointmentsViewModel @Inject constructor(
             _isLoading.value = true
             try {
                 _appointments.value = api.getUnidadeAgendamentos(unidadeId, date)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                NewRelicLogger.reportErrorWithMessage(
+                    e,
+                    "AppointmentsViewModel.loadUnitAppointments",
+                    "Failed to load unit appointments",
+                    mapOf("unidadeId" to unidadeId, "date" to date)
+                )
             } finally {
                 _isLoading.value = false
             }

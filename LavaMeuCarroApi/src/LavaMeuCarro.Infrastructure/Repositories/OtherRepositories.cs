@@ -146,9 +146,9 @@ public class SupportSettingRepository : ISupportSettingRepository
 {
     private readonly IDbConnectionFactory _factory;
     public SupportSettingRepository(IDbConnectionFactory factory) => _factory = factory;
-    public async Task<string?> GetValueAsync(string key) { using var db = _factory.CreateConnection(); return await db.QueryFirstOrDefaultAsync<string>("SELECT Value FROM SupportSettings WHERE Key = @Key", new { Key = key }); }
-    public async Task SetValueAsync(string key, string value) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("MERGE SupportSettings AS target USING (SELECT @Key AS [Key]) AS source ON target.[Key] = source.[Key] WHEN MATCHED THEN UPDATE SET Value = @Value, UpdatedAt = GETUTCDATE() WHEN NOT MATCHED THEN INSERT ([Key], Value, UpdatedAt) VALUES (@Key, @Value, GETUTCDATE());", new { Key = key, Value = value }); }
-    public async Task<Dictionary<string, string>> GetAllAsync() { using var db = _factory.CreateConnection(); var rows = await db.QueryAsync<SupportSetting>("SELECT * FROM SupportSettings"); return rows.ToDictionary(r => r.Key, r => r.Value); }
+    public async Task<string?> GetValueAsync(string code) { using var db = _factory.CreateConnection(); return await db.QueryFirstOrDefaultAsync<string>("SELECT Value FROM SupportSettings WHERE Code = @Code AND Active = 1", new { Code = code }); }
+    public async Task SetValueAsync(string code, string value) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("MERGE SupportSettings AS target USING (SELECT @Code AS Code) AS source ON target.Code = source.Code WHEN MATCHED THEN UPDATE SET Value = @Value, UpdatedAt = GETUTCDATE() WHEN NOT MATCHED THEN INSERT (Code, Value, UpdatedAt) VALUES (@Code, @Value, GETUTCDATE());", new { Code = code, Value = value }); }
+    public async Task<Dictionary<string, string>> GetAllAsync() { using var db = _factory.CreateConnection(); var rows = await db.QueryAsync<SupportSetting>("SELECT Code, Value FROM SupportSettings WHERE Active = 1"); return rows.ToDictionary(r => r.Code, r => r.Value); }
 }
 
 public class AdicionalRepository : IAdicionalRepository
