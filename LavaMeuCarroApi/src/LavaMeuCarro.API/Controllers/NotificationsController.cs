@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using LavaMeuCarro.Application.Interfaces;
 using LavaMeuCarro.Application.DTOs;
+using LavaMeuCarro.Domain.Entities;
 using System.Security.Claims;
 
 namespace LavaMeuCarro.API.Controllers;

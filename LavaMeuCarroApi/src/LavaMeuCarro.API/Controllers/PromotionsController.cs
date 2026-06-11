@@ -34,7 +34,11 @@ public class PromotionsController : ControllerBase
             // Filter by location if coordinates provided
             if (lat.HasValue && lng.HasValue && radius.HasValue && unidade != null && unidade.Latitude.HasValue && unidade.Longitude.HasValue)
             {
-                var distance = CalculateDistance(lat.Value, lng.Value, unidade.Latitude.Value, unidade.Longitude.Value);
+                var distance = CalculateDistance(
+                    lat.Value, 
+                    lng.Value, 
+                    (double)unidade.Latitude.Value, 
+                    (double)unidade.Longitude.Value);
                 if (distance > radius.Value)
                     continue; // Skip this promotion - out of radius
             }
@@ -93,6 +97,6 @@ public record PromotionDTO(
     string UnidadeCity,
     decimal? AverageRating,
     string? UnidadeLogoUrl,
-    double? UnidadeLatitude = null,
-    double? UnidadeLongitude = null
+    decimal? UnidadeLatitude = null,
+    decimal? UnidadeLongitude = null
 );
