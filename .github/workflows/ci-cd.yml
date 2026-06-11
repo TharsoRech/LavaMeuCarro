@@ -72,17 +72,35 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy via SSH
+      
+      - name: Deploy via SSH with Retry
         uses: appleboy/ssh-action@v1
         with:
-          host: 187.127.26.164
-          username: root
+          host: ${{ secrets.VPS_HOST || '187.127.26.164' }}
+          username: ${{ secrets.VPS_USERNAME || 'root' }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
+          port: ${{ secrets.VPS_PORT || '22' }}
+          command_timeout: 20m
           script: |
+            set -e
             cd /opt/lavameucarro
-            git pull origin main
+            echo "Starting deployment..."
+            git pull origin main || { echo "Git pull failed"; exit 1; }
             docker compose down
             docker compose build --no-cache
             docker compose up -d
             docker system prune -f
+            echo "Deployment completed successfully"
+        
+      - name: Deployment fallback
+        if: failure()
+        run: |
+          echo "Primary deployment failed. This could be due to SSH connectivity issues."
+          echo "Please check:"
+          echo "1. VPS is running and accessible"
+          echo "2. SSH key is correctly configured in GitHub secrets"
+          echo "3. Firewall allows connections from GitHub Actions runners"
+          echo ""
+          echo "You can also manually deploy by SSH-ing to your VPS:"
+          echo "  ssh root@187.127.26.164"
+          echo "  cd /opt/lavameucarro && git pull && docker compose up -d --build"
