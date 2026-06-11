@@ -118,11 +118,17 @@ interface LavaMeuCarroApi {
     )
 
     // ==================== Servicos ====================
-    @GET("api/servicos")
-    suspend fun getServicos(@Query("unidadeId") unidadeId: String): List<ServicoDto>
+    @GET("api/unidades/{unidadeId}/servicos")
+    suspend fun getServicos(@Path("unidadeId") unidadeId: String): List<ServicoDto>
 
-    @POST("api/servicos")
-    suspend fun createServico(@Body request: CreateServicoRequest): ServicoDto
+    @POST("api/unidades/{unidadeId}/servicos")
+    suspend fun createServico(@Path("unidadeId") unidadeId: String, @Body request: CreateServicoRequest): ServicoDto
+
+    @DELETE("api/unidades/{unidadeId}/servicos/{serviceId}")
+    suspend fun deleteServico(@Path("unidadeId") unidadeId: String, @Path("serviceId") serviceId: String)
+
+    @PUT("api/unidades/{unidadeId}/servicos/{serviceId}")
+    suspend fun updateServico(@Path("unidadeId") unidadeId: String, @Path("serviceId") serviceId: String, @Body request: Map<String, @JvmSuppressWildcards Any>)
 
     // ==================== Veiculos ====================
     @GET("api/veiculos")

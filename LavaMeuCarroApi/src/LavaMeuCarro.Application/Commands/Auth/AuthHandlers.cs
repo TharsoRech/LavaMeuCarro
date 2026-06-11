@@ -177,6 +177,8 @@ public class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, UserDT
         if (cmd.Doc != null) user.Doc = cmd.Doc;
         if (cmd.Dob != null) user.Dob = cmd.Dob;
         if (cmd.Username != null) user.Username = cmd.Username;
+        if (cmd.Country != null) user.Country = cmd.Country;
+        if (cmd.Type != null) user.Type = (UserType)cmd.Type.Value;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _users.UpdateAsync(user);

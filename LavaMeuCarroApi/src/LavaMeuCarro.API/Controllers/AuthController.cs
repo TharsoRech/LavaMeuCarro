@@ -48,7 +48,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<UserDTO>> UpdateMe([FromBody] UpdateProfileRequest request)
     {
         var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-        return Ok(await _mediator.Send(new UpdateProfileCommand(userId, request.Name, request.Phone, request.Base64Image, request.Doc, request.Dob, request.Username)));
+        return Ok(await _mediator.Send(new UpdateProfileCommand(userId, request.Name, request.Phone, request.Base64Image, request.Doc, request.Dob, request.Username, request.Country, request.Type)));
     }
 
     [HttpPut("me/password")]
@@ -70,4 +70,4 @@ public class AuthController : ControllerBase
     }
 }
 
-public record UpdateProfileRequest(string? Name, string? Phone, string? Base64Image, string? Doc, DateTime? Dob, string? Username);
+public record UpdateProfileRequest(string? Name, string? Phone, string? Base64Image, string? Doc, DateTime? Dob, string? Username, string? Country, int? Type);

@@ -42,7 +42,7 @@ public class UnidadesController : ControllerBase
     public async Task<ActionResult<int>> Create([FromBody] CreateUnidadeRequest request)
     {
         var ownerId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
-        var unidade = new Unidade { OwnerId = ownerId, Name = request.Name, Description = request.Description, LogoUrl = request.LogoUrl, Address = request.Address, Number = request.Number, Complement = request.Complement, Neighborhood = request.Neighborhood, ReferencePoint = request.ReferencePoint, City = request.City, State = request.State, ZipCode = request.ZipCode, Latitude = request.Latitude, Longitude = request.Longitude, Phone = request.Phone, Email = request.Email, BusinessHours = request.BusinessHours, Gallery = request.Gallery, WhatsApp = request.WhatsApp, InstagramUrl = request.InstagramUrl, SchedulingTimeOptions = request.SchedulingTimeOptions, SchedulingTimeInterval = request.SchedulingTimeInterval, OfereceLevaTraz = request.OfereceLevaTraz, RaioMaximoKm = request.RaioMaximoKm, TipoTaxaDeslocamento = request.TipoTaxaDeslocamento, TaxaDeslocamento = request.TaxaDeslocamento };
+        var unidade = new Unidade { OwnerId = ownerId, Name = request.Name, Description = request.Description, LogoUrl = request.LogoUrl, Address = request.Address ?? string.Empty, Number = request.Number, Complement = request.Complement, Neighborhood = request.Neighborhood, ReferencePoint = request.ReferencePoint, City = request.City ?? string.Empty, State = request.State ?? string.Empty, ZipCode = request.ZipCode, Latitude = request.Latitude, Longitude = request.Longitude, Phone = request.Phone, Email = request.Email, BusinessHours = request.BusinessHours, Gallery = request.Gallery, WhatsApp = request.WhatsApp, InstagramUrl = request.InstagramUrl, SchedulingTimeOptions = request.SchedulingTimeOptions, SchedulingTimeInterval = request.SchedulingTimeInterval ?? 30, OfereceLevaTraz = request.OfereceLevaTraz, RaioMaximoKm = request.RaioMaximoKm ?? 10, TipoTaxaDeslocamento = request.TipoTaxaDeslocamento, TaxaDeslocamento = request.TaxaDeslocamento };
         var id = await _repo.CreateAsync(unidade);
         return Ok(id);
     }
@@ -55,13 +55,31 @@ public class UnidadesController : ControllerBase
         if (unidade == null) return NotFound();
         if (request.Name != null) unidade.Name = request.Name;
         if (request.Description != null) unidade.Description = request.Description;
+        if (request.LogoUrl != null) unidade.LogoUrl = request.LogoUrl;
         if (request.Address != null) unidade.Address = request.Address;
+        if (request.Number != null) unidade.Number = request.Number;
+        if (request.Complement != null) unidade.Complement = request.Complement;
+        if (request.Neighborhood != null) unidade.Neighborhood = request.Neighborhood;
+        if (request.ReferencePoint != null) unidade.ReferencePoint = request.ReferencePoint;
         if (request.City != null) unidade.City = request.City;
         if (request.State != null) unidade.State = request.State;
+        if (request.ZipCode != null) unidade.ZipCode = request.ZipCode;
+        if (request.Latitude != null) unidade.Latitude = request.Latitude;
+        if (request.Longitude != null) unidade.Longitude = request.Longitude;
         if (request.Phone != null) unidade.Phone = request.Phone;
+        if (request.Email != null) unidade.Email = request.Email;
+        if (request.BusinessHours != null) unidade.BusinessHours = request.BusinessHours;
+        if (request.Gallery != null) unidade.Gallery = request.Gallery;
+        if (request.WhatsApp != null) unidade.WhatsApp = request.WhatsApp;
+        if (request.InstagramUrl != null) unidade.InstagramUrl = request.InstagramUrl;
+        if (request.SchedulingTimeOptions != null) unidade.SchedulingTimeOptions = request.SchedulingTimeOptions;
+        if (request.SchedulingTimeInterval != null) unidade.SchedulingTimeInterval = request.SchedulingTimeInterval.Value;
+        if (request.OfereceLevaTraz != null) unidade.OfereceLevaTraz = request.OfereceLevaTraz.Value;
+        if (request.RaioMaximoKm != null) unidade.RaioMaximoKm = request.RaioMaximoKm.Value;
+        if (request.TipoTaxaDeslocamento != null) unidade.TipoTaxaDeslocamento = request.TipoTaxaDeslocamento;
+        if (request.TaxaDeslocamento != null) unidade.TaxaDeslocamento = request.TaxaDeslocamento;
         if (request.Active != null) unidade.Active = request.Active.Value;
         if (request.Published != null) unidade.Published = request.Published.Value;
-        if (request.OfereceLevaTraz != null) unidade.OfereceLevaTraz = request.OfereceLevaTraz.Value;
         await _repo.UpdateAsync(unidade);
         return Ok();
     }

@@ -20,7 +20,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
 
-        buildConfigField("String", "API_BASE_URL", "\"https://api.lavemeucarro.com.br/\"")
+        buildConfigField("String", "API_BASE_URL", "\"http://187.127.26.164:5050/\"")
     }
 
     buildTypes {
@@ -29,7 +29,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5050/\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://187.127.26.164:5050/\"")
         }
     }
 

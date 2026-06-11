@@ -59,7 +59,9 @@ data class UpdateProfileRequest(
     val base64Image: String? = null,
     val doc: String? = null,
     val dob: String? = null,
-    val username: String? = null
+    val username: String? = null,
+    val country: String? = null,
+    val tipo: Int? = null
 )
 
 // ==================== Unidade ====================
@@ -134,13 +136,31 @@ data class CreateUnidadeRequest(
 data class UpdateUnidadeRequest(
     val name: String? = null,
     val description: String? = null,
+    val logoUrl: String? = null,
     val address: String? = null,
+    val number: String? = null,
+    val complement: String? = null,
+    val neighborhood: String? = null,
+    val referencePoint: String? = null,
     val city: String? = null,
     val state: String? = null,
+    val zipCode: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val phone: String? = null,
+    val email: String? = null,
+    val businessHours: String? = null,
+    val gallery: String? = null,
+    val whatsApp: String? = null,
+    val instagramUrl: String? = null,
+    val schedulingTimeOptions: String? = null,
+    val schedulingTimeInterval: Int? = null,
     val active: Boolean? = null,
     val published: Boolean? = null,
-    val ofereceLevaTraz: Boolean? = null
+    val ofereceLevaTraz: Boolean? = null,
+    val raioMaximoKm: Int? = null,
+    val tipoTaxaDeslocamento: String? = null,
+    val taxaDeslocamento: Double? = null
 )
 
 // ==================== Agendamento ====================

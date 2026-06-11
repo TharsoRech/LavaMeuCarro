@@ -10,6 +10,7 @@ import com.google.gson.Gson
 import com.lavemeucarro.app.BuildConfig
 import com.lavemeucarro.app.data.remote.AuthInterceptor
 import com.lavemeucarro.app.data.remote.LavaMeuCarroApi
+import com.lavemeucarro.app.data.remote.NominatimApi
 import com.lavemeucarro.app.data.remote.ViaCepApi
 import dagger.Module
 import dagger.Provides
@@ -22,6 +23,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "auth")
@@ -41,6 +43,9 @@ object AppModule {
         val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
 
         return OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(20, TimeUnit.SECONDS)
             .addInterceptor(AuthInterceptor(dataStore))
             .addInterceptor(logging)
             .build()
@@ -73,5 +78,27 @@ object AppModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ViaCepApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideNominatimApi(): NominatimApi {
+        val client = OkHttpClient.Builder().build()
+        return Retrofit.Builder()
+            .baseUrl("https://nominatim.openstreetmap.org/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(NominatimApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAwesomeCepApi(): com.lavemeucarro.app.data.remote.AwesomeCepApi {
+        return Retrofit.Builder()
+            .baseUrl("https://cep.awesomeapi.com.br/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(com.lavemeucarro.app.data.remote.AwesomeCepApi::class.java)
     }
 }

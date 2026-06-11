@@ -13,12 +13,12 @@ public record UnidadeDTO(
 );
 
 public record CreateUnidadeRequest(
-    string Name, string? Description, string? LogoUrl, string Address,
+    string Name, string? Description, string? LogoUrl, string? Address,
     string? Number, string? Complement, string? Neighborhood, string? ReferencePoint,
-    string City, string State, string? ZipCode, decimal? Latitude, decimal? Longitude,
+    string? City, string? State, string? ZipCode, decimal? Latitude, decimal? Longitude,
     string? Phone, string? Email, string? BusinessHours, string? Gallery,
     string? WhatsApp, string? InstagramUrl, string? SchedulingTimeOptions,
-    int SchedulingTimeInterval, bool OfereceLevaTraz, int RaioMaximoKm,
+    int? SchedulingTimeInterval, bool OfereceLevaTraz, int? RaioMaximoKm,
     string? TipoTaxaDeslocamento, decimal? TaxaDeslocamento
 );
 
