@@ -1,6 +1,6 @@
-using HoraDaBeleza.Domain.Enums;
+using LavaMeuCarro.Domain.Enums;
 
-namespace HoraDaBeleza.Domain.Entities;
+namespace LavaMeuCarro.Domain.Entities;
 
 public class Subscription
 {
