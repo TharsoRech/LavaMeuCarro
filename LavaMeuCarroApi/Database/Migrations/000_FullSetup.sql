@@ -505,7 +505,7 @@ GO
 IF NOT EXISTS (SELECT 1 FROM SupportSettings WHERE Code = 'newrelic.enabled')
 BEGIN
     INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.enabled', 'True');
-    INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.apiKey', 'REDACTED_SECRET');
+    INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.apiKey', 'CHANGE_ME_IN_PRODUCTION');
     INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.appName', 'LavaMeuCarroApi');
     INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.endpoint', 'https://log-api.newrelic.com/log/v1');
     INSERT INTO SupportSettings (Code, Value) VALUES ('newrelic.environment', 'production');
