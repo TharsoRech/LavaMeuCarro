@@ -1,0 +1,797 @@
+using HoraDaBeleza.Application.Commands.Card.DeleteCardCommand;
+using HoraDaBeleza.Application.Commands.Card.GetCardsQuery;
+using HoraDaBeleza.Application.Commands.Card.SaveCardCommand;
+using HoraDaBeleza.Application.Commands.Card.SetDefaultCardCommand;
+using HoraDaBeleza.Application.Commands.Subscription.ActivateTrialCommand;
+using HoraDaBeleza.Application.Commands.Subscription.CancelSubscriptionForUserCommand;
+using HoraDaBeleza.Application.Commands.Subscription.EnsureSubscriptionCommand;
+using HoraDaBeleza.Application.Commands.Subscription.GetCurrentSubscriptionQuery;
+using HoraDaBeleza.Application.Commands.Subscription.ProcessAsaasWebhookCommand;
+using HoraDaBeleza.Application.Commands.Subscription.ProcessPaidSubscriptionCommand;
+using HoraDaBeleza.Application.Commands.Subscription.StartAsaasCheckoutCommand;
+using HoraDaBeleza.Application.Commands.Subscription.VerifyAppleReceiptCommand;
+using HoraDaBeleza.Application.DTOs;
+using HoraDaBeleza.Application.Interfaces;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+
+namespace HoraDaBeleza.API.Controllers;
+
+/// <summary>Salon plan subscriptions</summary>
+[Route("api/subscriptions")]
+[Route("subscriptions")]
+[Tags("Plans & Subscriptions")]
+[Produces("application/json")]
+public class SubscriptionsController(
+    IMediator mediator,
+    IAsaasSubscriptionGateway asaasGateway,
+    IAsaasWebhookAuditRepository asaasWebhookAuditRepository,
+    INewRelicLogService newRelicLogService,
+    ILogger<SubscriptionsController> logger) : ApiController
+{
+    /// <summary>Subscribe a salon to a plan (owner only)</summary>
+    [HttpPost]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionDto), 201)]
+    public async Task<IActionResult> Subscribe([FromBody] CreateSubscriptionRequest request)
+    {
+        var result = await mediator.Send(
+            new EnsureSubscriptionCommand(UserId, request.PlanId, request.Consents, GetIpAddress(), GetUserAgent()));
+        return Created("", result.Subscription);
+    }
+
+    /// <summary>Get current subscription for the authenticated user</summary>
+    [HttpGet("current")]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionDto), 200)]
+    public async Task<IActionResult> GetCurrentSubscription()
+        => Ok(await mediator.Send(new GetCurrentSubscriptionQuery(UserId)));
+
+    /// <summary>Get payment history captured from Asaas webhooks for the authenticated user</summary>
+    [HttpGet("payments/history")]
+    [Authorize]
+    [ProducesResponseType(typeof(IEnumerable<SubscriptionPaymentHistoryItemDto>), 200)]
+    public async Task<IActionResult> GetPaymentHistory()
+    {
+        var items = await asaasWebhookAuditRepository.GetPaymentsByUserAsync(UserId, 50, HttpContext.RequestAborted);
+        return Ok(items.Select(item => new SubscriptionPaymentHistoryItemDto(
+            item.Id,
+            item.PlanId,
+            item.GatewayPaymentId,
+            item.GatewaySubscriptionId,
+            item.Status,
+            item.BillingType,
+            item.Amount,
+            item.NetAmount,
+            item.DueDate,
+            item.PaymentDate,
+            item.InvoiceUrl,
+            item.InvoiceNumber,
+            item.Description,
+            item.LastWebhookEvent,
+            item.LastWebhookReceivedAt,
+            item.CreatedAt,
+            item.UpdatedAt)));
+    }
+
+    /// <summary>Ensure the authenticated user has an active subscription for the provided plan.</summary>
+    [HttpPost("ensure")]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionDto), 200)]
+    [ProducesResponseType(typeof(SubscriptionDto), 201)]
+    [ProducesResponseType(400)]
+    public async Task<IActionResult> EnsureSubscription([FromBody] EnsureSubscriptionRequest request)
+    {
+        var result = await mediator.Send(
+            new EnsureSubscriptionCommand(UserId, request.PlanId, request.Consents, GetIpAddress(), GetUserAgent()));
+        return result.AlreadyActive ? Ok(result.Subscription) : Created("", result.Subscription);
+    }
+
+    /// <summary>Get saved cards for the authenticated user</summary>
+    [HttpGet("cards")]
+    [Authorize]
+    [ProducesResponseType(typeof(SavedCardsResponse), 200)]
+    public async Task<IActionResult> GetSavedCards()
+    {
+        var result = await mediator.Send(new GetCardsQuery(UserId));
+        return Ok(new SavedCardsResponse(result));
+    }
+
+    /// <summary>Save a new payment card</summary>
+    [HttpPost("cards")]
+    [Authorize]
+    [ProducesResponseType(typeof(CardDto), 201)]
+    public async Task<IActionResult> SaveCard([FromBody] SaveCardRequest request)
+    {
+        var n = NormalizeCard(request, UserId);
+        var result = await mediator.Send(new SaveCardCommand(UserId, n.CardNumber, n.CardHolderName, n.ExpiryMonth, n.ExpiryYear, n.Brand));
+        return Created("", result);
+    }
+
+    /// <summary>Activate free trial plan for the authenticated user</summary>
+    [HttpPost("trial")]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionDto), 201)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> ActivateTrial([FromBody] ActivateTrialRequest? request = null)
+    {
+        var result = await mediator.Send(
+            new ActivateTrialCommand(UserId, request?.Consents, GetIpAddress(), GetUserAgent()));
+        return Created("", result);
+    }
+
+    /// <summary>Process a paid subscription for a plan</summary>
+    [HttpPost("paid")]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionDto), 201)]
+    public async Task<IActionResult> ProcessPaid([FromBody] SubscriptionPlanRequest request)
+    {
+        var result = await mediator.Send(BuildProcessPaidCommand(request));
+        return Created("", result.Subscription);
+    }
+
+    /// <summary>Start Asaas checkout for paid monthly subscription.</summary>
+    [HttpPost("paid/checkout")]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionCheckoutResponse), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(503)]
+    public async Task<IActionResult> StartPaidCheckout([FromBody] SubscriptionCheckoutRequest request)
+    {
+        var result = await mediator.Send(
+            new StartAsaasCheckoutCommand(UserId, request.PlanId, request.BackUrl, request.Consents, GetIpAddress(), GetUserAgent()));
+
+        if (!result.Success)
+        {
+            if (result.StatusCode == 409)
+            {
+                return Conflict(new SubscriptionCheckoutResponse(
+                    Provider: "asaas",
+                    CheckoutUrl: result.CheckoutUrl ?? string.Empty,
+                    ExternalReference: result.ExternalReference ?? string.Empty,
+                    Status: result.Status,
+                    PendingExpiresAt: result.PendingUntilUtc,
+                    AlreadyPending: true,
+                    Message: result.Error));
+            }
+
+            return StatusCode(result.StatusCode, result.Error);
+        }
+
+        return Ok(new SubscriptionCheckoutResponse(
+            Provider: "asaas",
+            CheckoutUrl: result.CheckoutUrl!,
+            ExternalReference: result.ExternalReference!,
+            Status: result.Status,
+            PendingExpiresAt: result.PendingUntilUtc,
+            AlreadyPending: false,
+            Message: null));
+    }
+
+    /// <summary>Upgrade subscription (alias to paid flow)</summary>
+    [HttpPost("upgrade")]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionCheckoutResponse), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(503)]
+    public async Task<IActionResult> Upgrade([FromBody] SubscriptionCheckoutRequest request)
+    {
+        var result = await mediator.Send(
+            new StartAsaasCheckoutCommand(UserId, request.PlanId, request.BackUrl, request.Consents, GetIpAddress(), GetUserAgent()));
+
+        if (!result.Success)
+        {
+            if (result.StatusCode == 409)
+            {
+                return Conflict(new SubscriptionCheckoutResponse(
+                    Provider: "asaas",
+                    CheckoutUrl: result.CheckoutUrl ?? string.Empty,
+                    ExternalReference: result.ExternalReference ?? string.Empty,
+                    Status: result.Status,
+                    PendingExpiresAt: result.PendingUntilUtc,
+                    AlreadyPending: true,
+                    Message: result.Error));
+            }
+
+            return StatusCode(result.StatusCode, result.Error);
+        }
+
+        return Ok(new SubscriptionCheckoutResponse(
+            Provider: "asaas",
+            CheckoutUrl: result.CheckoutUrl!,
+            ExternalReference: result.ExternalReference!,
+            Status: result.Status,
+            PendingExpiresAt: result.PendingUntilUtc,
+            AlreadyPending: false,
+            Message: null));
+    }
+
+    /// <summary>Get pending Asaas checkout lock for the authenticated user.</summary>
+    [HttpGet("paid/checkout/pending")]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionCheckoutPendingResponse), 200)]
+    public async Task<IActionResult> GetPendingCheckoutStatus()
+    {
+        var checkoutLock = await asaasWebhookAuditRepository.GetActiveCheckoutLockAsync(UserId, HttpContext.RequestAborted);
+        if (checkoutLock is null)
+            return Ok(new SubscriptionCheckoutPendingResponse(false, null, null, null, null, null));
+
+        return Ok(new SubscriptionCheckoutPendingResponse(
+            HasPendingCheckout: true,
+            PlanId: checkoutLock.PlanId,
+            ExternalReference: checkoutLock.ExternalReference,
+            CheckoutUrl: checkoutLock.CheckoutUrl,
+            Status: checkoutLock.Status,
+            PendingExpiresAt: checkoutLock.ExpiresAt));
+    }
+
+    /// <summary>Cancel a pending checkout lock so the user is not blocked.</summary>
+    [HttpDelete("paid/checkout/pending")]
+    [Authorize]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> CancelPendingCheckout()
+    {
+        var checkoutLock = await asaasWebhookAuditRepository.GetActiveCheckoutLockAsync(UserId, HttpContext.RequestAborted);
+        if (checkoutLock is null)
+            return NotFound("Nenhum checkout pendente encontrado.");
+
+        await asaasWebhookAuditRepository.ResolveCheckoutLockAsync(
+            externalReference: checkoutLock.ExternalReference,
+            userId: UserId,
+            resolutionStatus: "CANCELLED",
+            resolutionReason: "Cancelado pelo usuario via app.",
+            eventType: null,
+            gatewaySubscriptionId: null,
+            gatewayPaymentId: null,
+            HttpContext.RequestAborted);
+
+        return Ok(new { cancelled = true });
+    }
+
+    /// <summary>Cancel current subscription (POST)</summary>
+    [HttpPost("cancel")]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionDto), 200)]
+    public async Task<IActionResult> Cancel([FromBody] CancelSubscriptionRequest? request)
+        => Ok((await mediator.Send(new CancelSubscriptionForUserCommand(UserId, request?.Reason, "user.portal"))).Current);
+
+    /// <summary>Cancel current subscription (PUT alias)</summary>
+    [HttpPut("cancel")]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionDto), 200)]
+    public Task<IActionResult> CancelPut([FromBody] CancelSubscriptionRequest? request)
+        => Cancel(request);
+
+    /// <summary>Asaas webhook callback for recurring subscriptions.</summary>
+    [HttpPost("payments/asaas/webhook")]
+    [AllowAnonymous]
+    [ProducesResponseType(200)]
+    public async Task<IActionResult> AsaasWebhook()
+    {
+        if (!asaasGateway.IsConfigured())
+        {
+            await newRelicLogService.LogAsync(
+                LogLevel.Warning,
+                "Webhook Asaas ignorado: gateway nao configurado.",
+                "asaas.webhook.skipped.not-configured",
+                null,
+                new Dictionary<string, object?>
+                {
+                    ["traceId"] = HttpContext.TraceIdentifier,
+                    ["requestPath"] = HttpContext.Request.Path.Value
+                },
+                HttpContext.RequestAborted);
+            return Ok();
+        }
+
+        var payload = await ReadWebhookPayloadAsync();
+        if (payload is null)
+        {
+            await newRelicLogService.LogAsync(
+                LogLevel.Warning,
+                "Webhook Asaas ignorado: payload ausente ou invalido.",
+                "asaas.webhook.skipped.invalid-payload",
+                null,
+                new Dictionary<string, object?>
+                {
+                    ["traceId"] = HttpContext.TraceIdentifier,
+                    ["requestPath"] = HttpContext.Request.Path.Value,
+                    ["contentLength"] = HttpContext.Request.ContentLength
+                },
+                HttpContext.RequestAborted);
+            return Ok();
+        }
+
+        var headers = HttpContext.Request.Headers
+            .ToDictionary(h => h.Key, h => (string?)h.Value.ToString(), StringComparer.OrdinalIgnoreCase);
+        var authorizedByHeader = asaasGateway.IsWebhookAuthorized(headers);
+        var trustedByAsaasApi = false;
+
+        if (TryParseExternalReference(payload.ExternalReference, out var userId, out var planId))
+        {
+            payload = payload with { UserId = userId, PlanId = planId };
+        }
+
+        if (!authorizedByHeader)
+        {
+            trustedByAsaasApi = await asaasGateway.IsWebhookPayloadTrustedAsync(
+                new AsaasWebhookValidationRequest(
+                    payload.PaymentId,
+                    payload.SubscriptionId,
+                    payload.ExternalReference,
+                    payload.Amount,
+                    payload.PaymentStatus),
+                HttpContext.RequestAborted);
+        }
+
+        var trusted = authorizedByHeader || trustedByAsaasApi;
+        var eventLog = new Domain.Entities.AsaasWebhookEventLog
+        {
+            AsaasEventId = payload.EventId,
+            EventType = payload.Event,
+            PaymentId = payload.PaymentId,
+            SubscriptionId = payload.SubscriptionId,
+            TransferId = payload.TransferId,
+            CustomerId = payload.CustomerId,
+            ExternalReference = payload.ExternalReference,
+            PaymentStatus = payload.PaymentStatus,
+            TransferStatus = payload.TransferStatus,
+            BillingType = payload.BillingType,
+            Amount = payload.Amount,
+            NetAmount = payload.NetAmount,
+            DueDate = payload.DueDate,
+            PaymentDate = payload.PaymentDate,
+            UserId = payload.UserId,
+            PlanId = payload.PlanId,
+            AuthorizedByHeader = authorizedByHeader,
+            TrustedByApi = trustedByAsaasApi,
+            WasProcessed = false,
+            IgnoredReason = trusted ? null : "Webhook descartado por autenticacao/validacao.",
+            RawPayload = payload.RawJson,
+            HeadersJson = SerializeHeadersForAudit(headers),
+            TraceId = HttpContext.TraceIdentifier,
+            RequestPath = HttpContext.Request.Path.Value,
+            SourceIp = GetIpAddress(),
+            ReceivedAt = DateTime.UtcNow
+        };
+
+        var eventLogId = await asaasWebhookAuditRepository.CreateWebhookEventAsync(eventLog, HttpContext.RequestAborted);
+
+        await newRelicLogService.LogAsync(
+            trusted ? LogLevel.Information : LogLevel.Warning,
+            $"Webhook Asaas recebido: {payload.Event ?? "UNKNOWN"}",
+            "asaas.webhook.received",
+            null,
+            BuildWebhookLogAttributes(payload, authorizedByHeader, trustedByAsaasApi, HttpContext.TraceIdentifier, HttpContext.Request.Path.Value),
+            HttpContext.RequestAborted);
+
+        if (trusted && !string.IsNullOrWhiteSpace(payload.PaymentId))
+        {
+            await asaasWebhookAuditRepository.UpsertPaymentRecordAsync(new Domain.Entities.AsaasPaymentRecord
+            {
+                UserId = payload.UserId,
+                PlanId = payload.PlanId,
+                GatewayProvider = "asaas",
+                GatewayPaymentId = payload.PaymentId,
+                GatewaySubscriptionId = payload.SubscriptionId,
+                GatewayCustomerId = payload.CustomerId,
+                ExternalReference = payload.ExternalReference,
+                Status = payload.PaymentStatus,
+                BillingType = payload.BillingType,
+                Amount = payload.Amount,
+                NetAmount = payload.NetAmount,
+                DueDate = payload.DueDate,
+                PaymentDate = payload.PaymentDate,
+                InvoiceUrl = payload.InvoiceUrl,
+                InvoiceNumber = payload.InvoiceNumber,
+                Description = payload.Description,
+                LastWebhookEvent = payload.Event,
+                LastWebhookReceivedAt = DateTime.UtcNow,
+                LastPayload = payload.RawJson,
+                UpdatedAt = DateTime.UtcNow
+            }, HttpContext.RequestAborted);
+        }
+
+        if (!trusted)
+        {
+            logger.LogWarning(
+                "Webhook Asaas descartado por falha de autenticacao/validacao. Event={Event}, SubscriptionId={SubscriptionId}, PaymentId={PaymentId}",
+                payload.Event,
+                payload.SubscriptionId,
+                payload.PaymentId);
+
+            await newRelicLogService.LogAsync(
+                LogLevel.Warning,
+                "Webhook Asaas descartado por autenticacao/validacao.",
+                "asaas.webhook.skipped.untrusted",
+                null,
+                BuildWebhookLogAttributes(payload, authorizedByHeader, trustedByAsaasApi, HttpContext.TraceIdentifier, HttpContext.Request.Path.Value),
+                HttpContext.RequestAborted);
+            return Ok();
+        }
+
+        try
+        {
+            await mediator.Send(
+                new ProcessAsaasWebhookCommand(payload.Event, payload.SubscriptionId, payload.ExternalReference, payload.Amount),
+                HttpContext.RequestAborted);
+
+            await asaasWebhookAuditRepository.UpdateWebhookEventOutcomeAsync(
+                eventLogId,
+                true,
+                null,
+                null,
+                DateTime.UtcNow,
+                HttpContext.RequestAborted);
+
+            await newRelicLogService.LogAsync(
+                LogLevel.Information,
+                $"Webhook Asaas processado: {payload.Event ?? "UNKNOWN"}",
+                "asaas.webhook.processed",
+                null,
+                BuildWebhookLogAttributes(payload, authorizedByHeader, trustedByAsaasApi, HttpContext.TraceIdentifier, HttpContext.Request.Path.Value),
+                HttpContext.RequestAborted);
+        }
+        catch (Exception ex)
+        {
+            await asaasWebhookAuditRepository.UpdateWebhookEventOutcomeAsync(
+                eventLogId,
+                false,
+                null,
+                ex.Message,
+                DateTime.UtcNow,
+                HttpContext.RequestAborted);
+
+            await newRelicLogService.LogAsync(
+                LogLevel.Error,
+                $"Erro ao processar webhook Asaas: {payload.Event ?? "UNKNOWN"}",
+                "asaas.webhook.error",
+                ex,
+                BuildWebhookLogAttributes(payload, authorizedByHeader, trustedByAsaasApi, HttpContext.TraceIdentifier, HttpContext.Request.Path.Value),
+                HttpContext.RequestAborted);
+
+            throw;
+        }
+
+        return Ok();
+    }
+
+    /// <summary>Delete a saved card</summary>
+    [HttpDelete("cards/{cardId}")]
+    [Authorize]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> DeleteCard(int cardId)
+    {
+        var result = await mediator.Send(new DeleteCardCommand(cardId, UserId));
+        if (!result) return NotFound("Card not found or not owned by user.");
+        return Ok("Card deleted successfully.");
+    }
+
+    /// <summary>Set a card as default payment method</summary>
+    [HttpPut("cards/{cardId}/default")]
+    [Authorize]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> SetDefaultCard(int cardId)
+    {
+        var result = await mediator.Send(new SetDefaultCardCommand(cardId, UserId));
+        if (!result) return NotFound("Card not found or not owned by user.");
+        return Ok("Default card set successfully.");
+    }
+
+    /// <summary>Verify Apple receipt</summary>
+    [HttpPost("verify-apple-receipt")]
+    [Authorize]
+    [ProducesResponseType(typeof(SubscriptionDto), 200)]
+    public async Task<IActionResult> VerifyAppleReceipt([FromBody] VerifyAppleReceiptRequest request)
+    {
+        var result = await mediator.Send(new VerifyAppleReceiptCommand(UserId, request.Receipt));
+        return Ok(result);
+    }
+
+    // ── Private helpers (pure input transformation, no business rules) ──────
+
+    private async Task<AsaasWebhookPayload?> ReadWebhookPayloadAsync()
+    {
+        if (HttpContext.Request.ContentLength is null or <= 0) return null;
+        try
+        {
+            HttpContext.Request.EnableBuffering();
+            using var reader = new StreamReader(HttpContext.Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
+            var rawJson = await reader.ReadToEndAsync(HttpContext.RequestAborted);
+            HttpContext.Request.Body.Position = 0;
+            if (string.IsNullOrWhiteSpace(rawJson)) return null;
+
+            using var doc = JsonDocument.Parse(rawJson);
+            var root = doc.RootElement;
+
+            var eventId = GetNested(root, "id");
+
+            var eventName = root.TryGetProperty("event", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null;
+
+            string? subscriptionId = null;
+            if (root.TryGetProperty("payment", out var payment))
+                subscriptionId = GetNested(payment, "subscription");
+            if (string.IsNullOrWhiteSpace(subscriptionId) && root.TryGetProperty("subscription", out var sub))
+                subscriptionId = GetNested(sub, "id");
+
+            var paymentId = root.TryGetProperty("payment", out var paymentNode)
+                ? GetNested(paymentNode, "id")
+                : null;
+
+            var paymentStatus = root.TryGetProperty("payment", out var paymentStatusNode)
+                ? GetNested(paymentStatusNode, "status")
+                : null;
+
+            var customerId = root.TryGetProperty("payment", out var customerNode)
+                ? GetNested(customerNode, "customer")
+                : null;
+
+            var billingType = root.TryGetProperty("payment", out var billingTypeNode)
+                ? GetNested(billingTypeNode, "billingType")
+                : null;
+
+            var extRef = root.TryGetProperty("payment", out var pn) ? GetNested(pn, "externalReference") : null;
+            if (string.IsNullOrWhiteSpace(extRef) && root.TryGetProperty("subscription", out var sn))
+                extRef = GetNested(sn, "externalReference");
+
+            decimal? amount = null;
+            if (root.TryGetProperty("payment", out var ap) && ap.TryGetProperty("value", out var v) && v.TryGetDecimal(out var d))
+                amount = d;
+
+            decimal? netAmount = null;
+            if (root.TryGetProperty("payment", out var paymentForNet) && paymentForNet.TryGetProperty("netValue", out var nv) && nv.TryGetDecimal(out var nd))
+                netAmount = nd;
+
+            var dueDate = root.TryGetProperty("payment", out var paymentDueNode)
+                ? ParseAsaasDate(GetNested(paymentDueNode, "dueDate"))
+                : null;
+
+            var paymentDate = root.TryGetProperty("payment", out var paymentDateNode)
+                ? ParseAsaasDate(GetNested(paymentDateNode, "paymentDate"))
+                : null;
+
+            var invoiceUrl = root.TryGetProperty("payment", out var invoiceNode)
+                ? GetNested(invoiceNode, "invoiceUrl")
+                : null;
+
+            var invoiceNumber = root.TryGetProperty("payment", out var invoiceNumberNode)
+                ? GetNested(invoiceNumberNode, "invoiceNumber")
+                : null;
+
+            var description = root.TryGetProperty("payment", out var descriptionNode)
+                ? GetNested(descriptionNode, "description")
+                : null;
+
+            var transferId = root.TryGetProperty("transfer", out var transferNode)
+                ? GetNested(transferNode, "id")
+                : null;
+
+            var transferStatus = root.TryGetProperty("transfer", out var transferStatusNode)
+                ? GetNested(transferStatusNode, "status")
+                : null;
+
+            return new AsaasWebhookPayload(
+                eventId,
+                eventName,
+                subscriptionId,
+                extRef,
+                amount,
+                paymentId,
+                paymentStatus,
+                customerId,
+                billingType,
+                netAmount,
+                dueDate,
+                paymentDate,
+                invoiceUrl,
+                invoiceNumber,
+                description,
+                transferId,
+                transferStatus,
+                rawJson,
+                null,
+                null);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Falha ao ler payload do webhook Asaas.");
+            return null;
+        }
+    }
+
+    private static string? GetNested(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var p)) return null;
+        return p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+    }
+
+    private static DateTime? ParseAsaasDate(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+
+        var formats = new[]
+        {
+            "dd/MM/yyyy",
+            "dd/MM/yyyy HH:mm:ss",
+            "yyyy-MM-dd",
+            "yyyy-MM-ddTHH:mm:ss",
+            "yyyy-MM-ddTHH:mm:ss.fff",
+            "yyyy-MM-ddTHH:mm:ssK",
+            "yyyy-MM-ddTHH:mm:ss.fffK"
+        };
+
+        if (DateTime.TryParseExact(raw.Trim(), formats, new CultureInfo("pt-BR"), DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var exact))
+            return exact;
+
+        if (DateTime.TryParse(raw, new CultureInfo("pt-BR"), DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsedPtBr))
+            return parsedPtBr;
+
+        if (DateTime.TryParse(raw, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsedInvariant))
+            return parsedInvariant;
+
+        return null;
+    }
+
+    private static string SerializeHeadersForAudit(IReadOnlyDictionary<string, string?> headers)
+    {
+        var sanitized = headers.ToDictionary(
+            kv => kv.Key,
+            kv => IsSensitiveHeader(kv.Key) ? "***REDACTED***" : kv.Value,
+            StringComparer.OrdinalIgnoreCase);
+
+        return JsonSerializer.Serialize(sanitized);
+    }
+
+    private static bool IsSensitiveHeader(string? headerName)
+        => !string.IsNullOrWhiteSpace(headerName)
+           && (headerName.Contains("token", StringComparison.OrdinalIgnoreCase)
+               || headerName.Contains("authorization", StringComparison.OrdinalIgnoreCase)
+               || headerName.Contains("cookie", StringComparison.OrdinalIgnoreCase));
+
+    private static Dictionary<string, object?> BuildWebhookLogAttributes(
+        AsaasWebhookPayload payload,
+        bool authorizedByHeader,
+        bool trustedByAsaasApi,
+        string? traceId,
+        string? requestPath)
+        => new()
+        {
+            ["traceId"] = traceId,
+            ["requestPath"] = requestPath,
+            ["eventId"] = payload.EventId,
+            ["eventType"] = payload.Event,
+            ["paymentId"] = payload.PaymentId,
+            ["subscriptionId"] = payload.SubscriptionId,
+            ["transferId"] = payload.TransferId,
+            ["customerId"] = payload.CustomerId,
+            ["externalReference"] = payload.ExternalReference,
+            ["paymentStatus"] = payload.PaymentStatus,
+            ["transferStatus"] = payload.TransferStatus,
+            ["billingType"] = payload.BillingType,
+            ["amount"] = payload.Amount,
+            ["netAmount"] = payload.NetAmount,
+            ["userId"] = payload.UserId,
+            ["planId"] = payload.PlanId,
+            ["authorizedByHeader"] = authorizedByHeader,
+            ["trustedByAsaasApi"] = trustedByAsaasApi
+        };
+
+    private static bool TryParseExternalReference(string? externalReference, out int userId, out int planId)
+    {
+        userId = 0;
+        planId = 0;
+        if (string.IsNullOrWhiteSpace(externalReference)) return false;
+
+        var userMatch = Regex.Match(externalReference, @"user[:_-]?(\d+)", RegexOptions.IgnoreCase);
+        var planMatch = Regex.Match(externalReference, @"plan[:_-]?(\d+)", RegexOptions.IgnoreCase);
+
+        return userMatch.Success
+               && planMatch.Success
+               && int.TryParse(userMatch.Groups[1].Value, out userId)
+               && int.TryParse(planMatch.Groups[1].Value, out planId);
+    }
+
+    private static (string CardNumber, string CardHolderName, string ExpiryMonth, string ExpiryYear, string Brand)
+        NormalizeCard(SaveCardRequest r, int userId)
+    {
+        var num = Regex.Replace((r.CardNumber ?? r.Number ?? string.Empty).Trim(), @"\D", string.Empty);
+        var holder = (r.CardHolderName ?? r.HolderName ?? $"User {userId}").Trim();
+        var brand = (r.Brand ?? "Unknown").Trim();
+        var month = Regex.Replace(r.ExpiryMonth ?? string.Empty, @"\D", string.Empty);
+        var year = Regex.Replace(r.ExpiryYear ?? string.Empty, @"\D", string.Empty);
+
+        if (!string.IsNullOrWhiteSpace(r.Expiry) && (string.IsNullOrWhiteSpace(month) || string.IsNullOrWhiteSpace(year)))
+        {
+            var parts = r.Expiry.Split('/', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2)
+            {
+                month = Regex.Replace(parts[0], @"\D", string.Empty);
+                year = Regex.Replace(parts[1], @"\D", string.Empty);
+                if (year.Length == 2) year = $"20{year}";
+            }
+        }
+
+        return (num, holder, month, year, brand);
+    }
+
+    private ProcessPaidSubscriptionCommand BuildProcessPaidCommand(SubscriptionPlanRequest request, bool isUpgrade = false)
+    {
+        NormalizedCardData? cardData = null;
+        if (request.CardData is not null)
+        {
+            var n = NormalizeCard(request.CardData, UserId);
+            cardData = new NormalizedCardData(n.CardNumber, n.CardHolderName, n.ExpiryMonth, n.ExpiryYear, n.Brand);
+        }
+        return new ProcessPaidSubscriptionCommand(UserId, request.PlanId, cardData, request.Consents, GetIpAddress(), GetUserAgent(), isUpgrade);
+    }
+
+    private string? GetIpAddress() => HttpContext.Connection.RemoteIpAddress?.ToString();
+    private string? GetUserAgent() => HttpContext.Request.Headers.UserAgent.ToString();
+}
+
+/// <summary>Request to save a payment card</summary>
+public record SaveCardRequest(
+    string? CardNumber,
+    string? CardHolderName,
+    string? ExpiryMonth,
+    string? ExpiryYear,
+    string? Brand,
+    string? Number = null,
+    string? HolderName = null,
+    string? Expiry = null,
+    string? Cvv = null);
+
+public record SubscriptionPlanRequest(int PlanId, SaveCardRequest? CardData = null, List<LegalConsentRequest>? Consents = null);
+public record SubscriptionCheckoutRequest(int PlanId, string? BackUrl = null, List<LegalConsentRequest>? Consents = null);
+public record SubscriptionCheckoutResponse(
+    string Provider,
+    string CheckoutUrl,
+    string ExternalReference,
+    string? Status,
+    DateTime? PendingExpiresAt = null,
+    bool AlreadyPending = false,
+    string? Message = null);
+public record SubscriptionCheckoutPendingResponse(
+    bool HasPendingCheckout,
+    int? PlanId,
+    string? ExternalReference,
+    string? CheckoutUrl,
+    string? Status,
+    DateTime? PendingExpiresAt);
+public record EnsureSubscriptionRequest(int PlanId, List<LegalConsentRequest>? Consents = null);
+public record ActivateTrialRequest(List<LegalConsentRequest>? Consents = null);
+public record CancelSubscriptionRequest(string? Reason = null);
+public record VerifyAppleReceiptRequest(string Receipt);
+public record AsaasWebhookPayload(
+    string? EventId,
+    string? Event,
+    string? SubscriptionId,
+    string? ExternalReference,
+    decimal? Amount,
+    string? PaymentId,
+    string? PaymentStatus,
+    string? CustomerId,
+    string? BillingType,
+    decimal? NetAmount,
+    DateTime? DueDate,
+    DateTime? PaymentDate,
+    string? InvoiceUrl,
+    string? InvoiceNumber,
+    string? Description,
+    string? TransferId,
+    string? TransferStatus,
+    string? RawJson,
+    int? UserId,
+    int? PlanId);
+public record CreateSubscriptionRequest(int PlanId, List<LegalConsentRequest>? Consents = null);
+
+/// <summary>Response containing list of saved cards</summary>
+public record SavedCardsResponse(IEnumerable<CardDto> Cards);

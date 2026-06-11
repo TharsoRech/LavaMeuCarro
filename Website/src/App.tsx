@@ -8,39 +8,41 @@ import { AdminGuard } from './guards/AdminGuard';
 import { MasterGuard } from './guards/MasterGuard';
 
 // Landing
-import LandingPage from './pages/landing/LandingPage';
+import { LandingPage } from './features/landing/LandingPage';
 
 // Legal (public)
-import { PrivacyPolicyPage, TermsOfUsePage } from './pages/legal/LegalDocumentPages';
-import DeleteAccountPage from './pages/legal/DeleteAccountPage';
+import { DeleteAccountPage } from './features/legal/DeleteAccountPage';
+import { PrivacyPolicyPage, TermsOfUsePage } from './features/legal/LegalDocumentPages';
 
-// Admin
+// Admin - mixed exports
+import AdminLoginPage from './features/admin/AdminLoginPage'; // default
+import AdminDashboard from './features/admin/AdminDashboard'; // default
+import AdminAppointments from './features/admin/AdminAppointments'; // default
+import { AdminProfessionals } from './features/admin/AdminProfessionals'; // named
+import { AdminServices } from './features/admin/AdminServices'; // named
+import { AdminSalon } from './features/admin/AdminSalon'; // named
+import { AdminProfile } from './features/admin/AdminProfile'; // named
+import { AdminNotifications } from './features/admin/AdminNotifications'; // named
+import { AdminReports } from './features/admin/AdminReports'; // named
+import AdminMarketing from './features/admin/AdminMarketing'; // default
+import AdminPrivacy from './features/admin/AdminPrivacy'; // default
+import AdminTermsOfUse from './features/admin/AdminTermsOfUse'; // default
+import AdminPrivacyPolicy from './features/admin/AdminPrivacyPolicy'; // default
+
+// Master - mixed exports
+import MasterLoginPage from './features/master/MasterLoginPage'; // default
+import MasterDashboard from './features/master/MasterDashboard'; // default
+import { MasterUsers } from './features/master/MasterUsers'; // named
+import { MasterSalons } from './features/master/MasterSalons'; // named
+import { MasterCategories } from './features/master/MasterCategories'; // named
+import { MasterSettings } from './features/master/MasterSettings'; // named
+import { MasterSubscriptions } from './features/master/MasterSubscriptions'; // named
+import { MasterPlans } from './features/master/MasterPlans'; // named
+import MasterPayments from './features/master/MasterPayments'; // default
+
+// Layouts - default exports
 import AdminLayout from './components/layout/AdminLayout';
-import AdminLoginPage from './pages/admin/AdminLoginPage';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminAppointments from './pages/admin/AdminAppointments';
-import AdminEquipe from './pages/admin/AdminEquipe';
-import AdminServicos from './pages/admin/AdminServicos';
-import AdminRelatorios from './pages/admin/AdminRelatorios';
-import AdminUnidades from './pages/admin/AdminUnidades';
-import AdminNotificacoes from './pages/admin/AdminNotificacoes';
-import AdminPerfil from './pages/admin/AdminPerfil';
-import AdminMarketing from './pages/admin/AdminMarketing';
-import AdminPrivacy from './pages/admin/AdminPrivacy';
-import AdminPrivacyPolicy from './pages/admin/AdminPrivacyPolicy';
-import AdminTermsOfUse from './pages/admin/AdminTermsOfUse';
-
-// Master
 import MasterLayout from './components/layout/MasterLayout';
-import MasterLoginPage from './pages/master/MasterLoginPage';
-import MasterDashboard from './pages/master/MasterDashboard';
-import MasterUsuarios from './pages/master/MasterUsuarios';
-import MasterUnidades from './pages/master/MasterUnidades';
-import MasterCategorias from './pages/master/MasterCategorias';
-import MasterPlanos from './pages/master/MasterPlanos';
-import MasterAssinaturas from './pages/master/MasterAssinaturas';
-import MasterConfiguracoes from './pages/master/MasterConfiguracoes';
-import MasterPayments from './pages/master/MasterPayments';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,48 +74,50 @@ function App() {
       <BrowserRouter>
         <AuthCacheClear />
         <Routes>
-          {/* Landing Page */}
+          {/* Public */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/excluir-conta" element={<DeleteAccountPage />} />
+          <Route path="/privacidade" element={<PrivacyPolicyPage />} />
+          <Route path="/termos" element={<TermsOfUsePage />} />
 
-          {/* Legal Pages (public) */}
-          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
-          <Route path="/terms-of-use" element={<TermsOfUsePage />} />
-          <Route path="/delete-account" element={<DeleteAccountPage />} />
-
-          {/* Admin Public */}
+          {/* Admin login (public) */}
           <Route path="/admin/login" element={<AdminLoginPage />} />
 
-          {/* Admin Protected */}
-          <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
-            <Route index element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="agendamentos" element={<AdminAppointments />} />
-            <Route path="equipe" element={<AdminEquipe />} />
-            <Route path="servicos" element={<AdminServicos />} />
-            <Route path="relatorios" element={<AdminRelatorios />} />
-            <Route path="unidades" element={<AdminUnidades />} />
-            <Route path="notificacoes" element={<AdminNotificacoes />} />
-            <Route path="marketing" element={<AdminMarketing />} />
-            <Route path="privacidade" element={<AdminPrivacy />} />
-            <Route path="privacy-policy" element={<AdminPrivacyPolicy />} />
-            <Route path="terms-of-use" element={<AdminTermsOfUse />} />
-            <Route path="perfil" element={<AdminPerfil />} />
-          </Route>
+           {/* Admin panel (protected) */}
+           <Route element={<AdminGuard><div /></AdminGuard>}>
+             <Route element={<AdminLayout />}>
+               {/* Default admin route is now Agendamentos (silent refresh) */}
+               <Route path="/admin" element={<Navigate to="/admin/agendamentos" replace />} />
+               <Route path="/admin/painel" element={<AdminDashboard />} />
+               <Route path="/admin/agendamentos" element={<AdminAppointments />} />
+               <Route path="/admin/profissionais" element={<AdminProfessionals />} />
+               <Route path="/admin/servicos" element={<AdminServices />} />
+               <Route path="/admin/relatorios" element={<AdminReports />} />
+               <Route path="/admin/unidade" element={<AdminSalon />} />
+               <Route path="/admin/notificacoes" element={<AdminNotifications />} />
+               <Route path="/admin/marketing" element={<AdminMarketing />} />
+               <Route path="/admin/privacidade" element={<AdminPrivacy />} />
+               <Route path="/admin/termos-de-uso" element={<AdminTermsOfUse />} />
+               <Route path="/admin/politica-de-privacidade" element={<AdminPrivacyPolicy />} />
+               <Route path="/admin/perfil" element={<AdminProfile />} />
+             </Route>
+           </Route>
 
-          {/* Master Public */}
+          {/* Master login (public) */}
           <Route path="/master/login" element={<MasterLoginPage />} />
 
-          {/* Master Protected */}
-          <Route path="/master" element={<MasterGuard><MasterLayout /></MasterGuard>}>
-            <Route index element={<Navigate to="/master/dashboard" replace />} />
-            <Route path="dashboard" element={<MasterDashboard />} />
-            <Route path="usuarios" element={<MasterUsuarios />} />
-            <Route path="unidades" element={<MasterUnidades />} />
-            <Route path="categorias" element={<MasterCategorias />} />
-            <Route path="planos" element={<MasterPlanos />} />
-            <Route path="assinaturas" element={<MasterAssinaturas />} />
-            <Route path="pagamentos" element={<MasterPayments />} />
-            <Route path="configuracoes" element={<MasterConfiguracoes />} />
+          {/* Master panel (protected) */}
+          <Route element={<MasterGuard><div /></MasterGuard>}>
+            <Route element={<MasterLayout />}>
+              <Route path="/master" element={<MasterDashboard />} />
+              <Route path="/master/usuarios" element={<MasterUsers />} />
+              <Route path="/master/unidades" element={<MasterSalons />} />
+              <Route path="/master/categorias" element={<MasterCategories />} />
+              <Route path="/master/planos" element={<MasterPlans />} />
+              <Route path="/master/assinaturas" element={<MasterSubscriptions />} />
+              <Route path="/master/pagamentos" element={<MasterPayments />} />
+              <Route path="/master/configuracoes" element={<MasterSettings />} />
+            </Route>
           </Route>
 
           {/* Fallback */}

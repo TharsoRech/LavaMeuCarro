@@ -20,7 +20,16 @@ export const logout = () => api.post('/auth/logout').then(r => r.data);
 export const changePassword = (data: any) => api.put('/auth/me/password', data).then(r => r.data);
 export const updateProfile = (data: any) => api.put('/auth/me', data).then(r => r.data);
 
-// ── Unidades ──────────────────────────────────────────────────────────────────
+// ── Unidades (Salons) ──────────────────────────────────────────────────────────
+
+export const salonsApi = {
+  mine: () => api.get('/unidades/mine').then(r => r.data),
+  myUnits: () => api.get('/unidades/my-units').then(r => r.data),
+  getById: (id: number) => api.get(`/unidades/${id}`).then(r => r.data),
+  update: (id: number, data: any) => api.put(`/unidades/${id}`, data).then(r => r.data),
+  create: (data: any) => api.post('/unidades', data).then(r => r.data),
+  delete: (id: number) => api.delete(`/unidades/${id}`).then(r => r.data),
+};
 
 export const getUnidades = (params?: any) => api.get('/unidades', { params }).then(r => r.data);
 export const getUnidadeById = (id: number) => api.get(`/unidades/${id}`).then(r => r.data);
@@ -52,14 +61,30 @@ export const getAvailability = (unidadeId: number, servicoId: number, date: stri
 export const getDashboardSummary = (unidadeId?: number) =>
   api.get(`/appointments/unidade/${unidadeId}/dashboard-summary`).then(r => r.data);
 
-// ── Servicos ──────────────────────────────────────────────────────────────────
+// ── Servicos (Services) ──────────────────────────────────────────────────────
+
+export const servicesApi = {
+  list: (salonId: number) => api.get(`/unidades/${salonId}/servicos`).then(r => r.data),
+  create: (salonId: number, data: any) => api.post(`/unidades/${salonId}/servicos`, data).then(r => r.data),
+  update: (salonId: number, id: number, data: any) => api.put(`/unidades/${salonId}/servicos/${id}`, data).then(r => r.data),
+  delete: (salonId: number, id: number) => api.delete(`/unidades/${salonId}/servicos/${id}`).then(r => r.data),
+};
 
 export const getServicos = (unidadeId?: number) => api.get(`/unidades/${unidadeId}/servicos`).then(r => r.data);
 export const createServico = (data: any) => api.post(`/unidades/${data.unidadeId}/servicos`, data).then(r => r.data);
 export const updateServico = (id: number, data: any) => api.put(`/unidades/${data.unidadeId}/servicos/${id}`, data).then(r => r.data);
 export const deleteServico = (id: number) => api.delete(`/unidades/0/servicos/${id}`).then(r => r.data);
 
-// ── Funcionarios ──────────────────────────────────────────────────────────────
+// ── Funcionarios (Professionals) ──────────────────────────────────────────────
+
+export const professionalsApi = {
+  bySalon: (salonId: number) => api.get(`/unidades/${salonId}/funcionarios`).then(r => r.data),
+  timeOptions: (salonId?: number) => api.get('/funcionarios/time-options', { params: salonId ? { salonId } : undefined }).then(r => r.data),
+  createByDoc: (salonId: number, data: any) => api.post(`/unidades/${salonId}/funcionarios`, data).then(r => r.data),
+  update: (id: number, data: any) => api.put(`/funcionarios/${id}`, data).then(r => r.data),
+  delete: (id: number) => api.delete(`/funcionarios/${id}`).then(r => r.data),
+  reviews: (professionalId: number) => api.get(`/funcionarios/${professionalId}/reviews`).then(r => r.data),
+};
 
 export const getFuncionarios = (unidadeId?: number) => api.get(`/unidades/${unidadeId}/funcionarios`).then(r => r.data);
 export const createFuncionario = (data: any) => api.post(`/unidades/${data.unidadeId}/funcionarios`, data).then(r => r.data);
@@ -78,6 +103,18 @@ export const deleteVeiculo = (id: number) => api.delete(`/veiculos/${id}`).then(
 export const getCategorias = () => api.get('/categorias').then(r => r.data);
 export const createCategoria = (data: any) => api.post('/categorias', data).then(r => r.data);
 export const deleteCategoria = (id: number) => api.delete(`/categorias/${id}`).then(r => r.data);
+
+// ── Reviews (Avaliacoes) ─────────────────────────────────────────────────────
+
+export const reviewsApi = {
+  bySalon: (salonId: number) => api.get(`/reviews/salon/${salonId}`).then(r => r.data),
+};
+
+// ── Subscriptions (Assinaturas) ──────────────────────────────────────────────
+
+export const subscriptionsApi = {
+  current: () => api.get('/subscriptions/current').then(r => r.data),
+};
 
 // ── Notificacoes ──────────────────────────────────────────────────────────────
 
