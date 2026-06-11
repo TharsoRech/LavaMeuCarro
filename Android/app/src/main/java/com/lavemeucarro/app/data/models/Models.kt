@@ -168,7 +168,43 @@ data class AgendamentoDto(
     val clientCity: String? = null,
     val clientId: String? = null,
     val clientTotalAppointments: Int? = null,
-    val clientNoShowTotal: Int? = null
+    val clientNoShowTotal: Int? = null,
+    val clientImage: String? = null,
+    val funcionarioImage: String? = null,
+    val unidadeLogoUrl: String? = null,
+    val unidadeWhatsApp: String? = null,
+    val unidadeAddress: String? = null,
+    val durationMinutes: Int? = null,
+    val veiculoModelo: String? = null
+)
+
+// Client appointment history
+data class ClientAppointmentHistoryDTO(
+    val atThisSalon: List<ClientAppointmentHistoryItemDTO> = emptyList()
+)
+
+data class ClientAppointmentHistoryItemDTO(
+    val id: Int = 0,
+    val scheduledAt: String? = null,
+    val status: String = "",
+    val serviceName: String? = null,
+    val professionalName: String? = null,
+    val salonName: String? = null,
+    val durationMinutes: Int = 0,
+    val totalPrice: Double = 0.0,
+    val cancellationReason: String? = null,
+    val notes: String? = null
+)
+
+// Professional reassignment option
+data class ProfessionalOptionDTO(
+    val professionalId: Int = 0,
+    val professionalName: String = "",
+    val professionalImage: String? = null
+)
+
+data class ReassignProfessionalRequest(
+    val novoFuncionarioId: Int
 )
 
 data class CreateAgendamentoRequest(

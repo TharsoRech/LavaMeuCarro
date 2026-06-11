@@ -191,4 +191,12 @@ public class AgendamentoRepository : IAgendamentoRepository
         using var db = _factory.CreateConnection();
         return await db.QuerySingleAsync<int>("SELECT COUNT(DISTINCT ServicoId) FROM Agendamentos WHERE UnidadeId IN @UnidadeIds", new { UnidadeIds = unidadeIds });
     }
+
+    public async Task<List<Agendamento>> GetByClientAndUnidadeAsync(int clientId, int unidadeId)
+    {
+        using var db = _factory.CreateConnection();
+        return (await db.QueryAsync<Agendamento>(
+            "SELECT * FROM Agendamentos WHERE ClientId = @ClientId AND UnidadeId = @UnidadeId ORDER BY ScheduledAt DESC",
+            new { ClientId = clientId, UnidadeId = unidadeId })).ToList();
+    }
 }

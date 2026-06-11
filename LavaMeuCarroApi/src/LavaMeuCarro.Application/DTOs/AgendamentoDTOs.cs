@@ -11,9 +11,27 @@ public record AgendamentoDTO(
     string? VistoriaFotos, string? VistoriaObservacoes, DateTime? VistoriaData,
     string? RetiradoPor, string? NomeAutorizado, string? DocumentoAutorizado,
     DateTime? RetiradaEm,
-    string? ClientName, string? ClientPhone,
-    string? FuncionarioName, string? ServicoName,
-    string? UnidadeName, string? VeiculoPlaca, string? VeiculoModelo
+    string? ClientName, string? ClientPhone, string? ClientCity, string? ClientImage,
+    string? FuncionarioName, string? FuncionarioImage,
+    string? ServicoName,
+    string? UnidadeName, string? UnidadeLogoUrl, string? UnidadeWhatsApp, string? UnidadeAddress,
+    string? VeiculoPlaca, string? VeiculoModelo
+);
+
+// Client appointment history DTOs
+public record ClientAppointmentHistoryDTO(
+    List<ClientAppointmentHistoryItemDTO> AtThisSalon
+);
+
+public record ClientAppointmentHistoryItemDTO(
+    int Id, string? ScheduledAt, string Status, string? ServiceName,
+    string? ProfessionalName, string? SalonName, int DurationMinutes,
+    decimal TotalPrice, string? CancellationReason, string? Notes
+);
+
+// Professional reassignment option DTO
+public record ProfessionalOptionDTO(
+    int ProfessionalId, string ProfessionalName, string? ProfessionalImage
 );
 
 public record CreateAgendamentoRequest(
@@ -33,3 +51,4 @@ public record VistoriaRequest(List<string> Fotos, string? Observacoes);
 public record RetiradaRequest(string RetiradoPor, string? NomeAutorizado, string? DocumentoAutorizado);
 public record AutorizadoRequest(string NomeCompleto, string Documento, string? Telefone);
 public record AutorizadoDTO(string NomeCompleto, string Documento, string? Telefone, DateTime AutorizadoEm);
+public record ReassignProfessionalRequest(int NovoFuncionarioId);

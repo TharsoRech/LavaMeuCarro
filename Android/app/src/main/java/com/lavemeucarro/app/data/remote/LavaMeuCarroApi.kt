@@ -105,6 +105,18 @@ interface LavaMeuCarroApi {
         @Query("reason") reason: String? = null
     )
 
+    @GET("api/appointments/{id}/client-history")
+    suspend fun getClientAppointmentHistory(@Path("id") id: String): ClientAppointmentHistoryDTO
+
+    @GET("api/appointments/{id}/eligible-professionals")
+    suspend fun getEligibleProfessionals(@Path("id") id: String): List<ProfessionalOptionDTO>
+
+    @PATCH("api/appointments/{id}/reassign")
+    suspend fun reassignProfessional(
+        @Path("id") id: String,
+        @Body request: ReassignProfessionalRequest
+    )
+
     // ==================== Servicos ====================
     @GET("api/servicos")
     suspend fun getServicos(@Query("unidadeId") unidadeId: String): List<ServicoDto>

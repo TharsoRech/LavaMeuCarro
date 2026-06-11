@@ -59,7 +59,8 @@ public class CreateAgendamentoHandler : IRequestHandler<CreateAgendamentoCommand
             a.TaxaDeslocamento, a.PrecoBruto, a.Desconto, a.PrecoAdicionais, a.Notes,
             a.CancellationReason, a.CreatedAt, a.VistoriaFotos, a.VistoriaObservacoes,
             a.VistoriaData, a.RetiradoPor, a.NomeAutorizado, a.DocumentoAutorizado,
-            a.RetiradaEm, null, null, null, servico?.Name, null, veiculo?.Placa, veiculo?.Modelo);
+            a.RetiradaEm, null, null, null, null, null, null, servico?.Name, null, null, null,
+            veiculo?.Placa, veiculo?.Modelo);
     }
 }
 
@@ -139,6 +140,40 @@ public class RetiradaHandler : IRequestHandler<RetiradaCommand, Unit>
         ag.DocumentoAutorizado = cmd.Request.DocumentoAutorizado;
         ag.RetiradaEm = DateTime.UtcNow;
         ag.Status = AgendamentoStatus.Finalizado;
+        ag.UpdatedAt = DateTime.UtcNow;
+        await _repo.UpdateAsync(ag);
+        return Unit.Value;
+    }
+}
+
+public class ReatribuirFuncionarioHandler : IRequestHandler<ReatribuirFuncionarioCommand, Unit>
+{
+    private readonly IAgendamentoRepository _repo;
+    private readonly IFuncionarioRepository _funcRepo;
+    public ReatribuirFuncionarioHandler(IAgendamentoRepository repo, IFuncionarioRepository funcRepo)
+    {
+        _repo = repo;
+        _funcRepo = funcRepo;
+    }
+
+    public async Task<Unit> Handle(ReatribuirFuncionarioCommand cmd, CancellationToken ct)
+    {
+        var ag = await _repo.GetByIdAsync(cmd.Id)
+            ?? throw new NotFoundException("Appointment not found");
+
+        if (ag.Status == AgendamentoStatus.Finalizado || ag.Status == AgendamentoStatus.Cancelado)
+            throw new BusinessException("Cannot reassign completed or cancelled appointment");
+
+        var novoFunc = await _funcRepo.GetByIdAsync(cmd.NovoFuncionarioId)
+            ?? throw new NotFoundException("Professional not found");
+
+        if (novoFunc.UnidadeId != ag.UnidadeId)
+            throw new BusinessException("Professional does not belong to the same unit");
+
+        ag.FuncionarioId = cmd.NovoFuncionarioId;
+        // Reset to pending so the unit can re-confirm
+        if (ag.Status == AgendamentoStatus.Confirmado)
+            ag.Status = AgendamentoStatus.Pendente;
         ag.UpdatedAt = DateTime.UtcNow;
         await _repo.UpdateAsync(ag);
         return Unit.Value;

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -20,14 +22,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.lavemeucarro.app.data.models.AgendamentoDto
+import com.lavemeucarro.app.data.models.ClientAppointmentHistoryDTO
+import com.lavemeucarro.app.data.models.ClientAppointmentHistoryItemDTO
+import com.lavemeucarro.app.data.models.ProfessionalOptionDTO
 import com.lavemeucarro.app.data.models.UnidadeDto
 import com.lavemeucarro.app.presentation.theme.AppColors
 import com.lavemeucarro.app.utils.DateFormatter
@@ -123,6 +133,7 @@ fun AppointmentsScreen(
         AppointmentDetailModal(
             appointment = selectedAppointment!!,
             isProfessional = isProfessional,
+            viewModel = viewModel,
             onDismiss = { showDetailModal = false },
             onUpdateStatus = { status ->
                 viewModel.updateStatus(selectedAppointment!!.id, status)
@@ -975,80 +986,693 @@ fun SummaryChip(label: String, value: String, color: androidx.compose.ui.graphic
     }
 }
 
+// ==================== FULL APPOINTMENT DETAIL MODAL ====================
+
 @Composable
 fun AppointmentDetailModal(
     appointment: AgendamentoDto,
     isProfessional: Boolean,
+    viewModel: AppointmentsViewModel,
     onDismiss: () -> Unit,
     onUpdateStatus: (String) -> Unit,
     onNavigateToUnit: () -> Unit
 ) {
-    AlertDialog(
+    val context = LocalContext.current
+    var isProcessing by remember { mutableStateOf(false) }
+    var showCancelInput by remember { mutableStateOf(false) }
+    var showHistoryOverlay by remember { mutableStateOf(false) }
+    var showReassignOverlay by remember { mutableStateOf(false) }
+    var alertConfig by remember { mutableStateOf<AlertConfig?>(null) }
+    var historyData by remember { mutableStateOf<ClientAppointmentHistoryDTO?>(null) }
+    var historyLoading by remember { mutableStateOf(false) }
+    var reassignOptions by remember { mutableStateOf<List<ProfessionalOptionDTO>>(emptyList()) }
+    var reassignLoading by remember { mutableStateOf(false) }
+    var selectedReassignId by remember { mutableStateOf<Int?>(null) }
+
+    // Permission logic
+    val canCancel = appointment.status == "Pendente" || appointment.status == "Confirmado"
+    val canConfirm = appointment.status == "Pendente" && isProfessional
+    val canComplete = appointment.status == "Confirmado" && isProfessional && AppointmentsViewModel.canBeMarkedAsCompleted(appointment)
+    val canNoShow = appointment.status == "Confirmado" && isProfessional && AppointmentsViewModel.canBeMarkedAsCompleted(appointment)
+    val canReassign = isProfessional && (appointment.status == "Pendente" || appointment.status == "Confirmado")
+
+    Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                if (isProfessional) appointment.clienteNome ?: "Cliente"
-                else appointment.servicoNome ?: "Serviço"
-            )
-        },
-        text = {
-            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                DetailRow("Serviço", appointment.servicoNome)
-                DetailRow("Unidade", appointment.unidadeNome)
-                DetailRow("Data/Hora", "${appointment.data} ${appointment.hora}")
-                DetailRow("Status", appointment.status)
-                DetailRow("Preço", appointment.totalPrice?.let { "R$ %.2f".format(it) } ?: appointment.preco?.let { "R$ %.2f".format(it) })
-                DetailRow("Funcionário", appointment.funcionarioNome)
-                DetailRow("Veículo", appointment.veiculoPlaca)
-                DetailRow("Observações", appointment.observacoes)
-
-                if (isProfessional) {
-                    DetailRow("Telefone Cliente", appointment.clientPhone)
-                    DetailRow("Cidade Cliente", appointment.clientCity)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-                TextButton(onClick = onNavigateToUnit) {
-                    Icon(Icons.Default.Store, null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Ver unidade")
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            // Header
+            Surface(tonalElevation = 2.dp) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Detalhes do Agendamento", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Fechar") }
                 }
             }
-        },
-        confirmButton = {
-            when (appointment.status) {
-                "Pendente" -> {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        TextButton(onClick = { onUpdateStatus("Cancelado") }) {
-                            Text("Cancelar", color = AppColors.StatusCancelled)
+
+            // Scrollable content
+            Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                // Ticket card
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column {
+                        // Unit info header
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().clickable(onClick = onNavigateToUnit),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ) {
+                            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                                // Unit logo placeholder
+                                Surface(
+                                    modifier = Modifier.size(48.dp),
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = AppColors.Primary.copy(alpha = 0.1f)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Store, null, tint = AppColors.Primary, modifier = Modifier.size(24.dp))
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            appointment.unidadeNome ?: "Unidade",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.weight(1f, fill = false)
+                                        )
+                                        Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(16.dp), tint = Color.Gray)
+                                    }
+                                    appointment.unidadeAddress?.let { addr ->
+                                        Text(addr, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+                            }
                         }
-                        Spacer(modifier = Modifier.weight(1f))
-                        Button(onClick = { onUpdateStatus("Confirmado") }) { Text("Confirmar") }
+
+                        // Dashed divider
+                        val dashColor = Color(0xFFE0E0E0)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .drawBehind {
+                                    val dashWidth = 8f; val gapWidth = 6f
+                                    var x = 0f
+                                    while (x < size.width) {
+                                        drawLine(dashColor, Offset(x, size.height / 2), Offset(minOf(x + dashWidth, size.width), size.height / 2), 2f)
+                                        x += dashWidth + gapWidth
+                                    }
+                                }
+                                .height(1.dp)
+                        ) { }
+
+                        // Detail section
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            IconDetailRow(Icons.Default.Spa, "Serviço", appointment.servicoNome)
+                            appointment.durationMinutes?.let { IconDetailRow(Icons.Default.Timer, "Duração", "$it min") }
+                            IconDetailRow(Icons.Default.CalendarToday, "Data e Horário", "${appointment.data ?: ""} às ${appointment.hora ?: ""}")
+                            IconDetailRow(Icons.Default.CheckCircle, "Status", appointment.status)
+                            appointment.observacoes?.let { IconDetailRow(Icons.Default.Notes, "Notas", it) }
+                            appointment.cancellationReason?.let { reason ->
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = AppColors.StatusCancelled.copy(alpha = 0.08f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text("Motivo do cancelamento", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.StatusCancelled)
+                                        Text(reason, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            }
+                            if (appointment.status == "NaoCompareceu") {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = Color(0xFFF3F4F6),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Text("Cliente não compareceu", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = AppColors.StatusNoShow)
+                                    }
+                                }
+                            }
+
+                            // Professional card
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0xFFF9FAFB),
+                                tonalElevation = 1.dp
+                            ) {
+                                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        modifier = Modifier.size(44.dp),
+                                        shape = CircleShape,
+                                        color = AppColors.Primary.copy(alpha = 0.1f)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.Person, null, tint = AppColors.Primary)
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("Profissional", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(
+                                            appointment.funcionarioNome ?: "Não informado",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Manager-only client info block
+                            if (isProfessional) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0xFFF0F7FF),
+                                    tonalElevation = 1.dp
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Surface(modifier = Modifier.size(40.dp), shape = CircleShape, color = AppColors.Primary.copy(alpha = 0.15f)) {
+                                                Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, null, tint = AppColors.Primary, modifier = Modifier.size(20.dp)) }
+                                            }
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(appointment.clienteNome ?: "Cliente", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                                appointment.clientPhone?.let { Text("📞 $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                                appointment.clientCity?.let { Text("📍 $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            }
+                                        }
+                                        appointment.clientTotalAppointments?.let { total ->
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
+                                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    Text("Total", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                    Text("$total", fontWeight = FontWeight.Bold, color = AppColors.Primary)
+                                                }
+                                                appointment.clientNoShowTotal?.let { noShow ->
+                                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                        Text("No-show", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                        Text("$noShow", fontWeight = FontWeight.Bold, color = AppColors.StatusNoShow)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        // View history button
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        OutlinedButton(
+                                            onClick = {
+                                                showHistoryOverlay = true
+                                                historyLoading = true
+                                                viewModel.getClientHistory(appointment.id) { data ->
+                                                    historyData = data
+                                                    historyLoading = false
+                                                }
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            contentPadding = PaddingValues(vertical = 6.dp)
+                                        ) {
+                                            if (historyLoading) {
+                                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Carregando histórico...", fontSize = 12.sp)
+                                            } else {
+                                                Icon(Icons.Default.History, null, modifier = Modifier.size(16.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Ver histórico", fontSize = 12.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Price section
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Valor do Serviço", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                val price = appointment.totalPrice ?: appointment.preco
+                                if (price != null) {
+                                    Text("R$ %.2f".format(price), fontWeight = FontWeight.Bold, color = AppColors.Primary, style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                        }
                     }
                 }
-                "Confirmado" -> {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        TextButton(onClick = { onUpdateStatus("Cancelado") }) {
-                            Text("Cancelar", color = AppColors.StatusCancelled)
+
+                // Action buttons
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    if (canComplete) {
+                        ActionButton("Marcar como Finalizado", Icons.Default.CheckCircle, AppColors.StatusCompleted, isProcessing) {
+                            alertConfig = AlertConfig("Confirmar", "Marcar este atendimento como finalizado?", false) {
+                                isProcessing = true
+                                onUpdateStatus("Finalizado")
+                            }
                         }
-                        Spacer(modifier = Modifier.weight(1f))
-                        Button(onClick = { onUpdateStatus("Finalizado") }) { Text("Finalizar") }
                     }
-                }
-                else -> {
-                    TextButton(onClick = onDismiss) { Text("Fechar") }
+                    if (canNoShow) {
+                        ActionButton("Marcar como Não Compareceu", Icons.Default.PersonRemove, AppColors.StatusNoShow, isProcessing) {
+                            alertConfig = AlertConfig("Confirmar", "Registrar ausência do cliente?", false) {
+                                isProcessing = true
+                                onUpdateStatus("NaoCompareceu")
+                            }
+                        }
+                    }
+                    if (canConfirm) {
+                        ActionButton("Confirmar Agendamento", Icons.Default.Check, AppColors.Success, isProcessing) {
+                            isProcessing = true
+                            onUpdateStatus("Confirmado")
+                        }
+                    }
+                    // WhatsApp contact
+                    val phone = if (isProfessional) appointment.clientPhone else appointment.unidadeWhatsApp
+                    if (!phone.isNullOrBlank()) {
+                        ActionButton(
+                            if (isProfessional) "Contatar Cliente" else "Contatar Unidade",
+                            Icons.Default.Chat,
+                            Color(0xFF25D366),
+                            false
+                        ) {
+                            try {
+                                val cleanNumber = phone.replace(Regex("[^0-9]"), "")
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/55$cleanNumber"))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {
+                                alertConfig = AlertConfig("Erro", "Não foi possível abrir o WhatsApp.", false) {}
+                            }
+                        }
+                    }
+                    // Reassign professional
+                    if (canReassign) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                showReassignOverlay = true
+                                reassignLoading = true
+                                selectedReassignId = null
+                                viewModel.getEligibleProfessionals(appointment.id) { options ->
+                                    reassignOptions = options.filter { it.professionalId.toString() != appointment.funcionarioId }
+                                    reassignLoading = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isProcessing && !reassignLoading,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.Primary)
+                        ) {
+                            if (reassignLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text("Trocar Profissional")
+                            }
+                        }
+                    }
+                    // Cancel
+                    if (canCancel) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { showCancelInput = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isProcessing,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.StatusCancelled)
+                        ) {
+                            Text("Cancelar Horário")
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
-    )
+
+        // ===== OVERLAYS =====
+
+        // Cancel reason modal
+        if (showCancelInput) {
+            CancelReasonModal(
+                onDismiss = { showCancelInput = false },
+                onConfirm = { reason ->
+                    showCancelInput = false
+                    isProcessing = true
+                    viewModel.cancelWithReason(appointment.id, reason) { success ->
+                        isProcessing = false
+                        if (success) onDismiss()
+                        else alertConfig = AlertConfig("Erro", "Falha ao cancelar agendamento.", true) {}
+                    }
+                }
+            )
+        }
+
+        // Client history overlay
+        if (showHistoryOverlay) {
+            ClientHistoryOverlay(
+                clientName = appointment.clienteNome ?: "Cliente",
+                unitName = appointment.unidadeNome,
+                isLoading = historyLoading,
+                history = historyData,
+                onDismiss = { showHistoryOverlay = false; historyData = null }
+            )
+        }
+
+        // Reassign professional overlay
+        if (showReassignOverlay) {
+            ReassignProfessionalOverlay(
+                isLoading = reassignLoading,
+                options = reassignOptions,
+                selectedId = selectedReassignId,
+                onSelect = { selectedReassignId = it },
+                onDismiss = { showReassignOverlay = false },
+                onConfirm = {
+                    if (selectedReassignId != null) {
+                        reassignLoading = true
+                        viewModel.reassignProfessional(appointment.id, selectedReassignId!!) { success ->
+                            reassignLoading = false
+                            if (success) {
+                                showReassignOverlay = false
+                                onDismiss()
+                            } else {
+                                alertConfig = AlertConfig("Erro", "Falha ao trocar profissional.", true) {}
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
+        // Custom alert dialog
+        alertConfig?.let { config ->
+            CustomAlertDialog(
+                title = config.title,
+                message = config.message,
+                isDestructive = config.isDestructive,
+                onConfirm = {
+                    alertConfig = null
+                    config.onConfirm()
+                },
+                onCancel = { alertConfig = null }
+            )
+        }
+    }
+}
+
+// Helper data class for alert config
+data class AlertConfig(
+    val title: String,
+    val message: String,
+    val isDestructive: Boolean = false,
+    val onConfirm: () -> Unit
+)
+
+// showAlert helper - creates AlertConfig and assigns to state
+
+@Composable
+fun ActionButton(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, isProcessing: Boolean, onClick: () -> Unit) {
+    Spacer(modifier = Modifier.height(8.dp))
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !isProcessing,
+        colors = ButtonDefaults.buttonColors(containerColor = color)
+    ) {
+        if (isProcessing) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
+        } else {
+            Icon(icon, null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text)
+        }
+    }
 }
 
 @Composable
-fun DetailRow(label: String, value: String?) {
-    if (value != null) {
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-            Text("$label: ", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+fun IconDetailRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String?) {
+    if (value.isNullOrBlank()) return
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Surface(modifier = Modifier.size(28.dp), shape = RoundedCornerShape(6.dp), color = AppColors.Primary.copy(alpha = 0.1f)) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, modifier = Modifier.size(14.dp), tint = AppColors.Primary)
+            }
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(value, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+// ==================== CANCEL REASON MODAL ====================
+@Composable
+fun CancelReasonModal(onDismiss: () -> Unit, onConfirm: (String?) -> Unit) {
+    var reason by remember { mutableStateOf("") }
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(16.dp), tonalElevation = 4.dp) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(modifier = Modifier.size(40.dp), shape = CircleShape, color = AppColors.StatusCancelled.copy(alpha = 0.1f)) {
+                        Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Close, null, tint = AppColors.StatusCancelled) }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Cancelar Agendamento", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Tem certeza? Informe o motivo do cancelamento (opcional).", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = { reason = it },
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    placeholder = { Text("Motivo do cancelamento...", fontSize = 13.sp) },
+                    maxLines = 4
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text("Voltar") }
+                    Button(
+                        onClick = { onConfirm(reason.ifBlank { null }) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.StatusCancelled)
+                    ) { Text("Cancelar Horário") }
+                }
+            }
+        }
+    }
+}
+
+// ==================== CLIENT HISTORY OVERLAY ====================
+@Composable
+fun ClientHistoryOverlay(
+    clientName: String,
+    unitName: String?,
+    isLoading: Boolean,
+    history: ClientAppointmentHistoryDTO?,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Histórico — $clientName", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Fechar") }
+                }
+                Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+                    if (isLoading) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                    } else if (history == null) {
+                        Text("Erro ao carregar histórico.", color = AppColors.StatusCancelled)
+                    } else {
+                        Text("Na unidade (${unitName ?: "N/A"})", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color(0xFF374151))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (history.atThisSalon.isEmpty()) {
+                            Text("Nenhum registro.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF9CA3AF))
+                        } else {
+                            history.atThisSalon.forEach { item ->
+                                HistoryItemCard(item)
+                                Spacer(modifier = Modifier.height(6.dp))
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun HistoryItemCard(item: ClientAppointmentHistoryItemDTO) {
+    val statusColor = when (item.status) {
+        "Confirmado" -> AppColors.StatusConfirmed
+        "Pendente" -> AppColors.StatusPending
+        "Finalizado" -> AppColors.StatusCompleted
+        "Cancelado" -> AppColors.StatusCancelled
+        "NaoCompareceu" -> AppColors.StatusNoShow
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFAFAFA))
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text(item.scheduledAt ?: "", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Text(item.status, style = MaterialTheme.typography.labelSmall, color = statusColor, fontWeight = FontWeight.SemiBold)
+            }
+            Text(
+                "${item.serviceName ?: "Não informado"} · ${item.professionalName ?: "Não informado"}",
+                style = MaterialTheme.typography.bodySmall, color = Color(0xFF4B5563)
+            )
+            Text("${item.durationMinutes} min · R$ %.2f".format(item.totalPrice), style = MaterialTheme.typography.labelSmall, color = Color(0xFF6B7280))
+            item.cancellationReason?.let {
+                Text("Cancelamento: $it", style = MaterialTheme.typography.labelSmall, color = AppColors.StatusCancelled)
+            }
+            item.notes?.let {
+                Text("Obs.: $it", style = MaterialTheme.typography.labelSmall, color = Color(0xFF6B7280))
+            }
+        }
+    }
+}
+
+// ==================== REASSIGN PROFESSIONAL OVERLAY ====================
+@Composable
+fun ReassignProfessionalOverlay(
+    isLoading: Boolean,
+    options: List<ProfessionalOptionDTO>,
+    selectedId: Int?,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Trocar profissional", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Profissionais disponíveis nesta unidade.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(12.dp))
+                if (isLoading) {
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                } else {
+                    Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                        if (options.isEmpty()) {
+                            Text("Nenhum profissional disponível.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF92400E))
+                        } else {
+                            options.forEach { opt ->
+                                val isSelected = selectedId == opt.professionalId
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
+                                        .clickable { onSelect(opt.professionalId) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (isSelected) AppColors.Primary.copy(alpha = 0.08f) else Color.White,
+                                    tonalElevation = if (isSelected) 2.dp else 0.dp,
+                                    border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, AppColors.Primary) else null
+                                ) {
+                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(modifier = Modifier.size(38.dp), shape = CircleShape, color = AppColors.Primary.copy(alpha = 0.1f)) {
+                                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, null, tint = AppColors.Primary) }
+                                        }
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text(opt.professionalName, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                        if (isSelected) Icon(Icons.Default.CheckCircle, null, tint = AppColors.Primary, modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text("Cancelar") }
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f),
+                        enabled = selectedId != null && !isLoading
+                    ) { Text("Confirmar troca") }
+                }
+            }
+        }
+    }
+}
+
+// ==================== CUSTOM ALERT DIALOG ====================
+@Composable
+fun CustomAlertDialog(
+    title: String,
+    message: String,
+    isDestructive: Boolean = false,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Dialog(onDismissRequest = onCancel) {
+        Surface(shape = RoundedCornerShape(16.dp), tonalElevation = 4.dp) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Surface(
+                    modifier = Modifier.size(56.dp),
+                    shape = CircleShape,
+                    color = if (isDestructive) Color(0xFFFFF1F0) else Color(0xFFF0F7FF)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            if (isDestructive) Icons.Default.Warning else Icons.Default.Info,
+                            null,
+                            tint = if (isDestructive) AppColors.StatusCancelled else AppColors.Primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Voltar") }
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = if (isDestructive) AppColors.StatusCancelled else AppColors.Primary)
+                    ) { Text("Confirmar") }
+                }
+            }
         }
     }
 }

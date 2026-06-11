@@ -3,7 +3,10 @@ package com.lavemeucarro.app.presentation.screens.appointments
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lavemeucarro.app.data.models.AgendamentoDto
+import com.lavemeucarro.app.data.models.ClientAppointmentHistoryDTO
 import com.lavemeucarro.app.data.models.DashboardSummaryDTO
+import com.lavemeucarro.app.data.models.ProfessionalOptionDTO
+import com.lavemeucarro.app.data.models.ReassignProfessionalRequest
 import com.lavemeucarro.app.data.models.UnidadeDto
 import com.lavemeucarro.app.data.models.UpdateStatusRequest
 import com.lavemeucarro.app.data.remote.LavaMeuCarroApi
@@ -186,6 +189,52 @@ class AppointmentsViewModel @Inject constructor(
                     _readyToFinalizeDaysMap.value = readyMap.toMap()
                 }
             } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun cancelWithReason(appointmentId: String, reason: String?, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                api.cancelAgendamento(appointmentId, reason)
+                refreshCurrentView()
+                onResult(true)
+            } catch (_: Exception) {
+                onResult(false)
+            }
+        }
+    }
+
+    fun getClientHistory(appointmentId: String, onResult: (ClientAppointmentHistoryDTO?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val history = api.getClientAppointmentHistory(appointmentId)
+                onResult(history)
+            } catch (_: Exception) {
+                onResult(null)
+            }
+        }
+    }
+
+    fun getEligibleProfessionals(appointmentId: String, onResult: (List<ProfessionalOptionDTO>) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val options = api.getEligibleProfessionals(appointmentId)
+                onResult(options)
+            } catch (_: Exception) {
+                onResult(emptyList())
+            }
+        }
+    }
+
+    fun reassignProfessional(appointmentId: String, newProfessionalId: Int, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                api.reassignProfessional(appointmentId, ReassignProfessionalRequest(newProfessionalId))
+                refreshCurrentView()
+                onResult(true)
+            } catch (_: Exception) {
+                onResult(false)
             }
         }
     }

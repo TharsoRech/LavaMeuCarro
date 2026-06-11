@@ -63,6 +63,27 @@ public class AgendamentosController : ControllerBase
         return Ok();
     }
 
+    [HttpGet("{id}/client-history")]
+    [Authorize]
+    public async Task<ActionResult<ClientAppointmentHistoryDTO>> GetClientHistory(int id)
+    {
+        var appt = await _mediator.Send(new GetAgendamentoByIdQuery(id, UserId));
+        return Ok(await _mediator.Send(new GetClientAppointmentHistoryQuery(appt.ClientId, appt.UnidadeId, UserId)));
+    }
+
+    [HttpGet("{id}/eligible-professionals")]
+    [Authorize]
+    public async Task<ActionResult<List<ProfessionalOptionDTO>>> GetEligibleProfessionals(int id)
+        => Ok(await _mediator.Send(new GetEligibleProfessionalsQuery(id, UserId)));
+
+    [HttpPatch("{id}/reassign")]
+    [Authorize]
+    public async Task<ActionResult> ReassignProfessional(int id, [FromBody] ReassignProfessionalRequest request)
+    {
+        await _mediator.Send(new ReatribuirFuncionarioCommand(id, UserId, request.NovoFuncionarioId));
+        return Ok();
+    }
+
     [HttpPost("{id}/vistoria")]
     [Authorize]
     public async Task<ActionResult> Vistoria(int id, [FromBody] VistoriaRequest request)

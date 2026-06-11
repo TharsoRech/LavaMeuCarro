@@ -65,8 +65,12 @@ public class GetMyAgendamentosHandler : IRequestHandler<GetMyAgendamentosQuery, 
         veiculos.TryGetValue(a.VeiculoId, out var veiculo);
 
         string? funcName = null;
+        string? funcImage = null;
         if (func != null && funcUsers.TryGetValue(func.UserId, out var funcUser))
+        {
             funcName = funcUser.Name;
+            funcImage = funcUser.Base64Image;
+        }
 
         return new AgendamentoDTO(a.Id, a.ClientId, a.FuncionarioId, a.ServicoId, a.UnidadeId,
             a.VeiculoId, a.ScheduledAt, a.DurationMinutes, a.TotalPrice, a.Status, a.Modalidade,
@@ -74,7 +78,10 @@ public class GetMyAgendamentosHandler : IRequestHandler<GetMyAgendamentosQuery, 
             a.CancellationReason, a.CreatedAt, a.VistoriaFotos, a.VistoriaObservacoes,
             a.VistoriaData, a.RetiradoPor, a.NomeAutorizado, a.DocumentoAutorizado,
             a.RetiradaEm,
-            client?.Name, client?.Phone, funcName, servico?.Name, unidade?.Name,
+            client?.Name, client?.Phone, null, client?.Base64Image,
+            funcName, funcImage,
+            servico?.Name,
+            unidade?.Name, unidade?.LogoUrl, unidade?.WhatsApp, unidade?.Address,
             veiculo?.Placa, veiculo?.Modelo);
     }
 }
@@ -229,5 +236,85 @@ public class GetDashboardSummaryHandler : IRequestHandler<GetDashboardSummaryQue
         var faturamentoHoje = await _repo.SumByUnidadeAsync(cmd.UnidadeId, today, today.AddDays(1));
 
         return new DashboardSummaryDTO(totalToday, confirmados, pendentes, finalizadosMes, faturamentoMes, finalizadosHoje, faturamentoHoje);
+    }
+}
+
+public class GetClientAppointmentHistoryHandler : IRequestHandler<GetClientAppointmentHistoryQuery, ClientAppointmentHistoryDTO>
+{
+    private readonly IAgendamentoRepository _repo;
+    private readonly IServicoRepository _servicoRepo;
+    private readonly IFuncionarioRepository _funcionarioRepo;
+    private readonly IUserRepository _userRepo;
+    private readonly IUnidadeRepository _unidadeRepo;
+
+    public GetClientAppointmentHistoryHandler(IAgendamentoRepository repo, IServicoRepository servicoRepo,
+        IFuncionarioRepository funcionarioRepo, IUserRepository userRepo, IUnidadeRepository unidadeRepo)
+    {
+        _repo = repo; _servicoRepo = servicoRepo; _funcionarioRepo = funcionarioRepo;
+        _userRepo = userRepo; _unidadeRepo = unidadeRepo;
+    }
+
+    public async Task<ClientAppointmentHistoryDTO> Handle(GetClientAppointmentHistoryQuery cmd, CancellationToken ct)
+    {
+        var appointments = await _repo.GetByClientAndUnidadeAsync(cmd.ClientId, cmd.UnidadeId);
+        if (appointments.Count == 0)
+            return new ClientAppointmentHistoryDTO(new List<ClientAppointmentHistoryItemDTO>());
+
+        var servicoIds = appointments.Select(a => a.ServicoId).Distinct().ToList();
+        var funcionarioIds = appointments.Select(a => a.FuncionarioId).Distinct().ToList();
+
+        var servicos = (await _servicoRepo.GetByIdsAsync(servicoIds)).ToDictionary(s => s.Id);
+        var funcionarios = (await _funcionarioRepo.GetByIdsAsync(funcionarioIds)).ToDictionary(f => f.Id);
+        var funcUserIds = funcionarios.Values.Select(f => f.UserId).Distinct().ToList();
+        var funcUsers = funcUserIds.Count > 0
+            ? (await _userRepo.GetByIdsAsync(funcUserIds)).ToDictionary(u => u.Id)
+            : new Dictionary<int, User>();
+
+        var items = appointments.Select(a =>
+        {
+            servicos.TryGetValue(a.ServicoId, out var servico);
+            funcionarios.TryGetValue(a.FuncionarioId, out var func);
+            string? funcName = null;
+            if (func != null && funcUsers.TryGetValue(func.UserId, out var fu)) funcName = fu.Name;
+            return new ClientAppointmentHistoryItemDTO(
+                a.Id, a.ScheduledAt.ToString("yyyy-MM-dd HH:mm"), a.Status.ToString(),
+                servico?.Name, funcName, null, a.DurationMinutes, a.TotalPrice,
+                a.CancellationReason, a.Notes);
+        }).ToList();
+
+        return new ClientAppointmentHistoryDTO(items);
+    }
+}
+
+public class GetEligibleProfessionalsHandler : IRequestHandler<GetEligibleProfessionalsQuery, List<ProfessionalOptionDTO>>
+{
+    private readonly IAgendamentoRepository _repo;
+    private readonly IFuncionarioRepository _funcionarioRepo;
+    private readonly IUserRepository _userRepo;
+
+    public GetEligibleProfessionalsHandler(IAgendamentoRepository repo, IFuncionarioRepository funcionarioRepo, IUserRepository userRepo)
+    {
+        _repo = repo; _funcionarioRepo = funcionarioRepo; _userRepo = userRepo;
+    }
+
+    public async Task<List<ProfessionalOptionDTO>> Handle(GetEligibleProfessionalsQuery cmd, CancellationToken ct)
+    {
+        var ag = await _repo.GetByIdAsync(cmd.AgendamentoId)
+            ?? throw new Domain.Exceptions.NotFoundException("Appointment not found");
+
+        // Get all active professionals at the same unit
+        var funcionarios = await _funcionarioRepo.GetByUnidadeAsync(ag.UnidadeId);
+        var activeFuncs = funcionarios.Where(f => f.Active).ToList();
+
+        if (activeFuncs.Count == 0) return new List<ProfessionalOptionDTO>();
+
+        var userIds = activeFuncs.Select(f => f.UserId).ToList();
+        var users = (await _userRepo.GetByIdsAsync(userIds)).ToDictionary(u => u.Id);
+
+        return activeFuncs.Select(f =>
+        {
+            users.TryGetValue(f.UserId, out var user);
+            return new ProfessionalOptionDTO(f.Id, user?.Name ?? "Profissional", user?.Base64Image);
+        }).ToList();
     }
 }

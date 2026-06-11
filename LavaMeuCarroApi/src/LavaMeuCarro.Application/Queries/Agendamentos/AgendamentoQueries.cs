@@ -10,3 +10,5 @@ public record GetUnidadeAgendamentosQuery(int UnidadeId, DateTime? Date, int? Fu
 public record GetPagedAgendamentosQuery(int UnidadeId, int Page, int PageSize, string? Search, AgendamentoStatus? Status) : IRequest<PagedResult<AgendamentoDTO>>;
 public record GetDashboardSummaryQuery(int UnidadeId) : IRequest<DashboardSummaryDTO>;
 public record GetAgendamentosByStatusQuery(AgendamentoStatus Status, int UserId) : IRequest<List<AgendamentoDTO>>;
+public record GetClientAppointmentHistoryQuery(int ClientId, int UnidadeId, int UserId) : IRequest<ClientAppointmentHistoryDTO>;
+public record GetEligibleProfessionalsQuery(int AgendamentoId, int UserId) : IRequest<List<ProfessionalOptionDTO>>;
