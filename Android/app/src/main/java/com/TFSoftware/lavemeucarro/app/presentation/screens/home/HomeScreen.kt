@@ -1,5 +1,11 @@
 package com.TFSoftware.lavemeucarro.app.presentation.screens.home
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Geocoder
+import android.location.LocationManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -14,16 +20,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.TFSoftware.lavemeucarro.app.data.models.*
 import com.TFSoftware.lavemeucarro.app.data.remote.ViaCepResponse
 import com.TFSoftware.lavemeucarro.app.managers.AuthManager
 import com.TFSoftware.lavemeucarro.app.presentation.components.AppointmentDetailModal
 import com.TFSoftware.lavemeucarro.app.presentation.theme.AppColors
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +64,45 @@ fun HomeScreen(
     val isLocationLoading by viewModel.isLocationLoading.collectAsState()
     var showLocationModal by remember { mutableStateOf(false) }
     var cepInput by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val locationManager = context.getSystemService(LocationManager::class.java)
+
+    // GPS location launcher
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                     permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (granted) {
+            try {
+                val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                    ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                
+                if (location != null) {
+                    val lat = location.latitude
+                    val lng = location.longitude
+                    
+                    // Reverse geocode to get city and state
+                    val geocoder = Geocoder(context)
+                    val addresses = geocoder.getFromLocation(lat, lng, 1)
+                    
+                    if (!addresses.isNullOrEmpty()) {
+                        val address = addresses[0]
+                        val city = address.locality ?: address.subAdminArea ?: ""
+                        val state = address.adminArea ?: ""
+                        
+                        if (city.isNotEmpty() && state.isNotEmpty()) {
+                            viewModel.setLocationFromGps(city, state, lat, lng)
+                            showLocationModal = false
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     LaunchedEffect(Unit) { viewModel.loadData() }
 
@@ -113,7 +161,49 @@ fun HomeScreen(
             isLoading = isLocationLoading,
             onDismiss = { showLocationModal = false },
             onSearchCep = { viewModel.lookupCep(cepInput) },
-            cepResult = viewModel.cepResult.collectAsState().value
+            cepResult = viewModel.cepResult.collectAsState().value,
+            onUseGps = {
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+                
+                if (hasPermission) {
+                    try {
+                        val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                            ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                        
+                        if (location != null) {
+                            val lat = location.latitude
+                            val lng = location.longitude
+                            
+                            // Reverse geocode to get city and state
+                            val geocoder = Geocoder(context)
+                            val addresses = geocoder.getFromLocation(lat, lng, 1)
+                            
+                            if (!addresses.isNullOrEmpty()) {
+                                val address = addresses[0]
+                                val city = address.locality ?: address.subAdminArea ?: ""
+                                val state = address.adminArea ?: ""
+                                
+                                if (city.isNotEmpty() && state.isNotEmpty()) {
+                                    viewModel.setLocationFromGps(city, state, lat, lng)
+                                    showLocationModal = false
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                } else {
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                        )
+                    )
+                }
+            }
         )
     }
 
@@ -755,14 +845,30 @@ fun LocationModal(
     isLoading: Boolean,
     onDismiss: () -> Unit,
     onSearchCep: () -> Unit,
-    cepResult: ViaCepResponse?
+    cepResult: ViaCepResponse?,
+    onUseGps: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Definir Localização") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Digite seu CEP para encontrar unidades na sua região", style = MaterialTheme.typography.bodyMedium)
+                Text("Digite seu CEP ou use GPS para encontrar unidades na sua região", style = MaterialTheme.typography.bodyMedium)
+
+                // GPS Button
+                Button(
+                    onClick = onUseGps,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Icon(Icons.Default.MyLocation, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Usar minha localização atual")
+                }
+
+                Divider()
+
+                Text("Ou busque por CEP:", style = MaterialTheme.typography.bodySmall)
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -10,6 +10,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.TFSoftware.lavemeucarro.app.presentation.navigation.AppNavigation
 import com.TFSoftware.lavemeucarro.app.presentation.theme.LavaMeuCarroTheme
+import com.TFSoftware.lavemeucarro.app.utils.PermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -17,6 +18,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Request runtime permissions
+        PermissionHelper.requestNotificationPermission(this)
+        PermissionHelper.requestLocationPermission(this)
+
         setContent {
             LavaMeuCarroTheme {
                 Surface(

@@ -1,5 +1,9 @@
 package com.TFSoftware.lavemeucarro.app.presentation.screens.home
 
+import android.content.Context
+import android.location.Geocoder
+import android.location.Location
+import android.location.LocationManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.TFSoftware.lavemeucarro.app.data.models.AgendamentoDto
@@ -17,6 +21,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -55,7 +60,15 @@ class HomeViewModel @Inject constructor(
                 val promotionsResult = api.getPromotions()
                 _unidades.value = unidadesResult
                 _categorias.value = categoriasResult
-                _promotions.value = promotionsResult
+                
+                // Filter promotions by city if location is set
+                val city = _userCity.value
+                _promotions.value = if (city != null) {
+                    promotionsResult.filter { it.unidadeCity.equals(city, ignoreCase = true) }
+                } else {
+                    promotionsResult
+                }
+                
                 notificationManager.refreshNotifications()
             } catch (_: Exception) {
             } finally {
@@ -68,14 +81,34 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
+                val lat = _userLatitude.value
+                val lng = _userLongitude.value
+                val city = _userCity.value
                 when (filter) {
-                    "Unidade" -> _unidades.value = api.getUnidades(search = query.ifBlank { null })
+                    "Unidade" -> _unidades.value = api.getUnidades(
+                        search = query.ifBlank { null },
+                        city = city,
+                        lat = lat,
+                        lng = lng,
+                        radius = if (lat != null && lng != null) 50 else null
+                    )
                     "Serviço" -> {
-                        // Search units that might have this service
-                        _unidades.value = api.getUnidades(search = query.ifBlank { null })
+                        _unidades.value = api.getUnidades(
+                            search = query.ifBlank { null },
+                            city = city,
+                            lat = lat,
+                            lng = lng,
+                            radius = if (lat != null && lng != null) 50 else null
+                        )
                     }
                     "Profissional" -> {
-                        _unidades.value = api.getUnidades(search = query.ifBlank { null })
+                        _unidades.value = api.getUnidades(
+                            search = query.ifBlank { null },
+                            city = city,
+                            lat = lat,
+                            lng = lng,
+                            radius = if (lat != null && lng != null) 50 else null
+                        )
                     }
                 }
             } catch (_: Exception) {
@@ -118,6 +151,10 @@ class HomeViewModel @Inject constructor(
     val userCity: StateFlow<String?> = _userCity
     private val _userState = MutableStateFlow<String?>(null)
     val userState: StateFlow<String?> = _userState
+    private val _userLatitude = MutableStateFlow<Double?>(null)
+    val userLatitude: StateFlow<Double?> = _userLatitude
+    private val _userLongitude = MutableStateFlow<Double?>(null)
+    val userLongitude: StateFlow<Double?> = _userLongitude
     private val _cepResult = MutableStateFlow<ViaCepResponse?>(null)
     val cepResult: StateFlow<ViaCepResponse?> = _cepResult
     private val _isLocationLoading = MutableStateFlow(false)
@@ -135,6 +172,12 @@ class HomeViewModel @Inject constructor(
                     // Reload unidades filtered by city
                     val unidadesResult = api.getUnidades(city = city)
                     _unidades.value = unidadesResult
+                    
+                    // Reload and filter promotions by city
+                    val promotionsResult = api.getPromotions()
+                    _promotions.value = promotionsResult.filter { 
+                        it.unidadeCity.equals(city, ignoreCase = true) 
+                    }
                 }
             } catch (_: Exception) {
                 _cepResult.value = null
@@ -144,14 +187,27 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun setLocationFromGps(city: String, state: String) {
+    fun setLocationFromGps(city: String, state: String, lat: Double? = null, lng: Double? = null) {
         _userCity.value = city
         _userState.value = state
+        if (lat != null) _userLatitude.value = lat
+        if (lng != null) _userLongitude.value = lng
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val unidadesResult = api.getUnidades(city = city)
+                val unidadesResult = api.getUnidades(
+                    city = city,
+                    lat = lat,
+                    lng = lng,
+                    radius = if (lat != null && lng != null) 50 else null
+                )
                 _unidades.value = unidadesResult
+                
+                // Reload and filter promotions by city
+                val promotionsResult = api.getPromotions()
+                _promotions.value = promotionsResult.filter { 
+                    it.unidadeCity.equals(city, ignoreCase = true) 
+                }
             } catch (_: Exception) {}
             _isLoading.value = false
         }
@@ -160,6 +216,8 @@ class HomeViewModel @Inject constructor(
     fun clearLocationFilter() {
         _userCity.value = null
         _userState.value = null
+        _userLatitude.value = null
+        _userLongitude.value = null
         _cepResult.value = null
         loadData()
     }
