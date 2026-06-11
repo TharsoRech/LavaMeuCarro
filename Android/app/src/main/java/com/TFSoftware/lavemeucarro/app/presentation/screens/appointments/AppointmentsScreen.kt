@@ -87,6 +87,30 @@ fun AppointmentsScreen(
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedAppointmentIds by remember { mutableStateOf<Set<String>>(emptySet()) }
 
+    // Per-item loading states
+    var processingAppointmentIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    
+    // Helper functions for per-item loading
+    val onQuickConfirmWithLoading: (String) -> Unit = { appointmentId ->
+        processingAppointmentIds += appointmentId
+        onQuickConfirm(appointmentId)
+        // Remove from processing after delay (API call will trigger refresh)
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+            kotlinx.coroutines.delay(2000)
+            processingAppointmentIds -= appointmentId
+        }
+    }
+    
+    val onQuickFinalizeWithLoading: (String) -> Unit = { appointmentId ->
+        processingAppointmentIds += appointmentId
+        onQuickFinalize(appointmentId)
+        // Remove from processing after delay
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+            kotlinx.coroutines.delay(2000)
+            processingAppointmentIds -= appointmentId
+        }
+    }
+
     // Date picker modal
     var showDatePickerModal by remember { mutableStateOf(false) }
 
@@ -730,28 +754,46 @@ fun TimelineRow(
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Button(
-                                            onClick = { onQuickConfirm(ag.id) },
+                                            onClick = { onQuickConfirmWithLoading(ag.id) },
                                             modifier = Modifier.height(28.dp),
                                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.Success)
+                                            colors = ButtonDefaults.buttonColors(containerColor = AppColors.Success),
+                                            enabled = !processingAppointmentIds.contains(ag.id)
                                         ) {
-                                            Icon(Icons.Default.Check, null, modifier = Modifier.size(12.dp))
-                                            Spacer(modifier = Modifier.width(2.dp))
-                                            Text("Confirmar", fontSize = 10.sp)
+                                            if (processingAppointmentIds.contains(ag.id)) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(12.dp),
+                                                    strokeWidth = 2.dp,
+                                                    color = Color.White
+                                                )
+                                            } else {
+                                                Icon(Icons.Default.Check, null, modifier = Modifier.size(12.dp))
+                                                Spacer(modifier = Modifier.width(2.dp))
+                                                Text("Confirmar", fontSize = 10.sp)
+                                            }
                                         }
                                     }
                                 }
                                 if (isReadyToFinalize) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Button(
-                                        onClick = { onQuickFinalize(ag.id) },
+                                        onClick = { onQuickFinalizeWithLoading(ag.id) },
                                         modifier = Modifier.height(28.dp),
                                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.Primary)
+                                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.Primary),
+                                        enabled = !processingAppointmentIds.contains(ag.id)
                                     ) {
-                                        Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(12.dp))
-                                        Spacer(modifier = Modifier.width(2.dp))
-                                        Text("Finalizar", fontSize = 10.sp)
+                                        if (processingAppointmentIds.contains(ag.id)) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(12.dp),
+                                                strokeWidth = 2.dp,
+                                                color = Color.White
+                                            )
+                                        } else {
+                                            Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(12.dp))
+                                            Spacer(modifier = Modifier.width(2.dp))
+                                            Text("Finalizar", fontSize = 10.sp)
+                                        }
                                     }
                                 }
                             }
@@ -1734,6 +1776,187 @@ fun CustomAlertDialog(
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = if (isDestructive) AppColors.StatusCancelled else AppColors.Primary)
                     ) { Text("Confirmar") }
+                }
+            }
+        }
+    }
+}
+
+// ==================== PROFESSIONAL DETAIL MODAL ====================
+
+@Composable
+fun ProfessionalDetailModal(
+    professionalId: Int,
+    professionalName: String,
+    onDismiss: () -> Unit,
+    viewModel: AppointmentsViewModel = hiltViewModel()
+) {
+    val context = LocalContext.current
+    var professionalAppointments by remember { mutableStateOf<List<AgendamentoDto>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(professionalId) {
+        try {
+            // Load appointments for this professional
+            val allAppointments = viewModel.appointments.value
+            professionalAppointments = allAppointments.filter { it.funcionarioId == professionalId }
+        } catch (e: Exception) {
+            NewRelicLogger.reportErrorWithMessage(
+                e,
+                "ProfessionalDetailModal.loadProfessionalAppointments",
+                "Failed to load professional appointments",
+                mapOf("professionalId" to professionalId)
+            )
+        } finally {
+            isLoading = false
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            // Header
+            Surface(tonalElevation = 2.dp) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Profissional", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Fechar") }
+                }
+            }
+
+            // Content
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                    // Professional info
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    modifier = Modifier.size(48.dp),
+                                    shape = CircleShape,
+                                    color = AppColors.Primary.copy(alpha = 0.1f)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Default.Person,
+                                            null,
+                                            tint = AppColors.Primary,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        professionalName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "${professionalAppointments.size} agendamento(s)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Recent appointments
+                    Text(
+                        "Agendamentos Recentes",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (professionalAppointments.isEmpty()) {
+                        Text(
+                            "Nenhum agendamento encontrado",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(professionalAppointments.take(10)) { appointment ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Status indicator
+                                        val statusColor = when (appointment.status) {
+                                            "Pendente" -> AppColors.StatusPending
+                                            "Confirmado" -> AppColors.StatusConfirmed
+                                            "Finalizado" -> AppColors.Success
+                                            "Cancelado" -> AppColors.StatusCancelled
+                                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .background(statusColor)
+                                        )
+
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                appointment.clienteNome ?: "Cliente",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                appointment.servicoNome ?: "Serviço",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        Surface(
+                                            color = statusColor.copy(alpha = 0.1f),
+                                            shape = MaterialTheme.shapes.extraSmall
+                                        ) {
+                                            Text(
+                                                appointment.status,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = statusColor,
+                                                fontSize = 10.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
