@@ -1,0 +1,6 @@
+using MediatR;
+
+namespace LavaMeuCarro.Application.Queries.Reviews;
+
+public record CanReviewProfessionalQuery(int UserId, int ProfessionalId) : IRequest<bool>;
+

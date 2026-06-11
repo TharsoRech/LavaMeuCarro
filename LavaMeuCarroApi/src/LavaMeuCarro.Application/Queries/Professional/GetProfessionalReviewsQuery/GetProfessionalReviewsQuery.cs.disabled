@@ -1,0 +1,7 @@
+using LavaMeuCarro.Application.DTOs;
+using MediatR;
+
+namespace LavaMeuCarro.Application.Queries.Professionals.GetProfessionalReviewsQuery;
+
+public record GetProfessionalReviewsQuery(int ProfessionalId) : IRequest<IReadOnlyList<ReviewDto>>;
+

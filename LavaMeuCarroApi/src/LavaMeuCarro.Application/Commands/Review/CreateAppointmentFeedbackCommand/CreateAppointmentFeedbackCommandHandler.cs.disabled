@@ -1,0 +1,104 @@
+using LavaMeuCarro.Application.DTOs;
+using LavaMeuCarro.Application.Interfaces;
+using LavaMeuCarro.Domain.Entities;
+using LavaMeuCarro.Domain.Enums;
+using MediatR;
+
+namespace LavaMeuCarro.Application.Commands.Review.CreateAppointmentFeedbackCommand;
+
+public class CreateAppointmentFeedbackCommandHandler(
+    IAppointmentRepository appointmentRepository,
+    IReviewRepository reviewRepository,
+    IUserRepository userRepository)
+    : IRequestHandler<CreateAppointmentFeedbackCommand, CreateAppointmentFeedbackResult>
+{
+    public async Task<CreateAppointmentFeedbackResult> Handle(CreateAppointmentFeedbackCommand request, CancellationToken cancellationToken)
+    {
+        var hasSalonRating = request.SalonRating.HasValue;
+        var hasProfessionalRating = request.ProfessionalRating.HasValue;
+
+        if (!hasSalonRating && !hasProfessionalRating)
+            return new CreateAppointmentFeedbackResult(false, 400, "At least one rating must be informed.", []);
+
+        if (hasSalonRating && request.SalonRating is < 1 or > 5)
+            return new CreateAppointmentFeedbackResult(false, 400, "Salon rating must be between 1 and 5.", []);
+
+        if (hasProfessionalRating && request.ProfessionalRating is < 1 or > 5)
+            return new CreateAppointmentFeedbackResult(false, 400, "Professional rating must be between 1 and 5.", []);
+
+        var appointment = await appointmentRepository.GetByIdAsync(request.AppointmentId);
+        if (appointment is null)
+            return new CreateAppointmentFeedbackResult(false, 404, "Appointment not found.", []);
+
+        if (appointment.ClientId != request.UserId)
+            return new CreateAppointmentFeedbackResult(false, 403, "You cannot review this appointment.", []);
+
+        if (appointment.Status != AppointmentStatus.Completed)
+            return new CreateAppointmentFeedbackResult(false, 422, "You can only review completed appointments.", []);
+
+        var salonAlreadyReviewed = await reviewRepository.ReviewExistsForAppointmentAsync(request.AppointmentId, ReviewTarget.Salon);
+        var professionalAlreadyReviewed = await reviewRepository.ReviewExistsForAppointmentAsync(request.AppointmentId, ReviewTarget.Professional);
+
+        if (salonAlreadyReviewed && professionalAlreadyReviewed)
+            return new CreateAppointmentFeedbackResult(false, 422, "This appointment has already been fully reviewed.", []);
+
+        var created = new List<ReviewDto>();
+        var client = await userRepository.GetByIdAsync(request.UserId);
+
+        if (hasSalonRating && !salonAlreadyReviewed)
+        {
+            var salonReview = new LavaMeuCarro.Domain.Entities.Review
+            {
+                AppointmentId = appointment.Id,
+                ClientId = request.UserId,
+                ProfessionalId = appointment.ProfessionalId,
+                SalonId = appointment.SalonId,
+                TargetType = ReviewTarget.Salon,
+                Rating = request.SalonRating!.Value,
+                Comment = request.Comment,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            salonReview.Id = await reviewRepository.CreateAsync(salonReview);
+            created.Add(new ReviewDto(
+                salonReview.Id,
+                appointment.Id,
+                request.UserId,
+                client?.Name ?? "Cliente",
+                salonReview.Rating,
+                salonReview.Comment,
+                salonReview.CreatedAt));
+        }
+
+        if (hasProfessionalRating && !professionalAlreadyReviewed)
+        {
+            var professionalReview = new LavaMeuCarro.Domain.Entities.Review
+            {
+                AppointmentId = appointment.Id,
+                ClientId = request.UserId,
+                ProfessionalId = appointment.ProfessionalId,
+                SalonId = appointment.SalonId,
+                TargetType = ReviewTarget.Professional,
+                Rating = request.ProfessionalRating!.Value,
+                Comment = request.Comment,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            professionalReview.Id = await reviewRepository.CreateAsync(professionalReview);
+            created.Add(new ReviewDto(
+                professionalReview.Id,
+                appointment.Id,
+                request.UserId,
+                client?.Name ?? "Cliente",
+                professionalReview.Rating,
+                professionalReview.Comment,
+                professionalReview.CreatedAt));
+        }
+
+        if (created.Count == 0)
+            return new CreateAppointmentFeedbackResult(false, 422, "Nenhuma avaliacao nova foi registrada. Esta etapa ja foi avaliada.", []);
+
+        return new CreateAppointmentFeedbackResult(true, 201, null, created);
+    }
+}
+

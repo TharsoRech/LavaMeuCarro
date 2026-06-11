@@ -1,0 +1,6 @@
+using LavaMeuCarro.Application.DTOs;
+using MediatR;
+
+namespace LavaMeuCarro.Application.Commands.Subscription.CreateSubscriptionCommand;
+
+public record CreateSubscriptionCommand(int UserId, int PlanId) : IRequest<SubscriptionDto>;

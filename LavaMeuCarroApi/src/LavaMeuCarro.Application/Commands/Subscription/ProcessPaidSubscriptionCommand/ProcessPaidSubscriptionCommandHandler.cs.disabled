@@ -1,0 +1,110 @@
+using LavaMeuCarro.Application.Commands.Card.SaveCardCommand;
+using CreateSubCmd = LavaMeuCarro.Application.Commands.Subscription.CreateSubscriptionCommand.CreateSubscriptionCommand;
+using LavaMeuCarro.Application.DTOs;
+using LavaMeuCarro.Application.Interfaces;
+using LavaMeuCarro.Domain.Exceptions;
+using MediatR;
+using Microsoft.Extensions.Logging;
+
+namespace LavaMeuCarro.Application.Commands.Subscription.ProcessPaidSubscriptionCommand;
+
+public class ProcessPaidSubscriptionCommandHandler(
+    IPlanRepository planRepository,
+    IUserRepository userRepository,
+    ISubscriptionRepository subscriptionRepository,
+    ILegalDocumentRepository legalDocumentRepository,
+    ISubscriptionEmailService subscriptionEmailService,
+    IMediator mediator,
+    ILogger<ProcessPaidSubscriptionCommandHandler> logger)
+    : IRequestHandler<ProcessPaidSubscriptionCommand, ProcessPaidSubscriptionResult>
+{
+    public async Task<ProcessPaidSubscriptionResult> Handle(ProcessPaidSubscriptionCommand request, CancellationToken ct)
+    {
+        if (request.PlanId <= 0)
+            throw new BusinessException("planId is required.");
+
+        await ValidateConsentsAsync(request.Consents, legalDocumentRepository);
+
+        // Captura plano anterior para e-mail de upgrade
+        int? oldPlanId = null;
+        if (request.IsUpgrade)
+        {
+            var prev = await subscriptionRepository.GetActiveByUserAsync(request.UserId);
+            oldPlanId = prev?.PlanId;
+        }
+
+        // Salva cartão, se fornecido
+        if (request.CardData is not null)
+        {
+            await mediator.Send(new SaveCardCommand(
+                request.UserId,
+                request.CardData.CardNumber,
+                request.CardData.CardHolderName,
+                request.CardData.ExpiryMonth,
+                request.CardData.ExpiryYear,
+                request.CardData.Brand), ct);
+        }
+
+        var result = await mediator.Send(new CreateSubCmd(request.UserId, request.PlanId), ct);
+
+        await legalDocumentRepository.SaveAcceptedConsentsAsync(
+            request.UserId, "subscription", request.Consents ?? [], request.IpAddress, request.UserAgent);
+
+        var userId = request.UserId;
+        var planId = request.PlanId;
+        var isUpgrade = request.IsUpgrade;
+        var capturedOldPlanId = oldPlanId;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var user = await userRepository.GetByIdAsync(userId);
+                var plan = await planRepository.GetByIdAsync(planId);
+                var subscription = await subscriptionRepository.GetActiveByUserAsync(userId);
+
+                if (user is null || plan is null || subscription is null)
+                    return;
+
+                if (isUpgrade && capturedOldPlanId.HasValue)
+                {
+                    var oldPlan = await planRepository.GetByIdAsync(capturedOldPlanId.Value);
+                    if (oldPlan is not null)
+                        await subscriptionEmailService.SendSubscriptionUpgradedAsync(user, oldPlan, plan, subscription);
+                }
+                else
+                {
+                    await subscriptionEmailService.SendSubscriptionConfirmedAsync(user, plan, subscription);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "[ProcessPaidSubscription] Falha ao enviar e-mail. UserId={UserId}.", userId);
+            }
+        });
+
+        return new ProcessPaidSubscriptionResult(result);
+    }
+
+    private static async Task ValidateConsentsAsync(
+        IEnumerable<LegalConsentRequest>? consents,
+        ILegalDocumentRepository legalDocumentRepository)
+    {
+        var required = (await legalDocumentRepository.GetActiveByContextAsync("subscription"))
+            .Where(d => d.IsRequired).ToList();
+
+        if (required.Count == 0) return;
+
+        var accepted = (consents ?? [])
+            .Where(c => !string.IsNullOrWhiteSpace(c.Code) && !string.IsNullOrWhiteSpace(c.Version))
+            .ToDictionary(c => c.Code.Trim(), c => c.Version.Trim(), StringComparer.OrdinalIgnoreCase);
+
+        var missing = required
+            .Where(d => !accepted.TryGetValue(d.Code, out var v) || !string.Equals(v, d.Version, StringComparison.OrdinalIgnoreCase))
+            .Select(d => d.Title).ToList();
+
+        if (missing.Count > 0)
+            throw new BusinessException($"Aceite obrigatório pendente: {string.Join(", ", missing)}.");
+    }
+}
+

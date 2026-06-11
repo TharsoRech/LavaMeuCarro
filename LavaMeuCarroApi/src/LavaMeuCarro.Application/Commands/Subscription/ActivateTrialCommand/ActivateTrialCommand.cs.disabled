@@ -1,0 +1,11 @@
+using LavaMeuCarro.Application.DTOs;
+using MediatR;
+
+namespace LavaMeuCarro.Application.Commands.Subscription.ActivateTrialCommand;
+
+public record ActivateTrialCommand(
+    int UserId,
+    IEnumerable<LegalConsentRequest>? Consents,
+    string? IpAddress,
+    string? UserAgent) : IRequest<SubscriptionDto>;
+

@@ -1,0 +1,6 @@
+using LavaMeuCarro.Application.DTOs;
+using MediatR;
+
+namespace LavaMeuCarro.Application.Commands.Subscription.VerifyAppleReceiptCommand;
+
+public record VerifyAppleReceiptCommand(int UserId, string Receipt) : IRequest<SubscriptionDto>;

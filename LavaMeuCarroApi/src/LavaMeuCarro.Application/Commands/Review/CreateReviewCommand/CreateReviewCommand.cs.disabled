@@ -1,0 +1,6 @@
+using LavaMeuCarro.Application.DTOs;
+using MediatR;
+
+namespace LavaMeuCarro.Application.Commands.Review.CreateReviewCommand;
+
+public record CreateReviewCommand(int AppointmentId, int ClientId, int Rating, string? Comment) : IRequest<ReviewDto>;

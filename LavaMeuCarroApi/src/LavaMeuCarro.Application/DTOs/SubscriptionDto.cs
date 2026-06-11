@@ -1,6 +1,6 @@
-using HoraDaBeleza.Domain.Enums;
+using LavaMeuCarro.Domain.Enums;
 
-namespace HoraDaBeleza.Application.DTOs;
+namespace LavaMeuCarro.Application.DTOs;
 
 public record SubscriptionDto(
     int Id,

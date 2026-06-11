@@ -1,0 +1,6 @@
+using LavaMeuCarro.Application.DTOs;
+using MediatR;
+
+namespace LavaMeuCarro.Application.Queries.ListSalonReviewsQuery;
+
+public record ListSalonReviewsQuery(int SalonId) : IRequest<IEnumerable<ReviewDto>>;

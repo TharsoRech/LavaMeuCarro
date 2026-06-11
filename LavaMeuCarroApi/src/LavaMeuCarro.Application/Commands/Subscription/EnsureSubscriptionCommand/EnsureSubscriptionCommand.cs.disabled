@@ -1,0 +1,14 @@
+using LavaMeuCarro.Application.DTOs;
+using MediatR;
+
+namespace LavaMeuCarro.Application.Commands.Subscription.EnsureSubscriptionCommand;
+
+public record EnsureSubscriptionCommand(
+    int UserId,
+    int PlanId,
+    IEnumerable<LegalConsentRequest>? Consents,
+    string? IpAddress,
+    string? UserAgent) : IRequest<EnsureSubscriptionResult>;
+
+public record EnsureSubscriptionResult(SubscriptionDto Subscription, bool AlreadyActive);
+
