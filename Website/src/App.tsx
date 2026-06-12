@@ -20,8 +20,8 @@ import AdminDashboard from './features/admin/AdminDashboard'; // default
 import AdminAppointments from './features/admin/AdminAppointments'; // default
 // Temporarily disabled - needs implementation
 import { AdminProfessionals } from './features/admin/AdminProfessionals'; // named
-// import { AdminServices } from './features/admin/AdminServices'; // named
-// import { AdminSalon } from './features/admin/AdminSalon'; // named
+import { AdminServices } from './features/admin/AdminServices'; // named
+import { AdminSalon } from './features/admin/AdminSalon'; // named
 // import { AdminProfile } from './features/admin/AdminProfile'; // named
 // import { AdminNotifications } from './features/admin/AdminNotifications'; // named
 // import { AdminReports } from './features/admin/AdminReports'; // named
@@ -92,9 +92,9 @@ function App() {
                <Route path="/admin/painel" element={<AdminDashboard />} />
                <Route path="/admin/agendamentos" element={<AdminAppointments />} />
                <Route path="/admin/profissionais" element={<AdminProfessionals />} />
-               {/* <Route path="/admin/servicos" element={<AdminServices />} /> */}
+               <Route path="/admin/servicos" element={<AdminServices />} />
                {/* <Route path="/admin/relatorios" element={<AdminReports />} /> */}
-               {/* <Route path="/admin/unidade" element={<AdminSalon />} /> */}
+               <Route path="/admin/unidade" element={<AdminSalon />} />
                {/* <Route path="/admin/notificacoes" element={<AdminNotifications />} /> */}
                <Route path="/admin/marketing" element={<AdminMarketing />} />
                <Route path="/admin/privacidade" element={<AdminPrivacy />} />

@@ -134,8 +134,8 @@ export function AdminSalon() {
     queryFn: () => professionalsApi.timeOptions().then((r) => r.data),
   });
 
-  const { salonId, setSalonId, activeSalonId, hasUnits } = useAdminSalonSelection(salons, user?.id);
-  const activeSalon = salons?.find(s => s.id === (activeSalonId ?? salons[0]?.id));
+  const { salonId, setSalonId, activeSalonId, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);
+  const activeSalon = salons?.find((s: any) => s.id === (activeSalonId ?? salons[0]?.id));
 
   const generateTimeSlots = useCallback((intervalMinutes: number): string[] => {
     const slots: string[] = [];
@@ -623,7 +623,7 @@ export function AdminSalon() {
         <div className="flex gap-3">
           {salons && salons.length > 0 && (
             <select value={salonId ?? ''} onChange={e => setSalonId(Number(e.target.value))} className="border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              {salons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {salons.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           )}
           <Button size="sm" onClick={() => setCreateModal(true)}>
@@ -693,18 +693,18 @@ export function AdminSalon() {
               <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-6">
                 <div className="text-center">
                   <p className="text-3xl font-bold text-indigo-600">
-                    {(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)}
+                    {(reviews.reduce((s: number, r: any) => s + r.rating, 0) / reviews.length).toFixed(1)}
                   </p>
                   <div className="flex gap-0.5 justify-center mt-1">
                     {[1,2,3,4,5].map(n => (
-                      <Star key={n} className={`w-4 h-4 ${n <= Math.round(reviews.reduce((s,r) => s+r.rating,0)/reviews.length) ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} />
+                      <Star key={n} className={`w-4 h-4 ${n <= Math.round(reviews.reduce((s: number, r: any) => s+r.rating, 0)/reviews.length) ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} />
                     ))}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">{reviews.length} avaliação{reviews.length !== 1 ? 'ões' : ''}</p>
                 </div>
               </div>
               {/* List */}
-              {reviews.map(review => {
+              {reviews.map((review: any) => {
                 const displayClientName = getDisplayClientName(review.clientName, review.clientId);
                 const initials = displayClientName
                   .split(' ')

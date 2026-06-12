@@ -6,11 +6,12 @@ import { salonsApi, servicesApi, categoriesApi } from '../../api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import type { ServiceDto } from '../../types';
+import type { Servico as ServiceDto, Categoria } from '../../types';
 import { ApiErrorAlert } from '../../components/ui/ApiErrorAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { useAdminAuth } from '../../stores/authStore';
-import { useAdminSalonSelection } from '../../utils/adminSalonSelection';
+// LavaMeuCarro doesn't have multi-salon selection
+// import { useAdminSalonSelection } from '../../utils/adminSalonSelection';
 
 interface FormData {
   name: string;
@@ -104,7 +105,10 @@ export function AdminServices() {
     queryFn: () => salonsApi.myUnits().then(r => r.data),
   });
 
-  const { activeSalonId, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);
+  // LavaMeuCarro: simplified - no salon selection needed
+  const activeSalonId = null;
+  const hasUnits = false;
+  const handleSalonChange = (_id: number) => {};
 
   useEffect(() => {
     if (!activeSalonId) return;
@@ -366,7 +370,7 @@ export function AdminServices() {
 
   const groupedServices = useMemo(() => {
     const items = services ?? [];
-    const baseGroups = (categories ?? []).map((category) => ({
+    const baseGroups = (categories ?? []).map((category: any) => ({
       categoryId: category.id,
       categoryName: category.name,
       categoryDescription: '',
@@ -375,7 +379,7 @@ export function AdminServices() {
       items: [] as ServiceDto[],
     }));
 
-    const customGroups = customCategories.map((category) => ({
+    const customGroups = customCategories.map((category: any) => ({
       categoryId: category.id,
       categoryName: category.name,
       categoryDescription: category.description || '',
@@ -385,8 +389,8 @@ export function AdminServices() {
     }));
 
     const groups = [...baseGroups, ...customGroups];
-    const groupById = new Map(groups.map((group) => [group.categoryId, group]));
-    const baseByCategoryId = new Map(baseGroups.map((group) => [group.baseCategoryId, group.categoryId]));
+    const groupById = new Map(groups.map((group: any) => [group.categoryId, group]));
+    const baseByCategoryId = new Map(baseGroups.map((group: any) => [group.baseCategoryId, group.categoryId]));
 
     for (const service of items) {
       const assignedGroupId = serviceCategoryAssignments[service.id];
@@ -402,7 +406,7 @@ export function AdminServices() {
     }
 
     return groups
-      .map((group) => ({ ...group, items: group.items.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')) }))
+      .map((group: any) => ({ ...group, items: group.items.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')) }))
       .filter((group) => group.isCustom || group.items.length > 0)
       .sort((a, b) => a.categoryName.localeCompare(b.categoryName, 'pt-BR'));
   }, [services, categories, customCategories, serviceCategoryAssignments]);
@@ -490,7 +494,7 @@ export function AdminServices() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {groupedServices.map((group) => (
+            {groupedServices.map((group: any) => (
               <div key={group.categoryId} className="p-4 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -536,7 +540,7 @@ export function AdminServices() {
                 </div>
 
                 <div className="grid gap-2">
-                  {group.items.map((svc) => (
+                  {group.items.map((svc: any) => (
                     <div key={svc.id} className="border border-gray-100 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium text-sm text-gray-900 truncate flex items-center gap-2">
@@ -730,7 +734,7 @@ export function AdminServices() {
 
           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
             <p className="text-xs text-gray-500">Itens cadastrados nesta categoria</p>
-            {categoryManager?.items.map((svc) => (
+            {categoryManager?.items.map((svc: any) => (
               <div key={svc.id} className="border border-gray-100 rounded-lg px-3 py-2 flex items-center justify-between gap-3 hover:bg-gray-50/70">
                 <div className="min-w-0">
                   <p className="font-medium text-sm text-gray-900 truncate">{svc.name}</p>
@@ -803,7 +807,7 @@ export function AdminServices() {
               value={createCategoryForm.watch('baseCategoryId')}
               onChange={(e) => createCategoryForm.setValue('baseCategoryId', Number(e.target.value))}
             >
-              {categories?.map((category) => (
+              {categories?.map((category: any) => (
                 <option key={category.id} value={category.id}>{category.name}</option>
               ))}
             </select>
@@ -856,7 +860,7 @@ export function AdminServices() {
               value={editCategoryForm.watch('baseCategoryId')}
               onChange={(e) => editCategoryForm.setValue('baseCategoryId', Number(e.target.value))}
             >
-              {categories?.map((category) => (
+              {categories?.map((category: any) => (
                 <option key={category.id} value={category.id}>{category.name}</option>
               ))}
             </select>
@@ -903,7 +907,7 @@ export function AdminServices() {
                 <p className="text-xs">Antes de excluir, escolha para qual categoria deseja mover os itens abaixo.</p>
               </div>
               <div className="space-y-1 max-h-40 overflow-y-auto border border-gray-100 rounded-lg px-3 py-2 bg-gray-50">
-                {affectedServices.map((svc) => (
+                {affectedServices.map((svc: any) => (
                   <p key={svc.id} className="text-xs text-gray-700 truncate">• {svc.name}</p>
                 ))}
               </div>

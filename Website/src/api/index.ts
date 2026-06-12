@@ -13,6 +13,15 @@ import type {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
+export const authApi = {
+  login: (data: any) => api.post('/auth/login', data).then(r => r.data),
+  register: (data: any) => api.post('/auth/register', data).then(r => r.data),
+  getMe: () => api.get('/auth/me').then(r => r.data),
+  logout: () => api.post('/auth/logout').then(r => r.data),
+  changePassword: (data: any) => api.put('/auth/me/password', data).then(r => r.data),
+  updateProfile: (data: any) => api.put('/auth/me', data).then(r => r.data),
+};
+
 export const login = (data: any) => api.post('/auth/login', data).then(r => r.data);
 export const register = (data: any) => api.post('/auth/register', data).then(r => r.data);
 export const getMe = () => api.get('/auth/me').then(r => r.data);
@@ -41,6 +50,15 @@ export const publishUnidade = (id: number, published: boolean) => api.put(`/unid
 
 // ── Agendamentos ──────────────────────────────────────────────────────────────
 
+export const appointmentsApi = {
+  list: (params?: any) => api.get('/appointments', { params }).then(r => r.data),
+  getById: (id: number) => api.get(`/appointments/${id}`).then(r => r.data),
+  create: (data: any) => api.post('/appointments', data).then(r => r.data),
+  update: (id: number, data: any) => api.put(`/appointments/${id}`, data).then(r => r.data),
+  delete: (id: number) => api.delete(`/appointments/${id}`).then(r => r.data),
+  updateStatus: (id: number, status: string) => api.patch(`/appointments/${id}/status`, { status }).then(r => r.data),
+};
+
 export const getMyAgendamentos = (page = 1, pageSize = 25, status?: string, unidadeId?: number, search?: string, date?: string, funcionarioId?: number) =>
   api.get(`/appointments/unidade/${unidadeId}/paged`, { params: { page, pageSize, search, status } }).then(r => r.data);
 export const getAgendamentoById = (id: number) => api.get(`/appointments/${id}`).then(r => r.data);
@@ -60,6 +78,12 @@ export const getAvailability = (unidadeId: number, servicoId: number, date: stri
 
 export const getDashboardSummary = (unidadeId?: number) =>
   api.get(`/appointments/unidade/${unidadeId}/dashboard-summary`).then(r => r.data);
+
+// ── Categorias (Categories) ──────────────────────────────────────────────────
+
+export const categoriesApi = {
+  list: () => api.get('/categorias').then(r => r.data),
+};
 
 // ── Servicos (Services) ──────────────────────────────────────────────────────
 
@@ -143,11 +167,22 @@ export const legalApi = {
   getLegalDocuments: (context: string) => api.get<LegalDocumentDto[]>(`/legal/documents/${context}`).then(r => r.data),
 };
 
+export const legalDocumentsApi = {
+  getByContext: (context: string) => api.get(`/legal/documents/${context}`).then(r => r.data),
+  acceptConsent: (data: any) => api.post('/legal/consent', data).then(r => r.data),
+};
+
 // ── Reports ───────────────────────────────────────────────────────────────────
 
 export const reportsApi = {
   getBusinessReports: (period: string, unidadeId?: number) =>
     api.get<BusinessReportsDto>('/reports/business', { params: { period, unidadeId } }).then(r => r.data),
+};
+
+export const supportApi = {
+  getSettings: () => api.get('/support/settings').then(r => r.data),
+  updateSettings: (data: any) => api.put('/support/settings', data).then(r => r.data),
+  sendContact: (data: any) => api.post('/support/contact', data).then(r => r.data),
 };
 
 // ── Admin/Master ──────────────────────────────────────────────────────────────
