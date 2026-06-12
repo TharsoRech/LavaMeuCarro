@@ -51,15 +51,26 @@ export const publishUnidade = (id: number, published: boolean) => api.put(`/unid
 
 // ── Agendamentos ──────────────────────────────────────────────────────────────
 
+export const clientsApi = {
+  list: (params?: any) => api.get('/clientes', { params }).then(r => r.data),
+  searchClients: (search: string) => api.get('/clientes/search', { params: { search } }).then(r => r.data),
+  getById: (id: number) => api.get(`/clientes/${id}`).then(r => r.data),
+  create: (data: any) => api.post('/clientes', data).then(r => r.data),
+};
+
 export const appointmentsApi = {
   list: (params?: any) => api.get('/appointments', { params }).then(r => r.data),
   getById: (id: number) => api.get(`/appointments/${id}`).then(r => r.data),
   create: (data: any) => api.post('/appointments', data).then(r => r.data),
+  createManual: (data: any) => api.post('/appointments/manual', data).then(r => r.data),
   update: (id: number, data: any) => api.put(`/appointments/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/appointments/${id}`).then(r => r.data),
   updateStatus: (id: number, status: string) => api.patch(`/appointments/${id}/status`, { status }).then(r => r.data),
   clientHistory: (salonId: number, clientId: number) => api.get(`/appointments/${salonId}/client/${clientId}/history`).then(r => r.data),
-  bySalon: (salonId: number, params?: any) => api.get(`/appointments/salon/${salonId}`, { params }).then(r => r.data),
+  bySalon: (salonId: number, dateFilter?: string, professionalId?: number, includeCancelled?: boolean, startDate?: string, endDate?: string, includeDetails?: boolean) => api.get(`/appointments/salon/${salonId}`, { params: { dateFilter, professionalId, includeCancelled, startDate, endDate, includeDetails } }).then(r => r.data),
+  bySalonPaged: (salonId: number, page: number, pageSize: number, dateFilter?: string, professionalId?: number, includeCancelled?: boolean, startDate?: string, endDate?: string, status?: string, search?: string, includeDetails?: boolean) => api.get(`/appointments/salon/${salonId}/paged`, { params: { page, pageSize, dateFilter, professionalId, includeCancelled, startDate, endDate, status, search, includeDetails } }).then(r => r.data),
+  cancel: (id: number, reason: string) => api.post(`/appointments/${id}/cancel`, { reason }).then(r => r.data),
+  changeProfessional: (id: number, newProfessionalId: number) => api.patch(`/appointments/${id}/professional`, { newProfessionalId }).then(r => r.data),
 };
 
 export const getMyAgendamentos = (page = 1, pageSize = 25, status?: string, unidadeId?: number, search?: string, date?: string, funcionarioId?: number) =>
@@ -153,6 +164,13 @@ export const subscriptionsApi = {
 export const getNotificacoes = () => api.get('/notificacoes').then(r => r.data);
 export const markNotificacaoRead = (id: number) => api.patch(`/notificacoes/${id}/read`).then(r => r.data);
 export const markAllNotificacoesRead = () => api.post('/notificacoes/mark-all-read').then(r => r.data);
+
+export const notificationsApi = {
+  list: () => api.get('/notificacoes').then(r => r.data),
+  markRead: (id: number) => api.patch(`/notificacoes/${id}/read`).then(r => r.data),
+  markAllRead: () => api.post('/notificacoes/mark-all-read').then(r => r.data),
+  broadcast: (data: any) => api.post('/notificacoes/broadcast', data).then(r => r.data),
+};
 
 // ── Marketing ─────────────────────────────────────────────────────────────────
 

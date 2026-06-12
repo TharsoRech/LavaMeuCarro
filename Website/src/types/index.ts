@@ -369,6 +369,46 @@ export interface AppointmentProfessionalOptionDto {
   specialty?: string;
 }
 
+export interface AppointmentClientDto {
+  id: number;
+  name: string;
+  phone?: string;
+  email?: string;
+  doc?: string;
+}
+
+export interface AppointmentPagedResponseDto {
+  items: AppointmentDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface ClientAppointmentHistoryItemDto {
+  id: number;
+  scheduledAt: string;
+  status: AgendamentoStatus;
+  serviceName: string;
+  professionalName: string;
+  totalPrice: number;
+  notes?: string;
+  cancellationReason?: string;
+}
+
+export interface SalonClientForBroadcastDto {
+  id: number;
+  name: string;
+  phone?: string;
+  email?: string;
+}
+
+export interface BroadcastPushResult {
+  pushedClientCount: number;
+  eligibleClientCount: number;
+  notificationsCreated: number;
+}
+
 // Support
 export interface SupportContactDto {
   email: string;

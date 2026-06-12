@@ -267,7 +267,7 @@ export function AdminReports() {
 
   const { data: appointments, isLoading: isLoadingAppointments, isError: isAppointmentsError, error: appointmentsError, refetch: refetchAppointments } = useQuery({
     queryKey: ['reports-appointments', activeSalonId, effectiveReportRange.startDateParam, effectiveReportRange.endDateParam],
-    queryFn: () => appointmentsApi.bySalon(
+    queryFn: () => appointmentsApi.bySalonPaged(
       activeSalonId!,
       {
         startDate: effectiveReportRange.startDateParam,

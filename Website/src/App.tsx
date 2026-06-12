@@ -17,7 +17,7 @@ import { PrivacyPolicyPage, TermsOfUsePage } from './features/legal/LegalDocumen
 // Admin - mixed exports
 import AdminLoginPage from './features/admin/AdminLoginPage'; // default
 import AdminDashboard from './features/admin/AdminDashboard'; // default
-import AdminAppointments from './features/admin/AdminAppointments'; // default
+import { AdminAppointments } from './features/admin/AdminAppointments'; // default
 // Temporarily disabled - needs implementation
 import { AdminProfessionals } from './features/admin/AdminProfessionals'; // named
 import { AdminServices } from './features/admin/AdminServices'; // named
@@ -25,7 +25,7 @@ import { AdminSalon } from './features/admin/AdminSalon'; // named
 // import { AdminProfile } from './features/admin/AdminProfile'; // named
 // import { AdminNotifications } from './features/admin/AdminNotifications'; // named
 // import { AdminReports } from './features/admin/AdminReports'; // named
-import AdminMarketing from './features/admin/AdminMarketing'; // default
+import { AdminMarketing } from './features/admin/AdminMarketing'; // default
 import AdminPrivacy from './features/admin/AdminPrivacy'; // default
 import AdminTermsOfUse from './features/admin/AdminTermsOfUse'; // default
 import AdminPrivacyPolicy from './features/admin/AdminPrivacyPolicy'; // default
