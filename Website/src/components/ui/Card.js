@@ -1,0 +1,7 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export const Card = ({ className = '', title, action, children, ...props }) => (_jsxs("div", { className: `bg-white rounded-xl shadow-sm border border-gray-100 ${className}`, ...props, children: [title && (_jsxs("div", { className: "px-6 py-4 border-b border-gray-100 flex items-center justify-between", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900", children: title }), action && _jsx("div", { children: action })] })), children] }));
+export const CardHeader = ({ className = '', children, ...props }) => (_jsx("div", { className: `px-6 py-4 border-b border-gray-100 ${className}`, ...props, children: children }));
+export const CardTitle = ({ className = '', children, ...props }) => (_jsx("h3", { className: `text-lg font-semibold text-gray-900 ${className}`, ...props, children: children }));
+export const CardDescription = ({ className = '', children, ...props }) => (_jsx("p", { className: `text-sm text-gray-500 mt-1 ${className}`, ...props, children: children }));
+export const CardContent = ({ className = '', children, ...props }) => (_jsx("div", { className: `px-6 py-4 ${className}`, ...props, children: children }));
+export const CardFooter = ({ className = '', children, ...props }) => (_jsx("div", { className: `px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-xl ${className}`, ...props, children: children }));
