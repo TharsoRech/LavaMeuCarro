@@ -73,7 +73,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Deploy via SSH with Retry
+      - name: Deploy via SSH with Retry (Attempt 1)
+        id: deploy_attempt_1
+        continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST || '187.127.26.164' }}
@@ -84,7 +86,58 @@ jobs:
           script: |
             set -e
             cd /opt/lavameucarro
-            echo "Starting deployment..."
+            echo "Starting deployment (Attempt 1)..."
+            git pull origin main || { echo "Git pull failed"; exit 1; }
+            docker compose down
+            docker compose build --no-cache
+            docker compose up -d
+            docker system prune -f
+            echo "Deployment completed successfully"
+
+      - name: Wait before retry 2
+        if: steps.deploy_attempt_1.outcome == 'failure'
+        run: sleep 30
+        
+      - name: Deploy via SSH with Retry (Attempt 2)
+        id: deploy_attempt_2
+        continue-on-error: true
+        if: steps.deploy_attempt_1.outcome == 'failure'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST || '187.127.26.164' }}
+          username: ${{ secrets.VPS_USERNAME || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          command_timeout: 20m
+          script: |
+            set -e
+            cd /opt/lavameucarro
+            echo "Starting deployment (Attempt 2)..."
+            git pull origin main || { echo "Git pull failed"; exit 1; }
+            docker compose down
+            docker compose build --no-cache
+            docker compose up -d
+            docker system prune -f
+            echo "Deployment completed successfully"
+
+      - name: Wait before retry 3
+        if: steps.deploy_attempt_2.outcome == 'failure'
+        run: sleep 60
+        
+      - name: Deploy via SSH with Retry (Attempt 3 - Final)
+        id: deploy_attempt_3
+        if: steps.deploy_attempt_2.outcome == 'failure'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST || '187.127.26.164' }}
+          username: ${{ secrets.VPS_USERNAME || 'root' }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || '22' }}
+          command_timeout: 20m
+          script: |
+            set -e
+            cd /opt/lavameucarro
+            echo "Starting deployment (Attempt 3 - Final)..."
             git pull origin main || { echo "Git pull failed"; exit 1; }
             docker compose down
             docker compose build --no-cache
@@ -92,15 +145,21 @@ jobs:
             docker system prune -f
             echo "Deployment completed successfully"
         
-      - name: Deployment fallback
+      - name: Deployment failed after 3 attempts
         if: failure()
         run: |
-          echo "Primary deployment failed. This could be due to SSH connectivity issues."
-          echo "Please check:"
-          echo "1. VPS is running and accessible"
-          echo "2. SSH key is correctly configured in GitHub secrets"
-          echo "3. Firewall allows connections from GitHub Actions runners"
+          echo "❌ Deployment failed after 3 attempts. This could be due to:"
+          echo "1. VPS is not running or accessible"
+          echo "2. SSH key is incorrectly configured in GitHub secrets"
+          echo "3. Firewall blocks connections from GitHub Actions runners"
+          echo "4. Docker daemon not running on VPS"
           echo ""
-          echo "You can also manually deploy by SSH-ing to your VPS:"
+          echo "Manual deployment steps:"
           echo "  ssh root@187.127.26.164"
-          echo "  cd /opt/lavameucarro && git pull && docker compose up -d --build"
+          echo "  cd /opt/lavameucarro"
+          echo "  git pull origin main"
+          echo "  docker compose down"
+          echo "  docker compose build --no-cache"
+          echo "  docker compose up -d"
+          echo "  docker system prune -f"
+          exit 1
