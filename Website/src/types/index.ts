@@ -98,8 +98,11 @@ export interface Agendamento {
   modalidade: string;
   precoBruto: number;
   notes?: string;
+  cancellationReason?: string;
   clientName?: string;
   clientPhone?: string;
+  professionalName?: string;
+  serviceName?: string;
   clientEmail?: string;
   servicoName?: string;
   funcionarioName?: string;

@@ -131,7 +131,7 @@ export function AdminProfile() {
   }, []);
 
   const openSupportWhatsApp = useCallback((contact?: SupportContactDto | null) => {
-    const rawPhone = contact?.whatsApp?.trim();
+    const rawPhone = contact?.whatsapp?.trim();
     if (!rawPhone || typeof window === 'undefined') {
       setLicenseMsg('Suporte via WhatsApp ainda nao configurado.');
       return;

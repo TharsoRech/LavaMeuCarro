@@ -74,7 +74,7 @@ function MetricTile({ label, value, helper, icon }: { label: string; value: stri
 function VerticalBarChart({ data, valueFormatter }: { data: ReportSeriesDatum[]; valueFormatter: (value: number) => string }) {
   const sanitized = data.filter((item) => item.value > 0 || (item.secondaryValue ?? 0) > 0);
   const chartData = sanitized.length ? sanitized : data;
-  const maxValue = Math.max(...chartData.map((item) => item.value), 1);
+  const maxValue = Math.max(...chartData.map((item: any) => item.value), 1);
   const width = Math.max(chartData.length * 76, 360);
   const chartHeight = 220;
   const barWidth = 32;
@@ -120,7 +120,7 @@ function DonutChart({ report }: { report: BusinessReport }) {
     <div className="flex flex-col lg:flex-row gap-6 items-center lg:items-start">
       <svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="Distribuição por status">
         <circle cx="90" cy="90" r={radius} fill="transparent" stroke="#F3F4F6" strokeWidth="22" />
-        {report.statusSeries.map((item) => {
+        {report.statusSeries.map((item: any) => {
           const length = total ? (item.value / total) * circumference : 0;
           const circle = (
             <circle
@@ -145,7 +145,7 @@ function DonutChart({ report }: { report: BusinessReport }) {
       </svg>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-        {report.statusSeries.map((item) => (
+        {report.statusSeries.map((item: any) => (
           <div key={item.label} className="rounded-xl border border-gray-200 px-4 py-3">
             <div className="flex items-center gap-2 mb-1">
               <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />

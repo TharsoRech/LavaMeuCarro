@@ -5,7 +5,13 @@ import { useResolvableAppointmentNotificationIds } from '../../hooks/useResolvab
 import { ApiErrorAlert } from '../../components/ui/ApiErrorAlert';
 import { appointmentsApi } from '../../api';
 import type { AppointmentDto, ClientAppointmentHistoryResponse, NotificationDto } from '../../types';
-import { getStatusBadge as StatusBadge } from '../../components/ui/Badge';
+import { getStatusBadge } from '../../components/ui/Badge';
+
+// Wrapper component for getStatusBadge
+const StatusBadge = ({ status }: { status: any }) => {
+  const badge = getStatusBadge(status);
+  return <span className={`badge badge-${badge.variant}`}>{badge.label}</span>;
+};
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -191,7 +197,7 @@ export function AdminNotifications() {
       {/* List */}
       {!isLoading && filteredNotifications.length > 0 && (
         <div className="space-y-3">
-          {filteredNotifications.map((notification) => (
+          {filteredNotifications.map((notification: any) => (
             <div
               key={notification.id}
               className={`bg-white rounded-lg border shadow-sm p-4 flex gap-4 hover:shadow-md transition-shadow ${

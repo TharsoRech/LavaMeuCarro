@@ -68,3 +68,20 @@ export function buildBusinessReportPrintHtml(report: BusinessReport): string {
     </html>
   `;
 }
+
+export function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+}
+
+export function formatPeriodLabel(period: string): string {
+  const labels: Record<string, string> = {
+    '7d': 'Últimos 7 dias',
+    '30d': 'Últimos 30 dias',
+    '90d': 'Últimos 90 dias',
+    '365d': 'Últimos 12 meses',
+  };
+  return labels[period] || period;
+}
