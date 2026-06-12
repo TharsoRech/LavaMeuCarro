@@ -8,11 +8,12 @@ import { salonsApi, professionalsApi, servicesApi } from '../../api';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import type { ProfessionalDto, ReviewDto } from '../../types';
+import type { Funcionario, ReviewDto } from '../../types';
 import { ApiErrorAlert } from '../../components/ui/ApiErrorAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { useAdminAuth } from '../../stores/authStore';
-import { useAdminSalonSelection } from '../../utils/adminSalonSelection';
+// LavaMeuCarro doesn't have multi-salon selection
+// import { useAdminSalonSelection } from '../../utils/adminSalonSelection';
 
 const createSchema = z.object({
   doc: z.string().min(3, 'CPF/documento obrigatório'),
@@ -54,9 +55,9 @@ export function AdminProfessionals() {
   const qc = useQueryClient();
   const { user } = useAdminAuth();
   const [createModal, setCreateModal] = useState(false);
-  const [editTarget, setEditTarget] = useState<ProfessionalDto | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<ProfessionalDto | null>(null);
-  const [reviewTarget, setReviewTarget] = useState<ProfessionalDto | null>(null);
+  const [editTarget, setEditTarget] = useState<Funcionario | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Funcionario | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<Funcionario | null>(null);
   const [error, setError] = useState('');
   const [createPhotoBase64, setCreatePhotoBase64] = useState<string | undefined>();
   const [createPhotoPreview, setCreatePhotoPreview] = useState<string | undefined>();
@@ -74,7 +75,10 @@ export function AdminProfessionals() {
     queryFn: () => salonsApi.myUnits().then(r => r.data),
   });
 
-  const { activeSalonId, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);
+  // LavaMeuCarro: simplified - no salon selection needed
+  const activeSalonId = null; // Will use all professionals
+  const hasUnits = false;
+  const handleSalonChange = (_id: number) => {};
 
   const { data: professionals, isLoading, isError, error: professionalsError, refetch } = useQuery({
     queryKey: ['professionals', activeSalonId],
@@ -94,8 +98,8 @@ export function AdminProfessionals() {
     enabled: !!activeSalonId,
   });
 
-  const timeOptions = useMemo(
-    () => (timeOptionsData && timeOptionsData.length > 0 ? Array.from(new Set(timeOptionsData)).sort() : DEFAULT_TIME_OPTIONS),
+    const timeOptions = useMemo(
+    () => (timeOptionsData && timeOptionsData.length > 0 ? Array.from(new Set(timeOptionsData as string[])).sort() : DEFAULT_TIME_OPTIONS),
     [timeOptionsData]
   );
 
@@ -275,18 +279,18 @@ export function AdminProfessionals() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {professionals.map((prof) => (
+                {professionals.map((prof: Funcionario) => (
                   <tr key={prof.id} className="hover:bg-gray-50/50">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         {normalizeImageSrc(prof.photoUrl) ? (
-                          <img src={normalizeImageSrc(prof.photoUrl)} alt={prof.userName} className="w-8 h-8 rounded-full object-cover" />
+                          <img src={normalizeImageSrc(prof.photoUrl)} alt={prof.name} className="w-8 h-8 rounded-full object-cover" />
                         ) : (
                           <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center">
-                            <span className="text-brand-700 text-xs font-semibold">{prof.userName?.charAt(0)?.toUpperCase()}</span>
+                            <span className="text-brand-700 text-xs font-semibold">{prof.name?.charAt(0)?.toUpperCase()}</span>
                           </div>
                         )}
-                        <span className="font-medium text-gray-900">{prof.userName}</span>
+                        <span className="font-medium text-gray-900">{prof.name}</span>
                       </div>
                     </td>
                     <td className="px-5 py-4 text-gray-600">{prof.specialty || '—'}</td>
@@ -317,7 +321,7 @@ export function AdminProfessionals() {
                             const firstWithTimes = DAYS_OF_WEEK.find((day) => (normalized[day.id] || []).length > 0)?.id ?? '1';
                             setEditSelectedDay(firstWithTimes);
                             editForm.reset({
-                              name: prof.userName || '',
+                              name: prof.name || '',
                               specialty: prof.specialty || '',
                               bio: prof.bio || '',
                               isAdmin: prof.isAdmin,
@@ -379,7 +383,7 @@ export function AdminProfessionals() {
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Serviços vinculados</label>
             <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-2">
-              {services?.map((service) => (
+              {services?.map((service: any) => (
                 <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"
@@ -464,12 +468,12 @@ export function AdminProfessionals() {
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">Foto do profissional</label>
-            {/* Show current photo or new preview */}
-            {(editPhotoPreview || normalizeImageSrc(editTarget?.photoUrl)) && (
+            {/* Photo preview - simplified */}
+            {editPhotoPreview && (
               <div className="flex items-center gap-3 mb-2">
                 <img
-                  src={editPhotoPreview || normalizeImageSrc(editTarget?.photoUrl)}
-                  alt="foto atual"
+                  src={editPhotoPreview}
+                  alt="foto"
                   className="w-16 h-16 rounded-full object-cover border-2 border-brand-200"
                 />
                 <span className="text-xs text-gray-500">{editPhotoPreview ? 'Prévia da nova foto' : 'Foto atual'}</span>
@@ -491,7 +495,7 @@ export function AdminProfessionals() {
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Serviços vinculados</label>
             <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-2">
-              {services?.map((service) => (
+              {services?.map((service: any) => (
                 <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"
@@ -565,13 +569,13 @@ export function AdminProfessionals() {
           </>
         }
       >
-        <p className="text-gray-600 text-sm">Tem certeza que deseja remover <strong>{deleteTarget?.userName}</strong> da equipe? Esta ação desvincula o profissional da unidade.</p>
+        <p className="text-gray-600 text-sm">Tem certeza que deseja remover <strong>{deleteTarget?.name}</strong> da equipe? Esta ação desvincula o profissional da unidade.</p>
       </Modal>
 
       <Modal
         open={!!reviewTarget}
         onClose={() => setReviewTarget(null)}
-        title={`Avaliações - ${reviewTarget?.userName ?? ''}`}
+        title={`Avaliações - ${reviewTarget?.name ?? ''}`}
       >
         <div className="space-y-3 max-h-[380px] overflow-y-auto">
           {isLoadingReviews ? (

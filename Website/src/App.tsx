@@ -19,7 +19,7 @@ import AdminLoginPage from './features/admin/AdminLoginPage'; // default
 import AdminDashboard from './features/admin/AdminDashboard'; // default
 import AdminAppointments from './features/admin/AdminAppointments'; // default
 // Temporarily disabled - needs implementation
-// import { AdminProfessionals } from './features/admin/AdminProfessionals'; // named
+import { AdminProfessionals } from './features/admin/AdminProfessionals'; // named
 // import { AdminServices } from './features/admin/AdminServices'; // named
 // import { AdminSalon } from './features/admin/AdminSalon'; // named
 // import { AdminProfile } from './features/admin/AdminProfile'; // named
@@ -91,7 +91,7 @@ function App() {
                <Route path="/admin" element={<Navigate to="/admin/agendamentos" replace />} />
                <Route path="/admin/painel" element={<AdminDashboard />} />
                <Route path="/admin/agendamentos" element={<AdminAppointments />} />
-               {/* <Route path="/admin/profissionais" element={<AdminProfessionals />} /> */}
+               <Route path="/admin/profissionais" element={<AdminProfessionals />} />
                {/* <Route path="/admin/servicos" element={<AdminServices />} /> */}
                {/* <Route path="/admin/relatorios" element={<AdminReports />} /> */}
                {/* <Route path="/admin/unidade" element={<AdminSalon />} /> */}
