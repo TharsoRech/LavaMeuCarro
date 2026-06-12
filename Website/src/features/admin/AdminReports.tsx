@@ -269,12 +269,17 @@ export function AdminReports() {
     queryKey: ['reports-appointments', activeSalonId, effectiveReportRange.startDateParam, effectiveReportRange.endDateParam],
     queryFn: () => appointmentsApi.bySalonPaged(
       activeSalonId!,
-      {
-        startDate: effectiveReportRange.startDateParam,
-        endDate: effectiveReportRange.endDateParam,
-        includeDetails: true,
-      }
-    ).then((response: any) => response.data),
+      1,
+      1000,
+      undefined,
+      undefined,
+      undefined,
+      effectiveReportRange.startDateParam,
+      effectiveReportRange.endDateParam,
+      undefined,
+      undefined,
+      true,
+    ).then((r: any) => r.data),
     enabled: !!activeSalonId,
   });
 

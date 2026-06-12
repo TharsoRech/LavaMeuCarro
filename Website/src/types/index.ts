@@ -398,15 +398,20 @@ export interface ClientAppointmentHistoryItemDto {
 
 export interface SalonClientForBroadcastDto {
   id: number;
+  clientId: number;
   name: string;
   phone?: string;
   email?: string;
+  hasActivePushToken?: boolean;
+  appointmentsCount?: number;
+  lastAppointmentAt?: string;
 }
 
 export interface BroadcastPushResult {
   pushedClientCount: number;
   eligibleClientCount: number;
   notificationsCreated: number;
+  requestedClientCount?: number;
 }
 
 // Support

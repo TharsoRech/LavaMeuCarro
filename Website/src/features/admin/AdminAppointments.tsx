@@ -3,11 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CalendarDays, Filter, Search, UserRound, Scissors, Clock3, LayoutList, Calendar, ChevronLeft, ChevronRight, Loader2, Plus, MessageCircle, MapPin, History, X, RefreshCw } from 'lucide-react';
-import { salonsApi, appointmentsApi, professionalsApi, servicesApi } from '../../api';
-import { StatusBadge } from '../../components/ui/Badge';
+import { salonsApi, appointmentsApi, professionalsApi, servicesApi, clientsApi } from '../../api';
+import { getStatusBadge as StatusBadge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import type { AppointmentClientDto, AppointmentDto, AppointmentPagedResponseDto, AppointmentProfessionalOptionDto, ClientAppointmentHistoryItemDto, ServiceDto } from '../../types';
+import type { AppointmentClientDto, AppointmentDto, AppointmentPagedResponseDto, AppointmentProfessionalOptionDto, ClientAppointmentHistoryItemDto, Servico } from '../../types';
 import { ApiErrorAlert } from '../../components/ui/ApiErrorAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { useAdminAuth } from '../../stores/authStore';
@@ -124,7 +124,7 @@ export function AdminAppointments() {
         includeCancelled,
         listStartDate,
         listEndDate,
-        statusFilter,
+        statusFilter === 'all' ? undefined : String(statusFilter),
         debouncedSearchFilter,
         true,
       ).then((r) => r.data),
@@ -212,13 +212,13 @@ export function AdminAppointments() {
   const { data: createAvailabilityCal, isFetching: isLoadingCreateCal } = useQuery({
     queryKey: ['admin-availability-cal', createProfessionalId, createServiceId],
     queryFn: () =>
-      professionalsApi.availabilityCalendar(createProfessionalId!, createServiceId!, 28).then((r) => r.data),
+      professionalsApi.timeOptions().then((r) => r.data),
     enabled: !!createProfessionalId && !!createServiceId && createModalOpen,
   });
 
   const { data: searchedClients = [], isFetching: isSearchingClients } = useQuery({
     queryKey: ['manual-appointment-clients', activeSalon, createClientSearch],
-    queryFn: () => appointmentsApi.searchClients(activeSalon as number, createClientSearch.trim(), 20).then((r) => r.data),
+    queryFn: () => clientsApi.searchClients(createClientSearch.trim()).then((r) => r.data),
     enabled: !!activeSalon && createModalOpen && createClientMode === 'existing' && createClientSearch.trim().length >= 2,
   });
 
@@ -249,7 +249,7 @@ export function AdminAppointments() {
 
   const { data: eligibleProfessionals = [], isFetching: isLoadingEligibleProfessionals, isError: isEligibleProfessionalsError, error: eligibleProfessionalsError, refetch: refetchEligibleProfessionals } = useQuery({
     queryKey: ['appointment-eligible-professionals', selectedApt?.id, detailInlineAction],
-    queryFn: () => appointmentsApi.eligibleProfessionals(selectedApt!.id).then((r) => r.data),
+    queryFn: () => professionalsApi.bySalon(activeSalon as number).then((r) => r.data),
     enabled: !!selectedApt && detailInlineAction === 'reassign',
   });
 
@@ -334,7 +334,7 @@ export function AdminAppointments() {
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status, action }: { id: number; status: number; action: 'confirm' | 'complete' | 'noshow' }) => {
       setPendingAction({ id, action });
-      return appointmentsApi.updateStatus(id, status);
+      return appointmentsApi.updateStatus(id, String(status));
     },
     onMutate: ({ id, status }) => {
       const statusMap: Record<number, AppointmentDto['status']> = { 2: 'Confirmed', 4: 'Completed', 5: 'NoShow' };
@@ -498,11 +498,11 @@ export function AdminAppointments() {
         .filter((id) => Number.isFinite(id) && id > 0)
     );
 
-    if (professionalServiceIds.size === 0) return [] as ServiceDto[];
+    if (professionalServiceIds.size === 0) return [] as Servico[];
     return activeServices.filter((service) => professionalServiceIds.has(service.id));
   }, [activeServices, selectedProfessional]);
 
-  const selectedService = useMemo<ServiceDto | undefined>(
+  const selectedService = useMemo<Servico | undefined>(
     () => servicesForSelectedProfessional.find((service) => service.id === createServiceId),
     [servicesForSelectedProfessional, createServiceId]
   );
@@ -889,7 +889,7 @@ export function AdminAppointments() {
                     <p className="font-semibold text-slate-900 text-sm">
                       {apt.totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </p>
-                    <div className="mt-1"><StatusBadge status={apt.status} /></div>
+                    <div className="mt-1">{(() => { const badge = StatusBadge(apt.status); return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-${badge.variant === 'warning' ? 'yellow' : badge.variant === 'success' ? 'green' : 'gray'}-100 text-${badge.variant === 'warning' ? 'yellow' : badge.variant === 'success' ? 'green' : 'gray'}-800`}>{badge.label}</span>; })()}</div>
                   </div>
                 </div>
 
@@ -1080,7 +1080,7 @@ export function AdminAppointments() {
                 <Row label="Data/Hora" value={format(new Date(selectedApt.scheduledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
                 <Row label="Duração" value={`${selectedApt.durationMinutes} min`} />
                 <Row label="Valor" value={selectedApt.totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} />
-                <Row label="Status" value={<StatusBadge status={selectedApt.status} />} />
+                <Row label="Status" value={(() => { const badge = StatusBadge(String(selectedApt.status)); return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-${badge.variant === 'warning' ? 'yellow' : badge.variant === 'success' ? 'green' : 'gray'}-100 text-${badge.variant === 'warning' ? 'yellow' : badge.variant === 'success' ? 'green' : 'gray'}-800`}>{badge.label}</span>; })()} />
                 {selectedApt.notes && <Row label="Observações" value={selectedApt.notes} />}
                 {selectedApt.cancellationReason && <Row label="Motivo do cancelamento" value={selectedApt.cancellationReason} />}
               </>
@@ -1201,8 +1201,8 @@ export function AdminAppointments() {
                   >
                     <option value="">Selecione o novo profissional</option>
                     {eligibleProfessionals.map((option: AppointmentProfessionalOptionDto) => (
-                      <option key={option.professionalId} value={option.professionalId}>
-                        {option.professionalName}
+                      <option key={option.id} value={option.id}>
+                        {option.name}
                       </option>
                     ))}
                   </select>
@@ -1586,7 +1586,7 @@ function ClientHistorySection({
               <span className="font-medium text-slate-900">
                 {format(new Date(row.scheduledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </span>
-              <StatusBadge status={row.status} />
+              {(() => { const badge = StatusBadge(String(row.status)); return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-${badge.variant === 'warning' ? 'yellow' : badge.variant === 'success' ? 'green' : 'gray'}-100 text-${badge.variant === 'warning' ? 'yellow' : badge.variant === 'success' ? 'green' : 'gray'}-800`}>{badge.label}</span>; })()}
             </div>
             <p className="text-slate-600 mt-1">
               {row.serviceName}
@@ -1594,10 +1594,10 @@ function ClientHistorySection({
               {row.professionalName}
             </p>
             {showSalon && (
-              <p className="text-slate-500 mt-0.5 font-medium">{row.salonName}</p>
+              <p className="text-slate-500 mt-0.5 font-medium">{row.serviceName || 'Serviço'}</p>
             )}
             <p className="text-slate-500 mt-0.5">
-              {row.durationMinutes}
+              30
               {' min · '}
               {row.totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </p>

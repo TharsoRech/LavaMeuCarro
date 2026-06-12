@@ -4,7 +4,7 @@ import { Megaphone, Search, Send, Users, CheckCircle2, AlertCircle, Loader2, Spa
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { salonsApi, notificationsApi } from '../../api';
-import type { SalonClientForBroadcastDto, BroadcastPushResult } from '../../api';
+import type { SalonClientForBroadcastDto, BroadcastPushResult } from '../../types';
 import { useAdminAuth } from '../../stores/authStore';
 import { useAdminSalonSelection } from '../../utils/adminSalonSelection';
 import { ApiErrorAlert } from '../../components/ui/ApiErrorAlert';
@@ -44,7 +44,11 @@ export function AdminMarketing() {
     queryKey: ['marketing-clients', activeSalonId, debouncedTerm, onlyWithPushToken],
     queryFn: () =>
       notificationsApi
-        .listClientsForBroadcast(activeSalonId as number, debouncedTerm || undefined, onlyWithPushToken)
+        .broadcast({
+          salonId: activeSalonId as number,
+          search: debouncedTerm || undefined,
+          onlyWithPushToken,
+        })
         .then((r: any) => r.data),
     enabled: !!activeSalonId,
     placeholderData: (prev) => prev,
@@ -75,7 +79,7 @@ export function AdminMarketing() {
   const broadcastMutation = useMutation({
     mutationFn: () =>
       notificationsApi
-        .broadcastPush({
+        .broadcast({
           salonId: activeSalonId as number,
           title: title.trim(),
           message: message.trim(),
