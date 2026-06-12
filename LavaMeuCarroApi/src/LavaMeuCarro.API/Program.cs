@@ -70,12 +70,12 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Register Background Services (Cron Jobs)
-builder.Services.AddHostedService<AppointmentReminderJob>();
-builder.Services.AddHostedService<AppointmentStatusCleanupJob>();
-builder.Services.AddHostedService<PushTokenCleanupJob>();
-builder.Services.AddHostedService<SessionCleanupJob>();
-builder.Services.AddHostedService<NotificationCleanupJob>();
+// Register Background Services (Cron Jobs) - TEMPORARILY DISABLED - SQL connection issue
+// builder.Services.AddHostedService<AppointmentReminderJob>();
+// builder.Services.AddHostedService<AppointmentStatusCleanupJob>();
+// builder.Services.AddHostedService<PushTokenCleanupJob>();
+// builder.Services.AddHostedService<SessionCleanupJob>();
+// builder.Services.AddHostedService<NotificationCleanupJob>();
 
 var app = builder.Build();
 

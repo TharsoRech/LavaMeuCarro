@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use relative path when on same domain, fallback to full URL for local dev
-const API_URL = import.meta.env.VITE_API_URL || '';
+// API URL - use env var or default to VPS IP
+const API_URL = import.meta.env.VITE_API_URL || 'http://187.127.26.164:5050';
 
 export const api = axios.create({ baseURL: `${API_URL}/api`, timeout: 15000 });
 
