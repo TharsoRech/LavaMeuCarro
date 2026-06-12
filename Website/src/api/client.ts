@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// API URL - use env var or default to VPS IP
+// API URL - use env var or default to VPS IP (direct, not through nginx proxy)
 const API_URL = import.meta.env.VITE_API_URL || 'http://187.127.26.164:5050';
 
 export const api = axios.create({ baseURL: `${API_URL}/api`, timeout: 15000 });
