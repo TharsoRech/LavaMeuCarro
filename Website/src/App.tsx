@@ -8,22 +8,23 @@ import { AdminGuard } from './guards/AdminGuard';
 import { MasterGuard } from './guards/MasterGuard';
 
 // Landing
-import { LandingPage } from './features/landing/LandingPage';
+import LandingPage from './features/landing/LandingPage';
 
 // Legal (public)
-import { DeleteAccountPage } from './features/legal/DeleteAccountPage';
+import DeleteAccountPage from './features/legal/DeleteAccountPage';
 import { PrivacyPolicyPage, TermsOfUsePage } from './features/legal/LegalDocumentPages';
 
 // Admin - mixed exports
 import AdminLoginPage from './features/admin/AdminLoginPage'; // default
 import AdminDashboard from './features/admin/AdminDashboard'; // default
 import AdminAppointments from './features/admin/AdminAppointments'; // default
-import { AdminProfessionals } from './features/admin/AdminProfessionals'; // named
-import { AdminServices } from './features/admin/AdminServices'; // named
-import { AdminSalon } from './features/admin/AdminSalon'; // named
-import { AdminProfile } from './features/admin/AdminProfile'; // named
-import { AdminNotifications } from './features/admin/AdminNotifications'; // named
-import { AdminReports } from './features/admin/AdminReports'; // named
+// Temporarily disabled - needs implementation
+// import { AdminProfessionals } from './features/admin/AdminProfessionals'; // named
+// import { AdminServices } from './features/admin/AdminServices'; // named
+// import { AdminSalon } from './features/admin/AdminSalon'; // named
+// import { AdminProfile } from './features/admin/AdminProfile'; // named
+// import { AdminNotifications } from './features/admin/AdminNotifications'; // named
+// import { AdminReports } from './features/admin/AdminReports'; // named
 import AdminMarketing from './features/admin/AdminMarketing'; // default
 import AdminPrivacy from './features/admin/AdminPrivacy'; // default
 import AdminTermsOfUse from './features/admin/AdminTermsOfUse'; // default
@@ -32,12 +33,12 @@ import AdminPrivacyPolicy from './features/admin/AdminPrivacyPolicy'; // default
 // Master - mixed exports
 import MasterLoginPage from './features/master/MasterLoginPage'; // default
 import MasterDashboard from './features/master/MasterDashboard'; // default
-import { MasterUsers } from './features/master/MasterUsers'; // named
-import { MasterSalons } from './features/master/MasterSalons'; // named
-import { MasterCategories } from './features/master/MasterCategories'; // named
-import { MasterSettings } from './features/master/MasterSettings'; // named
-import { MasterSubscriptions } from './features/master/MasterSubscriptions'; // named
-import { MasterPlans } from './features/master/MasterPlans'; // named
+// import { MasterUsers } from './features/master/MasterUsers'; // named
+// import { MasterSalons } from './features/master/MasterSalons'; // named
+// import { MasterCategories } from './features/master/MasterCategories'; // named
+// import { MasterSettings } from './features/master/MasterSettings'; // named
+// import { MasterSubscriptions } from './features/master/MasterSubscriptions'; // named
+// import { MasterPlans } from './features/master/MasterPlans'; // named
 import MasterPayments from './features/master/MasterPayments'; // default
 
 // Layouts - default exports
@@ -90,16 +91,16 @@ function App() {
                <Route path="/admin" element={<Navigate to="/admin/agendamentos" replace />} />
                <Route path="/admin/painel" element={<AdminDashboard />} />
                <Route path="/admin/agendamentos" element={<AdminAppointments />} />
-               <Route path="/admin/profissionais" element={<AdminProfessionals />} />
-               <Route path="/admin/servicos" element={<AdminServices />} />
-               <Route path="/admin/relatorios" element={<AdminReports />} />
-               <Route path="/admin/unidade" element={<AdminSalon />} />
-               <Route path="/admin/notificacoes" element={<AdminNotifications />} />
+               {/* <Route path="/admin/profissionais" element={<AdminProfessionals />} /> */}
+               {/* <Route path="/admin/servicos" element={<AdminServices />} /> */}
+               {/* <Route path="/admin/relatorios" element={<AdminReports />} /> */}
+               {/* <Route path="/admin/unidade" element={<AdminSalon />} /> */}
+               {/* <Route path="/admin/notificacoes" element={<AdminNotifications />} /> */}
                <Route path="/admin/marketing" element={<AdminMarketing />} />
                <Route path="/admin/privacidade" element={<AdminPrivacy />} />
                <Route path="/admin/termos-de-uso" element={<AdminTermsOfUse />} />
                <Route path="/admin/politica-de-privacidade" element={<AdminPrivacyPolicy />} />
-               <Route path="/admin/perfil" element={<AdminProfile />} />
+               {/* <Route path="/admin/perfil" element={<AdminProfile />} /> */}
              </Route>
            </Route>
 
@@ -110,13 +111,13 @@ function App() {
           <Route element={<MasterGuard><div /></MasterGuard>}>
             <Route element={<MasterLayout />}>
               <Route path="/master" element={<MasterDashboard />} />
-              <Route path="/master/usuarios" element={<MasterUsers />} />
-              <Route path="/master/unidades" element={<MasterSalons />} />
-              <Route path="/master/categorias" element={<MasterCategories />} />
-              <Route path="/master/planos" element={<MasterPlans />} />
-              <Route path="/master/assinaturas" element={<MasterSubscriptions />} />
+              {/* <Route path="/master/usuarios" element={<MasterUsers />} /> */}
+              {/* <Route path="/master/unidades" element={<MasterSalons />} /> */}
+              {/* <Route path="/master/categorias" element={<MasterCategories />} /> */}
+              {/* <Route path="/master/planos" element={<MasterPlans />} /> */}
+              {/* <Route path="/master/assinaturas" element={<MasterSubscriptions />} /> */}
               <Route path="/master/pagamentos" element={<MasterPayments />} />
-              <Route path="/master/configuracoes" element={<MasterSettings />} />
+              {/* <Route path="/master/configuracoes" element={<MasterSettings />} /> */}
             </Route>
           </Route>
 
