@@ -5,7 +5,7 @@ import { useResolvableAppointmentNotificationIds } from '../../hooks/useResolvab
 import { ApiErrorAlert } from '../../components/ui/ApiErrorAlert';
 import { appointmentsApi } from '../../api';
 import type { AppointmentDto, ClientAppointmentHistoryResponse, NotificationDto } from '../../types';
-import { StatusBadge } from '../../components/ui/Badge';
+import { getStatusBadge as StatusBadge } from '../../components/ui/Badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';

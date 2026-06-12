@@ -25,3 +25,15 @@ export function logAction(action: string, metadata?: Record<string, unknown>) {
     // telemetry is non-critical
   }
 }
+
+export function logTelemetry(type: string, data?: Record<string, unknown>) {
+  try {
+    api.post('/telemetria', {
+      type,
+      ...data,
+      timestamp: new Date().toISOString(),
+    }).catch(() => {});
+  } catch {
+    // telemetry is non-critical
+  }
+}

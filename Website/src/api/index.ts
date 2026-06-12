@@ -17,6 +17,7 @@ export const authApi = {
   login: (data: any) => api.post('/auth/login', data).then(r => r.data),
   register: (data: any) => api.post('/auth/register', data).then(r => r.data),
   getMe: () => api.get('/auth/me').then(r => r.data),
+  me: () => api.get('/auth/me').then(r => r.data), // Alias for compatibility
   logout: () => api.post('/auth/logout').then(r => r.data),
   changePassword: (data: any) => api.put('/auth/me/password', data).then(r => r.data),
   updateProfile: (data: any) => api.put('/auth/me', data).then(r => r.data),
@@ -57,6 +58,8 @@ export const appointmentsApi = {
   update: (id: number, data: any) => api.put(`/appointments/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/appointments/${id}`).then(r => r.data),
   updateStatus: (id: number, status: string) => api.patch(`/appointments/${id}/status`, { status }).then(r => r.data),
+  clientHistory: (salonId: number, clientId: number) => api.get(`/appointments/${salonId}/client/${clientId}/history`).then(r => r.data),
+  bySalon: (salonId: number, params?: any) => api.get(`/appointments/salon/${salonId}`, { params }).then(r => r.data),
 };
 
 export const getMyAgendamentos = (page = 1, pageSize = 25, status?: string, unidadeId?: number, search?: string, date?: string, funcionarioId?: number) =>
@@ -138,6 +141,11 @@ export const reviewsApi = {
 
 export const subscriptionsApi = {
   current: () => api.get('/subscriptions/current').then(r => r.data),
+  activateTrial: () => api.post('/subscriptions/trial').then(r => r.data),
+  upgrade: (data: any) => api.post('/subscriptions/upgrade', data).then(r => r.data),
+  startPaidCheckout: (planId: number) => api.post('/subscriptions/checkout', { planId }).then(r => r.data),
+  pendingCheckout: () => api.get('/subscriptions/pending-checkout').then(r => r.data),
+  cancel: () => api.delete('/subscriptions/current').then(r => r.data),
 };
 
 // ── Notificacoes ──────────────────────────────────────────────────────────────
@@ -170,6 +178,7 @@ export const legalApi = {
 export const legalDocumentsApi = {
   getByContext: (context: string) => api.get(`/legal/documents/${context}`).then(r => r.data),
   acceptConsent: (data: any) => api.post('/legal/consent', data).then(r => r.data),
+  listActive: () => api.get('/legal/documents/active').then(r => r.data),
 };
 
 // ── Reports ───────────────────────────────────────────────────────────────────
@@ -183,6 +192,7 @@ export const supportApi = {
   getSettings: () => api.get('/support/settings').then(r => r.data),
   updateSettings: (data: any) => api.put('/support/settings', data).then(r => r.data),
   sendContact: (data: any) => api.post('/support/contact', data).then(r => r.data),
+  getContact: () => api.get('/support/contact').then(r => r.data),
 };
 
 // ── Admin/Master ──────────────────────────────────────────────────────────────

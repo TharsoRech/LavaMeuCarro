@@ -109,7 +109,7 @@ export function AdminProfile() {
   const buildAcceptedConsents = useCallback((): LegalConsentRequest[] => (
     legalDocs
       .filter((doc) => acceptedDocCodes.includes(doc.code))
-      .map((doc) => ({ code: doc.code, version: doc.version }))
+      .map((doc: any) => ({ code: doc.code, version: doc.version }))
   ), [acceptedDocCodes, legalDocs]);
 
   const resetLicenseSelection = useCallback(() => {
@@ -741,7 +741,7 @@ export function AdminProfile() {
               {legalDocs.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-gray-700">Termos da assinatura</p>
-                  {legalDocs.map((doc) => {
+                  {legalDocs.map((doc: any) => {
                     const accepted = acceptedDocCodes.includes(doc.code);
                     return (
                       <label key={doc.code} className="flex items-start gap-3 p-3 rounded-lg border border-gray-200">

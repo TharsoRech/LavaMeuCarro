@@ -65,8 +65,11 @@ export function useNotifications(enabled = true) {
     unread,
     unreadCount,
     loading,
+    isLoading: loading, // Alias for compatibility
+    error: null, // Placeholder for compatibility
     markAsRead,
     markAllAsRead,
     refresh: fetchNotifications,
+    refetch: fetchNotifications, // Alias for compatibility
   };
 }

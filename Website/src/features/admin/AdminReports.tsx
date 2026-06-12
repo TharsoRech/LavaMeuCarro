@@ -339,7 +339,7 @@ export function AdminReports() {
               onChange={(event) => handleSalonChange(Number(event.target.value))}
               className="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white"
             >
-              {salons.map((salon) => (
+              {salons.map((salon: any) => (
                 <option key={salon.id} value={salon.id}>{salon.name}</option>
               ))}
             </select>
@@ -533,7 +533,7 @@ export function AdminReports() {
                     <tr>
                       <td colSpan={4} className="px-4 py-8 text-center text-gray-400">Sem clientes concluídos suficientes neste período.</td>
                     </tr>
-                  ) : readyReport.topClients.map((client) => (
+                  ) : readyReport.topClients.map((client: any) => (
                     <tr key={`${client.name}-${client.lastVisit ?? 'none'}`}>
                       <td className="px-4 py-3 font-medium text-gray-900">{client.name}</td>
                       <td className="px-4 py-3 text-gray-600">{formatNumber(client.visits)}</td>
@@ -548,7 +548,7 @@ export function AdminReports() {
 
           <SectionCard title="Insights automáticos" subtitle="Leituras rápidas para apoiar decisões da unidade.">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {readyReport.insights.map((insight) => (
+              {readyReport.insights.map((insight: any) => (
                 <div key={insight} className="rounded-2xl border border-brand-100 bg-brand-50/40 px-4 py-3 text-sm text-gray-700">
                   {insight}
                 </div>

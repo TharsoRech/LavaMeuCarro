@@ -152,12 +152,12 @@ export function AdminSalon() {
     return slots;
   }, []);
 
-  const schedulingSlotPool = useMemo(() => {
+  const schedulingSlotPool = useMemo<string[]>(() => {
     if (schedulingEditOpen) {
       return generateTimeSlots(schedulingInterval);
     }
-    const g = schedulingPoolGlobal?.filter(Boolean) ?? [];
-    const eff = activeSalon?.schedulingTimeOptionsEffective?.filter(Boolean) ?? [];
+    const g = (schedulingPoolGlobal?.filter(Boolean) ?? []) as string[];
+    const eff = (activeSalon?.schedulingTimeOptionsEffective?.filter(Boolean) ?? []) as string[];
     const merged = g.length ? g : eff;
     const sorted = Array.from(new Set(merged)).sort();
     return sorted;
@@ -855,7 +855,7 @@ export function AdminSalon() {
                   {(activeSalon?.schedulingTimeOptionsEffective ?? []).length === 0 ? (
                     <span className="text-sm text-gray-400">Carregando grade…</span>
                   ) : (
-                    activeSalon!.schedulingTimeOptionsEffective!.map((t) => (
+                    activeSalon!.schedulingTimeOptionsEffective!.map((t: string) => (
                       <span key={t} className="text-xs px-2 py-0.5 rounded bg-white border border-gray-200 text-gray-700">
                         {t}
                       </span>
@@ -866,7 +866,7 @@ export function AdminSalon() {
                 <div className="space-y-2">
                   <p className="text-xs text-gray-500">Toque para incluir ou remover. Alterações serão aplicadas ao salvar o formulário abaixo.</p>
                   <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-2 bg-indigo-50/50 rounded-lg border border-indigo-100">
-                    {schedulingSlotPool.map((t) => {
+                    {schedulingSlotPool.map((t: string) => {
                       const on = schedulingDraft.includes(t);
                       return (
                         <button
@@ -892,7 +892,7 @@ export function AdminSalon() {
                       onClick={() => {
                         setSchedulingTouched(true);
                         setSchedulingPendingPlatformDefault(false);
-                        setSchedulingDraft([...schedulingSlotPool]);
+                        setSchedulingDraft([...schedulingSlotPool] as string[]);
                       }}
                     >
                       Marcar todos

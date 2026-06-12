@@ -5,12 +5,20 @@ export enum SubscriptionStatus { None = 0, Active = 1, Cancelled = 2, Expired = 
 export interface User {
   id: number;
   nome: string;
+  name?: string; // Alias for compatibility
   email: string;
   telefone?: string;
+  phone?: string; // Alias for compatibility
   tipo: UserType;
+  type?: string; // String version for compatibility
   active: boolean;
   createdAt: string;
   base64Image?: string;
+  username?: string;
+  doc?: string;
+  dob?: string;
+  country?: string;
+  unidadeId?: number;
 }
 
 export interface Unidade {
@@ -36,6 +44,44 @@ export interface Unidade {
   schedulingTimeInterval?: number;
   businessHours?: Record<string, { open: string; close: string }>;
   createdAt: string;
+}
+
+export interface AppointmentDto {
+  // Standalone appointment type for compatibility
+  id: number;
+  clientId?: number;
+  funcionarioId?: number;
+  servicoId?: number;
+  unidadeId?: number;
+  salonId?: number; // Alias for compatibility
+  veiculoId?: number;
+  scheduledAt?: string;
+  durationMinutes?: number;
+  totalPrice?: number;
+  status?: AgendamentoStatus | string;
+  clientName?: string;
+  professionalName?: string;
+  serviceName?: string;
+  clientImage?: string;
+  salonName?: string;
+  clientHistory?: ClientAppointmentHistoryResponse;
+  clientPhone?: string;
+  clientCity?: string;
+  clientTotalAppointments?: number;
+  clientSalonAppointments?: number;
+  clientNoShowTotalAppointments?: number;
+  clientNoShowSalonAppointments?: number;
+  notes?: string;
+  canOpenAppointmentDetails?: boolean;
+  cancellationReason?: string;
+  salonWhatsApp?: string;
+}
+
+export interface LegalConsentRequest {
+  documentId: number;
+  userId: number;
+  acceptedAt: string;
+  ipAddress?: string;
 }
 
 export interface Agendamento {
@@ -86,7 +132,14 @@ export interface Funcionario {
   averageRating?: number;
   active: boolean;
   services?: number[];
+  serviceIds?: number[]; // Alias for compatibility
   reviewsCount?: number;
+  totalReviews?: number; // Alias for compatibility
+  isAdmin?: boolean;
+  photoUrl?: string;
+  schedule?: Record<string, string[]>;
+  availableTimes?: string[];
+  userName?: string; // Alias for compatibility
 }
 
 export interface Veiculo {
@@ -163,9 +216,12 @@ export interface NotificationDto {
   message: string;
   type: string;
   read: boolean;
+  referenceId?: number; // Added for compatibility
   createdAt: string;
   appointmentId?: number;
   metadata?: Record<string, unknown>;
+  isLoading?: boolean;
+  error?: string;
 }
 
 // Review types
@@ -292,6 +348,7 @@ export interface ClientAppointmentHistoryResponse {
   totalSpent: number;
   lastVisit?: string;
   appointments: Agendamento[];
+  atThisSalon?: Agendamento[]; // Added for compatibility
 }
 
 // Availability

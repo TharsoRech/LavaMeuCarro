@@ -1,12 +1,14 @@
 import type { BusinessReportsDto } from '../types';
 
-export type ReportPeriodDays = 7 | 30 | 90;
+export type ReportPeriodDays = 7 | 30 | 90 | 365;
 
 export interface ReportSeriesDatum {
   date: string;
   value?: number;
   amount?: number;
   count?: number;
+  secondaryValue?: number;
+  color?: string;
   label?: string;
 }
 
@@ -17,9 +19,19 @@ export interface BusinessReport {
   averageTicket: number;
   revenueSeries: ReportSeriesDatum[];
   appointmentsSeries: ReportSeriesDatum[];
+  statusSeries: ReportSeriesDatum[];
   topServices: Array<{ name: string; count: number; revenue: number }>;
   topClients: Array<{ name: string; count: number; revenue: number }>;
   insights: string[];
+  bySalon?: any[];
+  summary?: any;
+  unit?: any;
+  weekdayDemand?: any[];
+  topProfessionals?: any[];
+  scopeLabel?: string;
+  revenueTimeline?: any[];
+  hourlyDemand?: any[];
+  dateRangeLabel?: string;
 }
 
 export function computeBusinessReport(
@@ -34,9 +46,11 @@ export function computeBusinessReport(
     averageTicket: data.averageTicket || 0,
     revenueSeries: data.revenueOverTime || [],
     appointmentsSeries: data.appointmentsOverTime || [],
+    statusSeries: [],
     topServices: data.servicesRanking || [],
     topClients: [],
     insights: [],
+    bySalon: [],
   };
 }
 
