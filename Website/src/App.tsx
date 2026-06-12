@@ -16,19 +16,19 @@ import { PrivacyPolicyPage, TermsOfUsePage } from './features/legal/LegalDocumen
 
 // Admin - mixed exports
 import AdminLoginPage from './features/admin/AdminLoginPage'; // default
-import AdminDashboard from './features/admin/AdminDashboard'; // default
+import { AdminDashboard } from './features/admin/AdminDashboard'; // default
 import { AdminAppointments } from './features/admin/AdminAppointments'; // default
 // Temporarily disabled - needs implementation
 import { AdminProfessionals } from './features/admin/AdminProfessionals'; // named
 import { AdminServices } from './features/admin/AdminServices'; // named
 import { AdminSalon } from './features/admin/AdminSalon'; // named
-// import { AdminProfile } from './features/admin/AdminProfile'; // named
-// import { AdminNotifications } from './features/admin/AdminNotifications'; // named
-// import { AdminReports } from './features/admin/AdminReports'; // named
+import { AdminProfile } from './features/admin/AdminProfile'; // named
+import { AdminNotifications } from './features/admin/AdminNotifications'; // named
+import { AdminReports } from './features/admin/AdminReports'; // named
 import { AdminMarketing } from './features/admin/AdminMarketing'; // default
-import AdminPrivacy from './features/admin/AdminPrivacy'; // default
-import AdminTermsOfUse from './features/admin/AdminTermsOfUse'; // default
-import AdminPrivacyPolicy from './features/admin/AdminPrivacyPolicy'; // default
+import { AdminPrivacy } from './features/admin/AdminPrivacy'; // default
+import { AdminTermsOfUse } from './features/admin/AdminTermsOfUse'; // default
+import { AdminPrivacyPolicy } from './features/admin/AdminPrivacyPolicy'; // default
 
 // Master - mixed exports
 import MasterLoginPage from './features/master/MasterLoginPage'; // default
@@ -93,14 +93,14 @@ function App() {
                <Route path="/admin/agendamentos" element={<AdminAppointments />} />
                <Route path="/admin/profissionais" element={<AdminProfessionals />} />
                <Route path="/admin/servicos" element={<AdminServices />} />
-               {/* <Route path="/admin/relatorios" element={<AdminReports />} /> */}
+               <Route path="/admin/relatorios" element={<AdminReports />} />
                <Route path="/admin/unidade" element={<AdminSalon />} />
-               {/* <Route path="/admin/notificacoes" element={<AdminNotifications />} /> */}
+               <Route path="/admin/notificacoes" element={<AdminNotifications />} />
                <Route path="/admin/marketing" element={<AdminMarketing />} />
                <Route path="/admin/privacidade" element={<AdminPrivacy />} />
                <Route path="/admin/termos-de-uso" element={<AdminTermsOfUse />} />
                <Route path="/admin/politica-de-privacidade" element={<AdminPrivacyPolicy />} />
-               {/* <Route path="/admin/perfil" element={<AdminProfile />} /> */}
+               <Route path="/admin/perfil" element={<AdminProfile />} />
              </Route>
            </Route>
 

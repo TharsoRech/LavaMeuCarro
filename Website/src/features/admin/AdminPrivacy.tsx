@@ -1,112 +1,195 @@
 import { useState } from 'react';
+import { Shield, Download, Trash2, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
+import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { privacyApi } from '../../api';
 import { useAdminAuth } from '../../stores/authStore';
-import { logAction } from '../../utils/telemetry';
+import { useNavigate } from 'react-router-dom';
+import { logTelemetry } from '../../utils/telemetry';
 
-export default function AdminPrivacy() {
-  const { user } = useAdminAuth();
-  const [exporting, setExporting] = useState(false);
-  const [exportDone, setExportDone] = useState(false);
-  const [error, setError] = useState('');
+export function AdminPrivacy() {
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const { clearAuth } = useAdminAuth();
+  const navigate = useNavigate();
 
   const handleExport = async () => {
-    setExporting(true);
-    setError('');
+    setIsExporting(true);
+    setMessage(null);
     try {
-      const data = await privacyApi.exportData();
-      logAction('privacy_export');
-      // Download as JSON
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `meus-dados-${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setExportDone(true);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Erro ao exportar dados.');
+      const response = await privacyApi.exportData();
+      const data = response;
+      
+      // Ensure we have valid data to export
+      if (!data) {
+        throw new Error('Nenhum dado retornado pela API.');
+      }
+
+      const jsonString = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `meus-dados-hdb-${new Date().getTime()}.json`);
+      
+      // Required for some browsers
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+      
+      setMessage({ type: 'success', text: 'Seus dados foram exportados com sucesso!' });
+      logTelemetry('Privacy data exported.', { level: 'Information' });
+    } catch (err) {
+      console.error('Export error:', err);
+      setMessage({ type: 'error', text: 'Erro ao exportar dados. Tente novamente mais tarde.' });
+      logTelemetry('Privacy data export failed.', { level: 'Error' });
     } finally {
-      setExporting(false);
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('TEM CERTEZA? Esta ação é irreversível. Sua conta será desativada e seus dados pessoais serão anonimizados conforme a LGPD.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setMessage(null);
+    try {
+      await privacyApi.deleteAccount();
+      logTelemetry('Account deletion requested.', { level: 'Warning' });
+      alert('Sua conta foi excluída com sucesso. Você será deslogado.');
+      clearAuth();
+      navigate('/admin/login');
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Erro ao excluir conta. Se você tiver uma assinatura ativa, cancele-a primeiro no Perfil.' });
+      logTelemetry('Account deletion failed.', { level: 'Error' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Privacidade</h1>
-      <p className="text-gray-500 mb-6">Gerencie seus dados pessoais conforme a LGPD.</p>
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Privacidade e LGPD</h1>
+        <p className="text-gray-500 text-sm">Gerencie seus dados pessoais e direitos de privacidade.</p>
+      </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-          <p className="text-sm text-red-700">{error}</p>
+      {message && (
+        <div className={`p-4 rounded-lg flex items-start gap-3 border ${
+          message.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
+        }`}>
+          {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+          <p className="text-sm font-medium">{message.text}</p>
         </div>
       )}
 
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Seus Dados</CardTitle>
-            <CardDescription>Informações associadas à sua conta.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Nome</span>
-                <span className="font-medium text-gray-900">{user?.nome}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Email</span>
-                <span className="font-medium text-gray-900">{user?.email}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Telefone</span>
-                <span className="font-medium text-gray-900">{user?.telefone || '-'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Conta criada em</span>
-                <span className="font-medium text-gray-900">
-                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('pt-BR') : '-'}
-                </span>
+      <Card title="Termos de Uso">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <FileText className="w-6 h-6 text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm text-gray-600 mb-4">
+              Acesse e revise os Termos de Uso da plataforma Lava Meu Carro.
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/admin/termos-de-uso')}
+            >
+              Ver Termos de Uso
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Política de Privacidade">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <FileText className="w-6 h-6 text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm text-gray-600 mb-4">
+              Acesse e revise a Política de Privacidade da plataforma Lava Meu Carro.
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/admin/politica-de-privacidade')}
+            >
+              Ver Política de Privacidade
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Portabilidade de Dados">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-brand-50 rounded-lg">
+            <Download className="w-6 h-6 text-brand-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm text-gray-600 mb-4">
+              Você tem o direito de receber todos os seus dados pessoais armazenados em nossa plataforma em um formato estruturado (JSON).
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={handleExport} 
+              loading={isExporting}
+            >
+              Exportar Meus Dados
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Direito ao Esquecimento">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-red-50 rounded-lg">
+            <Trash2 className="w-6 h-6 text-red-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm text-gray-600 mb-4">
+              Ao solicitar a exclusão, sua conta será desativada e seus dados pessoais (nome, documento, telefone, e-mail) serão anonimizados em nossos registros.
+            </p>
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-4">
+              <div className="flex gap-2 text-amber-800">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <p className="text-xs font-medium">
+                  Atenção: Esta ação não pode ser desfeita. Se você for proprietário de um salão, a unidade deixará de ser visível.
+                </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Exportar Dados</CardTitle>
-            <CardDescription>
-              Baixe uma cópia de todos os dados associados à sua conta em formato JSON.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {exportDone && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                <p className="text-sm text-green-700">Dados exportados com sucesso!</p>
-              </div>
-            )}
-            <Button onClick={handleExport} loading={exporting} variant="outline">
-              Exportar meus dados
+            <Button 
+              variant="danger" 
+              onClick={handleDeleteAccount}
+              loading={isDeleting}
+            >
+              Excluir Minha Conta
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-red-600">Excluir Conta</CardTitle>
-            <CardDescription>
-              Esta ação é irreversível. Todos os seus dados serão removidos permanentemente.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <a href="/delete-account" target="_blank" rel="noopener noreferrer">
-              <Button variant="danger">Ir para exclusão de conta</Button>
-            </a>
-          </CardContent>
-        </Card>
-      </div>
+      <Card title="Segurança">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <Shield className="w-6 h-6 text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm text-gray-600">
+              Seus dados são protegidos por criptografia de ponta a ponta e seguimos as melhores práticas de segurança da informação para garantir a integridade da sua conta.
+            </p>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
