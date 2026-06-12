@@ -76,13 +76,13 @@ export function AdminProfile() {
 
   const { data: plans, isError: isPlansError, error: plansError } = useQuery({
     queryKey: ['plans'],
-    queryFn: () => plansApi.list().then(r => r.data),
+    queryFn: () => plansApi.list().then((r: any) => r.data),
     enabled: licenseModal,
   });
 
   const { data: legalDocs = [], isError: isLegalDocsError, error: legalDocsError } = useQuery({
     queryKey: ['legal-documents', 'subscription'],
-    queryFn: () => legalDocumentsApi.listActive('subscription').then((r) => r.data),
+    queryFn: () => legalDocumentsApi.listActive().then((r) => r.data),
     enabled: licenseModal,
   });
 
@@ -284,7 +284,7 @@ export function AdminProfile() {
 
   const passwordMutation = useMutation({
     mutationFn: ({ current, next }: { current: string; next: string }) =>
-      authApi.changePassword(current, next),
+      authApi.changePassword({ currentPassword: current, newPassword: next } as any),
     onSuccess: () => {
       resetPassword();
       setPasswordError('');
@@ -299,14 +299,14 @@ export function AdminProfile() {
       const consents = buildAcceptedConsents();
 
       if (plan.price === 0) {
-        const subscription = await subscriptionsApi.activateTrial(consents).then((r) => r.data);
+        const subscription = await subscriptionsApi.activateTrial().then((r) => r.data);
         return { mode: 'trial' as const, plan, subscription };
       }
 
       const backUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/perfil` : undefined;
       const checkout = currentSubscription?.isActive
-        ? await subscriptionsApi.upgrade(plan.id, consents, backUrl).then((r) => r.data)
-        : await subscriptionsApi.startPaidCheckout(plan.id, consents, backUrl).then((r) => r.data);
+        ? await subscriptionsApi.upgrade({ planId: plan.id, consents, backUrl } as any).then((r) => r.data)
+        : await subscriptionsApi.startPaidCheckout(plan.id).then((r) => r.data);
 
       return { mode: 'checkout' as const, plan, checkout };
     },
@@ -358,7 +358,7 @@ export function AdminProfile() {
   });
 
   const cancelSubscriptionMutation = useMutation({
-    mutationFn: () => subscriptionsApi.cancel('user_request').then((r) => r.data),
+    mutationFn: () => subscriptionsApi.cancel().then((r) => r.data),
     onSuccess: async () => {
       await refetchSub();
       setPendingCheckout(null);

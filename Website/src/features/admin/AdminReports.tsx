@@ -269,13 +269,12 @@ export function AdminReports() {
     queryKey: ['reports-appointments', activeSalonId, effectiveReportRange.startDateParam, effectiveReportRange.endDateParam],
     queryFn: () => appointmentsApi.bySalon(
       activeSalonId!,
-      undefined,
-      undefined,
-      true,
-      effectiveReportRange.startDateParam,
-      effectiveReportRange.endDateParam,
-      true,
-    ).then((response) => response.data),
+      {
+        startDate: effectiveReportRange.startDateParam,
+        endDate: effectiveReportRange.endDateParam,
+        includeDetails: true,
+      }
+    ).then((response: any) => response.data),
     enabled: !!activeSalonId,
   });
 
@@ -302,7 +301,7 @@ export function AdminReports() {
       periodDays,
       rangeStart: effectiveReportRange.start,
       rangeEnd: effectiveReportRange.end,
-    });
+    } as any, periodDays);
   }, [appointments, effectiveReportRange.end, effectiveReportRange.start, periodDays, professionals, selectedSalon, services]);
 
    const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -513,7 +512,7 @@ export function AdminReports() {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <RankingTable title="Serviços com maior faturamento" rows={readyReport.topServices} />
+            <RankingTable title="Serviços com maior faturamento" rows={readyReport.topServices as any} />
             <RankingTable title="Profissionais com maior faturamento" rows={readyReport.topProfessionals} />
           </div>
 

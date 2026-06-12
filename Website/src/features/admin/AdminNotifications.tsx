@@ -64,7 +64,8 @@ export function AdminNotifications() {
   const [clientHistoryLoading, setClientHistoryLoading] = useState(false);
   const [clientHistoryError, setClientHistoryError] = useState('');
   const [clientHistory, setClientHistory] = useState<ClientAppointmentHistoryResponse | null>(null);
-  const { canOpenAppointmentDetails } = useResolvableAppointmentNotificationIds(notifications);
+  const resolvableIds = useResolvableAppointmentNotificationIds(notifications);
+  const canOpenAppointmentDetails = resolvableIds.length > 0;
 
   const handleOpenDetails = async (notification: NotificationDto) => {
     if (!notification.referenceId) return;
@@ -240,7 +241,7 @@ export function AdminNotifications() {
                       })}
                     </p>
                     {/* Botão Detalhes para notificações de agendamento */}
-                    {canOpenAppointmentDetails(notification) && (
+                    {canOpenAppointmentDetails && (
                       <button
                         onClick={() => handleOpenDetails(notification)}
                         className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors"
@@ -358,7 +359,7 @@ export function AdminNotifications() {
                     <DetailRow label="Serviço" value={detailApt.serviceName} />
                     <DetailRow label="Profissional" value={detailApt.professionalName} />
                     <DetailRow label="Unidade" value={detailApt.salonName} />
-                    <DetailRow label="Data/Hora" value={format(new Date(detailApt.scheduledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
+                    <DetailRow label="Data/Hora" value={format(new Date(detailApt.scheduledAt || ''), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
                     <DetailRow label="Duração" value={`${detailApt.durationMinutes} min`} />
                     <DetailRow label="Valor" value={detailApt.totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} />
                     <div className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">

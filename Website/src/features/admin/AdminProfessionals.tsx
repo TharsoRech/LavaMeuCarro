@@ -315,7 +315,7 @@ export function AdminProfessionals() {
                         <button
                           onClick={() => {
                             setEditTarget(prof);
-                            setEditServiceIds(prof.serviceIds ?? []);
+                            setEditServiceIds((prof.serviceIds ?? []) as any);
                             const normalized = normalizeSchedule(prof.schedule, prof.availableTimes);
                             setEditSchedule(normalized);
                             const firstWithTimes = DAYS_OF_WEEK.find((day) => (normalized[day.id] || []).length > 0)?.id ?? '1';
@@ -325,7 +325,7 @@ export function AdminProfessionals() {
                               specialty: prof.specialty || '',
                               bio: prof.bio || '',
                               isAdmin: prof.isAdmin,
-                              serviceIds: prof.serviceIds ?? [],
+                              serviceIds: (prof.serviceIds ?? []) as any,
                             });
                           }}
                           className="text-gray-400 hover:text-brand-600 transition-colors"

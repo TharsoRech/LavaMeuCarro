@@ -85,3 +85,11 @@ export function formatPeriodLabel(period: string): string {
   };
   return labels[period] || period;
 }
+
+export function formatPercentage(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'percent',
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value / 100);
+}

@@ -135,7 +135,7 @@ export interface Funcionario {
   averageRating?: number;
   active: boolean;
   services?: number[];
-  serviceIds?: number[]; // Alias for compatibility
+  serviceIds?: (number | string)[]; // Alias for compatibility
   reviewsCount?: number;
   totalReviews?: number; // Alias for compatibility
   isAdmin?: boolean;
@@ -267,6 +267,7 @@ export interface LegalDocumentDto {
   title: string;
   content: string;
   updatedAt: string;
+  version?: string;
 }
 
 // Privacy types
