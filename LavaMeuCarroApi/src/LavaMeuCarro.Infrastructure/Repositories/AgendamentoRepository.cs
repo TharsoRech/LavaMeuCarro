@@ -240,4 +240,41 @@ public class AgendamentoRepository : IAgendamentoRepository
               AND Status IN ('Cancelado', 'NaoCompareceu')",
             new { UnidadeIds = unidadeIds, From = from, To = to });
     }
+
+    public async Task<List<dynamic>> GetUpcomingAsync(int minutesAhead)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = @"
+            SELECT 
+                a.Id,
+                a.ClientId,
+                a.DataHora,
+                s.Nome as ServicoNome,
+                u.Nome as UnidadeNome,
+                c.Name as ClientNome,
+                c.Email as ClientEmail,
+                c.Phone as ClientPhone
+            FROM Agendamentos a
+            INNER JOIN Servicos s ON a.ServicoId = s.Id
+            INNER JOIN Unidades u ON a.UnidadeId = u.Id
+            LEFT JOIN Users c ON a.ClientId = c.Id
+            WHERE a.Status = 'Confirmado'
+              AND a.DataHora BETWEEN GETUTCDATE() AND DATEADD(minute, @MinutesAhead, GETUTCDATE())
+              AND a.DataHora > GETUTCDATE()";
+        
+        var appointments = await db.QueryAsync(sql, new { MinutesAhead = minutesAhead });
+        return appointments.ToList<dynamic>();
+    }
+
+    public async Task<int> MarkPastAsNoShowAsync(int hoursAgo)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = @"
+            UPDATE Agendamentos 
+            SET Status = 'NaoCompareceu', UpdatedAt = GETUTCDATE()
+            WHERE Status IN ('Confirmado', 'Pendente')
+              AND DataHora < DATEADD(hour, -@HoursAgo, GETUTCDATE())";
+        
+        return await db.ExecuteAsync(sql, new { HoursAgo = hoursAgo });
+    }
 }

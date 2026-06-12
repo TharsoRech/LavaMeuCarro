@@ -12,4 +12,8 @@ public interface IUserRepository
     Task<List<User>> GetAllAsync(int page, int pageSize, string? search);
     Task<int> CountAsync(string? search);
     Task<List<User>> GetByIdsAsync(List<int> ids);
+    
+    // Client-specific methods
+    Task<List<dynamic>> GetClientsAsync(int page, int pageSize, string? search);
+    Task<List<dynamic>> SearchClientsAsync(string search);
 }

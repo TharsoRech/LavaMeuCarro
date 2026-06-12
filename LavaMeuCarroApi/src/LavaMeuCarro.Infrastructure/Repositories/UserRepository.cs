@@ -65,4 +65,39 @@ public class UserRepository : IUserRepository
         using var db = _factory.CreateConnection();
         return (await db.QueryAsync<User>("SELECT * FROM Users WHERE Id IN @Ids", new { Ids = ids })).ToList();
     }
+
+    public async Task<List<dynamic>> GetClientsAsync(int page, int pageSize, string? search)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = @"
+            SELECT Id, Name, Email, Phone, Doc, CreatedAt, Active,
+                   (SELECT COUNT(*) FROM Agendamentos WHERE ClientId = Users.Id) as AppointmentsCount,
+                   (SELECT MAX(DataHora) FROM Agendamentos WHERE ClientId = Users.Id) as LastAppointmentAt
+            FROM Users 
+            WHERE Type = 0 AND (@Search IS NULL OR Name LIKE @Search OR Email LIKE @Search OR Phone LIKE @Search)
+            ORDER BY Id DESC 
+            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
+        
+        var clients = await db.QueryAsync(sql, new { 
+            Search = search != null ? $"%{search}%" : null, 
+            Offset = (page - 1) * pageSize, 
+            PageSize = pageSize 
+        });
+        
+        return clients.ToList<dynamic>();
+    }
+
+    public async Task<List<dynamic>> SearchClientsAsync(string search)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = @"
+            SELECT TOP 20 Id, Name, Email, Phone, Doc
+            FROM Users 
+            WHERE Type = 0 AND (Name LIKE @Search OR Email LIKE @Search OR Phone LIKE @Search OR Doc LIKE @Search)
+            ORDER BY Name ASC";
+        
+        var clients = await db.QueryAsync(sql, new { Search = $"%{search}%" });
+        
+        return clients.ToList<dynamic>();
+    }
 }

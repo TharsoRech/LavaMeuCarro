@@ -40,6 +40,7 @@ public interface INotificacaoRepository
     Task MarkReadAsync(int id);
     Task MarkAllReadAsync(int userId);
     Task<int> CountUnreadAsync(int userId);
+    Task DeleteOldAsync(int daysOld);
 }
 
 public interface IPushDeviceTokenRepository

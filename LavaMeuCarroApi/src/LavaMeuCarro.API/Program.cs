@@ -7,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using LavaMeuCarro.API.Middleware;
 using LavaMeuCarro.Application.Extensions;
 using LavaMeuCarro.Infrastructure.Extensions;
+using LavaMeuCarro.Infrastructure.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -68,6 +69,13 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+
+// Register Background Services (Cron Jobs)
+builder.Services.AddHostedService<AppointmentReminderJob>();
+builder.Services.AddHostedService<AppointmentStatusCleanupJob>();
+builder.Services.AddHostedService<PushTokenCleanupJob>();
+builder.Services.AddHostedService<SessionCleanupJob>();
+builder.Services.AddHostedService<NotificationCleanupJob>();
 
 var app = builder.Build();
 

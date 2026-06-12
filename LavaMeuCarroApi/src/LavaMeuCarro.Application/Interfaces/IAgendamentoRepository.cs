@@ -34,4 +34,8 @@ public interface IAgendamentoRepository
     Task<decimal> SumScheduledRevenueAsync(int[] unidadeIds, DateTime from, DateTime to);
     Task<int> CountNewClientsAsync(int[] unidadeIds, DateTime from, DateTime to);
     Task<decimal> SumLostRevenueAsync(int[] unidadeIds, DateTime from, DateTime to);
+    
+    // Cron Job methods
+    Task<List<dynamic>> GetUpcomingAsync(int minutesAhead);
+    Task<int> MarkPastAsNoShowAsync(int hoursAgo);
 }

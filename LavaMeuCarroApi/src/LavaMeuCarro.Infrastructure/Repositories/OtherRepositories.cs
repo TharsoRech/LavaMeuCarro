@@ -61,6 +61,7 @@ public class NotificacaoRepository : INotificacaoRepository
     public async Task MarkReadAsync(int id) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("UPDATE Notificacoes SET IsRead = 1 WHERE Id = @Id", new { Id = id }); }
     public async Task MarkAllReadAsync(int userId) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("UPDATE Notificacoes SET IsRead = 1 WHERE UserId = @UserId AND IsRead = 0", new { UserId = userId }); }
     public async Task<int> CountUnreadAsync(int userId) { using var db = _factory.CreateConnection(); return await db.QuerySingleAsync<int>("SELECT COUNT(*) FROM Notificacoes WHERE UserId = @UserId AND IsRead = 0", new { UserId = userId }); }
+    public async Task DeleteOldAsync(int daysOld) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("DELETE FROM Notificacoes WHERE CreatedAt < DATEADD(day, -@DaysOld, GETUTCDATE())", new { DaysOld = daysOld }); }
 }
 
 public class AvaliacaoRepository : IAvaliacaoRepository
