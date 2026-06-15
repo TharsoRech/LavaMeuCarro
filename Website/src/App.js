@@ -11,10 +11,10 @@ import LandingPage from './features/landing/LandingPage';
 // Legal (public)
 import DeleteAccountPage from './features/legal/DeleteAccountPage';
 import { PrivacyPolicyPage, TermsOfUsePage } from './features/legal/LegalDocumentPages';
-// Admin - mixed exports
-import AdminLoginPage from './features/admin/AdminLoginPage'; // default
-import AdminDashboard from './features/admin/AdminDashboard'; // default
-import AdminAppointments from './features/admin/AdminAppointments'; // default
+// Admin - named exports
+import { AdminLoginPage } from './features/admin/AdminLoginPage';
+import { AdminDashboard } from './features/admin/AdminDashboard';
+import { AdminAppointments } from './features/admin/AdminAppointments';
 // Temporarily disabled - needs implementation
 import { AdminProfessionals } from './features/admin/AdminProfessionals'; // named
 import { AdminServices } from './features/admin/AdminServices'; // named
@@ -22,10 +22,10 @@ import { AdminSalon } from './features/admin/AdminSalon'; // named
 // import { AdminProfile } from './features/admin/AdminProfile'; // named
 // import { AdminNotifications } from './features/admin/AdminNotifications'; // named
 // import { AdminReports } from './features/admin/AdminReports'; // named
-import AdminMarketing from './features/admin/AdminMarketing'; // default
-import AdminPrivacy from './features/admin/AdminPrivacy'; // default
-import AdminTermsOfUse from './features/admin/AdminTermsOfUse'; // default
-import AdminPrivacyPolicy from './features/admin/AdminPrivacyPolicy'; // default
+import { AdminMarketing } from './features/admin/AdminMarketing';
+import { AdminPrivacy } from './features/admin/AdminPrivacy';
+import { AdminTermsOfUse } from './features/admin/AdminTermsOfUse';
+import { AdminPrivacyPolicy } from './features/admin/AdminPrivacyPolicy';
 // Master - mixed exports
 import MasterLoginPage from './features/master/MasterLoginPage'; // default
 import MasterDashboard from './features/master/MasterDashboard'; // default
