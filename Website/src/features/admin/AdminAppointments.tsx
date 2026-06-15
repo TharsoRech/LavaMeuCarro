@@ -64,7 +64,7 @@ export function AdminAppointments() {
 
   const { data: salons } = useQuery({
     queryKey: ['my-units'],
-    queryFn: () => salonsApi.myUnits().then((r) => r.data),
+    queryFn: () => salonsApi.myUnits(),
   });
 
   const { activeSalonId: activeSalon, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);
@@ -86,7 +86,7 @@ export function AdminAppointments() {
 
   const { data: professionals } = useQuery({
     queryKey: ['professionals-filter', activeSalon],
-    queryFn: () => professionalsApi.bySalon(activeSalon as number).then((r) => r.data),
+    queryFn: () => professionalsApi.bySalon(activeSalon as number),
     enabled: !!activeSalon,
   });
 
@@ -105,7 +105,7 @@ export function AdminAppointments() {
 
   const { data: services } = useQuery({
     queryKey: ['services-for-appointments', activeSalon],
-    queryFn: () => servicesApi.list(activeSalon as number).then((r) => r.data),
+    queryFn: () => servicesApi.list(activeSalon as number),
     enabled: !!activeSalon,
   });
 
@@ -127,7 +127,7 @@ export function AdminAppointments() {
         statusFilter === 'all' ? undefined : String(statusFilter),
         debouncedSearchFilter,
         true,
-      ).then((r) => r.data),
+      ),
     enabled: !!activeSalon && viewMode === 'list',
     placeholderData: (previousData) => previousData,
     retry: 0,
@@ -148,7 +148,7 @@ export function AdminAppointments() {
         listStartDate,
         listEndDate,
         true,
-      ).then((r) => r.data),
+      ),
     enabled: !!activeSalon && viewMode === 'calendar',
     placeholderData: (previousData) => previousData,
     retry: 0,
@@ -189,7 +189,7 @@ export function AdminAppointments() {
 
   const { data: selectedAptDetails } = useQuery({
     queryKey: ['appointment-details', selectedApt?.id],
-    queryFn: () => appointmentsApi.getById(selectedApt!.id).then((r) => r.data),
+    queryFn: () => appointmentsApi.getById(selectedApt!.id),
     enabled: !!selectedApt,
     retry: 0,
     refetchOnWindowFocus: false,
@@ -205,20 +205,20 @@ export function AdminAppointments() {
 
   const { data: clientHistory, isLoading: clientHistoryLoading, isError: clientHistoryIsError, error: clientHistoryError, refetch: refetchClientHistory } = useQuery({
     queryKey: ['client-appointment-history', selectedApt?.salonId, selectedApt?.clientId],
-    queryFn: () => appointmentsApi.clientHistory(selectedApt!.salonId, selectedApt!.clientId).then((r) => r.data),
+    queryFn: () => appointmentsApi.clientHistory(selectedApt!.salonId, selectedApt!.clientId),
     enabled: clientHistoryOpen && !!selectedApt,
   });
 
   const { data: createAvailabilityCal, isFetching: isLoadingCreateCal } = useQuery({
     queryKey: ['admin-availability-cal', createProfessionalId, createServiceId],
     queryFn: () =>
-      professionalsApi.timeOptions().then((r) => r.data),
+      professionalsApi.timeOptions(),
     enabled: !!createProfessionalId && !!createServiceId && createModalOpen,
   });
 
   const { data: searchedClients = [], isFetching: isSearchingClients } = useQuery({
     queryKey: ['manual-appointment-clients', activeSalon, createClientSearch],
-    queryFn: () => clientsApi.searchClients(createClientSearch.trim()).then((r) => r.data),
+    queryFn: () => clientsApi.searchClients(createClientSearch.trim()),
     enabled: !!activeSalon && createModalOpen && createClientMode === 'existing' && createClientSearch.trim().length >= 2,
   });
 
@@ -249,7 +249,7 @@ export function AdminAppointments() {
 
   const { data: eligibleProfessionals = [], isFetching: isLoadingEligibleProfessionals, isError: isEligibleProfessionalsError, error: eligibleProfessionalsError, refetch: refetchEligibleProfessionals } = useQuery({
     queryKey: ['appointment-eligible-professionals', selectedApt?.id, detailInlineAction],
-    queryFn: () => professionalsApi.bySalon(activeSalon as number).then((r) => r.data),
+    queryFn: () => professionalsApi.bySalon(activeSalon as number),
     enabled: !!selectedApt && detailInlineAction === 'reassign',
   });
 
@@ -289,7 +289,7 @@ export function AdminAppointments() {
 
     const openPendingAppointment = async () => {
       try {
-        const appointment = await appointmentsApi.getById(appointmentId).then((r) => r.data);
+        const appointment = await appointmentsApi.getById(appointmentId);
         if (cancelled) return;
         setSelectedApt(appointment);
       } catch {

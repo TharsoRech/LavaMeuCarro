@@ -88,13 +88,13 @@ export function AdminProfessionals() {
 
   const { data: services } = useQuery({
     queryKey: ['services-for-professionals', activeSalonId],
-    queryFn: () => servicesApi.list(activeSalonId!).then((r) => r.data),
+    queryFn: () => servicesApi.list(activeSalonId!),
     enabled: !!activeSalonId,
   });
 
   const { data: timeOptionsData } = useQuery({
     queryKey: ['professional-time-options', activeSalonId],
-    queryFn: () => professionalsApi.timeOptions(activeSalonId!).then((r) => r.data),
+    queryFn: () => professionalsApi.timeOptions(activeSalonId!),
     enabled: !!activeSalonId,
   });
 
@@ -105,7 +105,7 @@ export function AdminProfessionals() {
 
   const { data: reviews, isLoading: isLoadingReviews } = useQuery({
     queryKey: ['professional-reviews', reviewTarget?.id],
-    queryFn: () => professionalsApi.reviews(reviewTarget!.id).then((r) => r.data),
+    queryFn: () => professionalsApi.reviews(reviewTarget!.id),
     enabled: !!reviewTarget,
   });
 

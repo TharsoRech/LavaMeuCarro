@@ -24,7 +24,7 @@ export function AdminMarketing() {
 
   const { data: salons } = useQuery({
     queryKey: ['my-units'],
-    queryFn: () => salonsApi.myUnits().then((r: any) => r.data),
+    queryFn: () => salonsApi.myUnits(),
   });
   const { activeSalonId, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);
 
@@ -49,7 +49,7 @@ export function AdminMarketing() {
           search: debouncedTerm || undefined,
           onlyWithPushToken,
         })
-        .then((r: any) => r.data),
+        ,
     enabled: !!activeSalonId,
     placeholderData: (prev) => prev,
   });
@@ -85,7 +85,7 @@ export function AdminMarketing() {
           message: message.trim(),
           clientIds: Array.from(selectedClientIds),
         })
-        .then((r: any) => r.data),
+        ,
     onSuccess: (result) => {
       setLastResult(result);
       setFeedback({

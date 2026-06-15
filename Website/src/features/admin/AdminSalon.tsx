@@ -124,14 +124,14 @@ export function AdminSalon() {
 
   const { data: currentSubscription } = useQuery({
     queryKey: ['subscription-current'],
-    queryFn: () => subscriptionsApi.current().then((r) => r.data),
+    queryFn: () => subscriptionsApi.current(),
   });
 
   const canPublishCatalog = Boolean(currentSubscription?.isActive);
 
   const { data: schedulingPoolGlobal } = useQuery({
     queryKey: ['scheduling-pool-global'],
-    queryFn: () => professionalsApi.timeOptions().then((r) => r.data),
+    queryFn: () => professionalsApi.timeOptions(),
   });
 
   const { salonId, setSalonId, activeSalonId, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);

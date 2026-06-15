@@ -71,24 +71,24 @@ export function AdminProfile() {
 
   const { data: currentSubscription, refetch: refetchSub, isError: isSubscriptionError, error: subscriptionError } = useQuery({
     queryKey: ['subscription-current'],
-    queryFn: () => subscriptionsApi.current().then((r) => r.data),
+    queryFn: () => subscriptionsApi.current(),
   });
 
   const { data: plans, isError: isPlansError, error: plansError } = useQuery({
     queryKey: ['plans'],
-    queryFn: () => plansApi.list().then((r: any) => r.data),
+    queryFn: () => plansApi.list(),
     enabled: licenseModal,
   });
 
   const { data: legalDocs = [], isError: isLegalDocsError, error: legalDocsError } = useQuery({
     queryKey: ['legal-documents', 'subscription'],
-    queryFn: () => legalDocumentsApi.listActive().then((r) => r.data),
+    queryFn: () => legalDocumentsApi.listActive(),
     enabled: licenseModal,
   });
 
   const { data: supportContact } = useQuery({
     queryKey: ['support-contact', 'license-modal'],
-    queryFn: () => supportApi.getContact().then((r) => r.data),
+    queryFn: () => supportApi.getContact(),
     enabled: licenseModal,
   });
 
@@ -152,7 +152,7 @@ export function AdminProfile() {
 
     setIsSyncingCheckout(true);
     try {
-      const updatedSub = await subscriptionsApi.current().then((r) => r.data);
+      const updatedSub = await subscriptionsApi.current();
       if (updatedSub.isActive && updatedSub.planId === pendingCheckout.planId) {
         logTelemetry('Admin checkout confirmed by polling.', {
           level: 'Information',
@@ -299,14 +299,14 @@ export function AdminProfile() {
       const consents = buildAcceptedConsents();
 
       if (plan.price === 0) {
-        const subscription = await subscriptionsApi.activateTrial().then((r) => r.data);
+        const subscription = await subscriptionsApi.activateTrial();
         return { mode: 'trial' as const, plan, subscription };
       }
 
       const backUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/perfil` : undefined;
       const checkout = currentSubscription?.isActive
-        ? await subscriptionsApi.upgrade({ planId: plan.id, consents, backUrl } as any).then((r) => r.data)
-        : await subscriptionsApi.startPaidCheckout(plan.id).then((r) => r.data);
+        ? await subscriptionsApi.upgrade({ planId: plan.id, consents, backUrl } as any)
+        : await subscriptionsApi.startPaidCheckout(plan.id);
 
       return { mode: 'checkout' as const, plan, checkout };
     },
@@ -358,7 +358,7 @@ export function AdminProfile() {
   });
 
   const cancelSubscriptionMutation = useMutation({
-    mutationFn: () => subscriptionsApi.cancel().then((r) => r.data),
+    mutationFn: () => subscriptionsApi.cancel(),
     onSuccess: async () => {
       await refetchSub();
       setPendingCheckout(null);

@@ -232,7 +232,7 @@ export function AdminReports() {
 
   const { data: salons, isError: isSalonsError, error: salonsError, refetch: refetchSalons } = useQuery({
     queryKey: ['my-units'],
-    queryFn: () => salonsApi.myUnits().then((response) => response.data),
+    queryFn: () => salonsApi.myUnits(),
   });
 
   const { activeSalonId, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);
@@ -279,19 +279,19 @@ export function AdminReports() {
       undefined,
       undefined,
       true,
-    ).then((r: any) => r.data),
+    ),
     enabled: !!activeSalonId,
   });
 
   const { data: services, isError: isServicesError, error: servicesError, refetch: refetchServices } = useQuery({
     queryKey: ['reports-services', activeSalonId],
-    queryFn: () => servicesApi.list(activeSalonId!).then((response) => response.data),
+    queryFn: () => servicesApi.list(activeSalonId!),
     enabled: !!activeSalonId,
   });
 
   const { data: professionals, isError: isProfessionalsError, error: professionalsError, refetch: refetchProfessionals } = useQuery({
     queryKey: ['reports-professionals', activeSalonId],
-    queryFn: () => professionalsApi.bySalon(activeSalonId!).then((response) => response.data),
+    queryFn: () => professionalsApi.bySalon(activeSalonId!),
     enabled: !!activeSalonId,
   });
 
