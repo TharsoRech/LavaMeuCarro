@@ -19,8 +19,9 @@ export const MasterGuard: React.FC<MasterGuardProps> = ({ children }) => {
     return <Navigate to="/master/login" replace />;
   }
 
-  // Only Admin type (3) can access master
-  if (user && user.tipo !== 3) {
+  // Only Admin type (3) can access master (support both 'type' and 'tipo' fields)
+  const userType = user?.type ?? user?.tipo;
+  if (user && userType !== 3) {
     return <Navigate to="/master/login" replace />;
   }
 

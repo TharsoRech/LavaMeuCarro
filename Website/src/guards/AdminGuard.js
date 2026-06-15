@@ -13,7 +13,7 @@ export const AdminGuard = ({ children }) => {
         return _jsx(Navigate, { to: "/admin/login", replace: true });
     }
     // Check if user is Owner or Admin type
-    if (user && user.tipo !== 2 && user.tipo !== 3) {
+    if (user && user.type !== 2 && user.type !== 3 && user.tipo !== 2 && user.tipo !== 3) {
         return _jsx(Navigate, { to: "/admin/login", replace: true });
     }
     return _jsx(_Fragment, { children: children });

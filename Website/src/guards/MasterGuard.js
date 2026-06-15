@@ -13,7 +13,8 @@ export const MasterGuard = ({ children }) => {
         return _jsx(Navigate, { to: "/master/login", replace: true });
     }
     // Only Admin type (3) can access master
-    if (user && user.tipo !== 3) {
+    const userType = user?.type ?? user?.tipo;
+    if (user && userType !== 3) {
         return _jsx(Navigate, { to: "/master/login", replace: true });
     }
     return _jsx(_Fragment, { children: children });
