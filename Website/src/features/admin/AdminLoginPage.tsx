@@ -64,19 +64,20 @@ export default function AdminLoginPage() {
     setIsMaintenance(false);
     try {
       const res = await authApi.login({ email: data.email, password: data.password });
-      const { token, refreshToken, type } = res.data;
+      const { token, refreshToken, user } = res;
+      const type = user?.type;
 
-      if (type !== 'Owner' && type !== 'Professional' && type !== 'Admin') {
+      if (type !== 'Owner' && type !== 'Professional' && type !== 'Admin' && type !== 3 && type !== 2 && type !== 1) {
         setServerError('Acesso negado. Somente proprietários e profissionais administradores podem acessar este painel.');
         return;
       }
 
       // Fetch full profile
       const profileRes = await authApi.me();
-      setAuth(token, refreshToken, profileRes.data);
+      setAuth(token, refreshToken, profileRes.data || profileRes);
       logTelemetry('Admin login succeeded.', {
         level: 'Information',
-        context: { userType: type, userId: profileRes.data.id },
+        context: { userType: type, userId: (profileRes.data || profileRes)?.id },
       });
       navigate('/admin');
     } catch (err: unknown) {
