@@ -26,7 +26,7 @@ export default function AdminLoginPage() {
         try {
             const res = await api.post('/auth/login', { Email: data.email, Password: data.senha });
             setAuth(res.data.token, res.data.refreshToken, res.data.user);
-            navigate('/admin/dashboard');
+            navigate('/admin/painel');
         }
         catch (err) {
             setError(err.response?.data?.message || 'Erro ao fazer login');

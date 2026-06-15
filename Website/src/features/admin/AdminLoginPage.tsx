@@ -79,7 +79,7 @@ export default function AdminLoginPage() {
         level: 'Information',
         context: { userType: type, userId: (profileRes.data || profileRes)?.id },
       });
-      navigate('/admin');
+      navigate('/admin/painel');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string, error?: string } } };
       // O backend usa 'error' no corpo da resposta do middleware de exceção
