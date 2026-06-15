@@ -73,6 +73,37 @@
       "script": "install",
       "path": "${workspaceFolder}/Website/",
       "problemMatcher": []
+    },
+    {
+      "label": "gradle-build-debug",
+      "type": "shell",
+      "command": "cd ${workspaceFolder}/Android && ./gradlew :app:assembleDebug",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "gradle-install-debug",
+      "type": "shell",
+      "command": "cd ${workspaceFolder}/Android && ./gradlew :app:installDebug",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "gradle-clean",
+      "type": "shell",
+      "command": "cd ${workspaceFolder}/Android && ./gradlew clean",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
     }
   ]
 }

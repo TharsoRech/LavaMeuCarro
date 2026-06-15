@@ -41,12 +41,31 @@
       },
       "preLaunchTask": "start-all",
       "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Android App (Debug)",
+      "type": "android",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/Android",
+      "preLaunchTask": "gradle-build-debug"
+    },
+    {
+      "name": "Android App (Run without debug)",
+      "type": "android",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/Android",
+      "preLaunchTask": "gradle-install-debug"
     }
   ],
   "compounds": [
     {
       "name": "Full Stack (API + Website)",
       "configurations": [".NET API (LavaMeuCarro)", "Website (Vite Dev)"],
+      "stopAll": true
+    },
+    {
+      "name": "Full Stack + Android",
+      "configurations": [".NET API (LavaMeuCarro)", "Android App (Debug)"],
       "stopAll": true
     }
   ]
