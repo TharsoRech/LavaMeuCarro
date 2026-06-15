@@ -40,9 +40,9 @@ export function AdminDashboard() {
     placeholderData: (previousData) => previousData,
   });
 
-  const todayAppointmentsCount = dashboardSummary?.todayAppointments ?? 0;
-  const pendingCount = dashboardSummary?.pendingToday ?? 0;
-  const confirmedCount = dashboardSummary?.confirmedToday ?? 0;
+  const todayAppointmentsCount = dashboardSummary?.totalToday ?? 0;
+  const pendingCount = dashboardSummary?.pendentes ?? 0;
+  const confirmedCount = dashboardSummary?.confirmados ?? 0;
   const upcoming = dashboardSummary?.upcomingAppointments ?? [];
 
   // Only show loading if we're actually loading and haven't received a response yet
