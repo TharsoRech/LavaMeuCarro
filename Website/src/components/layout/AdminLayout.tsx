@@ -19,11 +19,11 @@ import { useAdminAuth } from '../../stores/authStore';
 import { NotificationCenter } from '../ui/NotificationCenter';
 
 const navItems = [
-  { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/admin/painel', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/agendamentos', icon: CalendarDays, label: 'Agendamentos' },
-  { to: '/admin/equipe', icon: Users, label: 'Equipe' },
+  { to: '/admin/profissionais', icon: Users, label: 'Equipe' },
   { to: '/admin/servicos', icon: Wrench, label: 'Serviços' },
-  { to: '/admin/unidades', icon: Building2, label: 'Unidades' },
+  { to: '/admin/unidade', icon: Building2, label: 'Unidades' },
   { to: '/admin/relatorios', icon: BarChart3, label: 'Relatórios' },
   { to: '/admin/notificacoes', icon: Bell, label: 'Notificações' },
   { to: '/admin/marketing', icon: Megaphone, label: 'Marketing' },

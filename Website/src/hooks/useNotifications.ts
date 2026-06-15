@@ -14,7 +14,9 @@ export function useNotifications(enabled = true) {
     try {
       setLoading(true);
       const data = await getNotificacoes();
-      setNotifications(Array.isArray(data) ? data : []);
+      // Backend returns { items: [...], unreadCount: N }
+      const items = Array.isArray(data) ? data : (data?.items ?? []);
+      setNotifications(items);
     } catch {
       // silently fail - notifications are non-critical
     } finally {
