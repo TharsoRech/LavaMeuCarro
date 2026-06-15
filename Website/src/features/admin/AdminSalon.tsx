@@ -119,7 +119,7 @@ export function AdminSalon() {
 
   const { data: salons, isError: isSalonsError, error: salonsError, refetch: refetchSalons } = useQuery({
     queryKey: ['my-units'],
-    queryFn: () => salonsApi.myUnits().then(r => r.data),
+    queryFn: () => salonsApi.myUnits(),
   });
 
   const { data: currentSubscription } = useQuery({
@@ -175,7 +175,7 @@ export function AdminSalon() {
 
   const { data: reviews, isError: isReviewsError, error: reviewsError, refetch: refetchReviews } = useQuery({
     queryKey: ['salon-reviews', activeSalon?.id],
-    queryFn: () => reviewsApi.bySalon(activeSalon!.id).then(r => r.data),
+    queryFn: () => reviewsApi.bySalon(activeSalon!.id),
     enabled: !!activeSalon && activeTab === 'reviews',
   });
 

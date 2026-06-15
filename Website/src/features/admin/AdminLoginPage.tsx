@@ -44,7 +44,7 @@ export function AdminLoginPage() {
     isError: hasSupportError,
   } = useQuery({
     queryKey: ['support-contact-login-help'],
-    queryFn: () => supportApi.getContact().then((res) => res.data),
+    queryFn: () => supportApi.getContact(),
     staleTime: 1000 * 60 * 10,
   });
 

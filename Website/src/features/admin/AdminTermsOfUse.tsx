@@ -8,7 +8,7 @@ import { getApiErrorMessage } from '../../utils/apiError';
 export function AdminTermsOfUse() {
   const { data: documents, isLoading, error, isError } = useQuery({
     queryKey: ['legal-documents', 'terms_of_use'],
-    queryFn: () => legalDocumentsApi.listActive().then(r => r.data), 
+    queryFn: () => legalDocumentsApi.listActive(), 
     // Note: In your current API, 'registration' might be the context for terms/privacy
     // If you have a specific context for terms_of_use, change 'registration' to 'terms_of_use'
   });

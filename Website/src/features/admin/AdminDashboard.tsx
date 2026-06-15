@@ -15,7 +15,7 @@ export function AdminDashboard() {
 
   const { data: salons, isLoading: isSalonsLoading, isError: isSalonsError, error: salonsError, refetch: refetchSalons } = useQuery({
     queryKey: ['my-units'],
-    queryFn: () => salonsApi.myUnits().then(r => r.data),
+    queryFn: () => salonsApi.myUnits(),
     retry: 1,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
@@ -31,11 +31,7 @@ export function AdminDashboard() {
 
   const { data: dashboardSummary, isLoading: isAppointmentsLoading, isFetching: isAppointmentsFetching, isError: isAppointmentsError, error: appointmentsError, refetch: refetchAppointments } = useQuery({
     queryKey: ['dashboard-summary', resolvedSalonId, todayStr],
-    queryFn: () =>
-      appointmentsApi.list({
-        dateFilter: todayStr,
-        salonId: resolvedSalonId!,
-      }).then(r => r.data),
+    queryFn: () => appointmentsApi.dashboardSummary(resolvedSalonId!),
     enabled: hasUnits && !!resolvedSalonId,
     retry: 1,
     refetchOnWindowFocus: false,

@@ -72,7 +72,7 @@ export function AdminProfessionals() {
 
   const { data: salons } = useQuery({
     queryKey: ['my-units'],
-    queryFn: () => salonsApi.myUnits().then(r => r.data),
+    queryFn: () => salonsApi.myUnits(),
   });
 
   // LavaMeuCarro: simplified - no salon selection needed
@@ -82,7 +82,7 @@ export function AdminProfessionals() {
 
   const { data: professionals, isLoading, isError, error: professionalsError, refetch } = useQuery({
     queryKey: ['professionals', activeSalonId],
-    queryFn: () => professionalsApi.bySalon(activeSalonId!).then(r => r.data),
+    queryFn: () => professionalsApi.bySalon(activeSalonId!),
     enabled: !!activeSalonId,
   });
 

@@ -102,7 +102,7 @@ export function AdminServices() {
 
   const { data: salons } = useQuery({
     queryKey: ['my-units'],
-    queryFn: () => salonsApi.myUnits().then(r => r.data),
+    queryFn: () => salonsApi.myUnits(),
   });
 
   // LavaMeuCarro: simplified - no salon selection needed
@@ -171,13 +171,13 @@ export function AdminServices() {
 
   const { data: services, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['services', activeSalonId],
-    queryFn: () => servicesApi.list(activeSalonId!).then(r => r.data),
+    queryFn: () => servicesApi.list(activeSalonId!),
     enabled: !!activeSalonId,
   });
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
-    queryFn: () => categoriesApi.list().then(r => r.data),
+    queryFn: () => categoriesApi.list(),
   });
 
   const subServiceForm = useForm<SubServiceFormData>({

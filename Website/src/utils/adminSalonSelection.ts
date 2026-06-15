@@ -33,7 +33,7 @@ export function useAdminSalonSelection(
   }, [salons, salonId]);
 
   const activeSalonId = salonId;
-  const hasUnits = (salons?.length ?? 0) > 1;
+  const hasUnits = (salons?.length ?? 0) > 0;
   
   const handleSalonChange = (newSalonId: number) => {
     setSalonId(newSalonId);

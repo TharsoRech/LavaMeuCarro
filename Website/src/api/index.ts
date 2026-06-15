@@ -59,7 +59,7 @@ export const clientsApi = {
 };
 
 export const appointmentsApi = {
-  list: (params?: any) => api.get('/appointments', { params }).then(r => r.data),
+  list: (params?: any) => api.get('/appointments/mine', { params }).then(r => r.data),
   getById: (id: number) => api.get(`/appointments/${id}`).then(r => r.data),
   create: (data: any) => api.post('/appointments', data).then(r => r.data),
   createManual: (data: any) => api.post('/appointments/manual', data).then(r => r.data),
@@ -67,8 +67,9 @@ export const appointmentsApi = {
   delete: (id: number) => api.delete(`/appointments/${id}`).then(r => r.data),
   updateStatus: (id: number, status: string) => api.patch(`/appointments/${id}/status`, { status }).then(r => r.data),
   clientHistory: (salonId: number, clientId: number) => api.get(`/appointments/${salonId}/client/${clientId}/history`).then(r => r.data),
-  bySalon: (salonId: number, dateFilter?: string, professionalId?: number, includeCancelled?: boolean, startDate?: string, endDate?: string, includeDetails?: boolean) => api.get(`/appointments/salon/${salonId}`, { params: { dateFilter, professionalId, includeCancelled, startDate, endDate, includeDetails } }).then(r => r.data),
-  bySalonPaged: (salonId: number, page: number, pageSize: number, dateFilter?: string, professionalId?: number, includeCancelled?: boolean, startDate?: string, endDate?: string, status?: string, search?: string, includeDetails?: boolean) => api.get(`/appointments/salon/${salonId}/paged`, { params: { page, pageSize, dateFilter, professionalId, includeCancelled, startDate, endDate, status, search, includeDetails } }).then(r => r.data),
+  bySalon: (salonId: number, dateFilter?: string, professionalId?: number, includeCancelled?: boolean, startDate?: string, endDate?: string, includeDetails?: boolean) => api.get(`/appointments/unidade/${salonId}`, { params: { dateFilter, date: dateFilter, funcionarioId: professionalId, includeCancelled, startDate, endDate, includeDetails } }).then(r => r.data),
+  bySalonPaged: (salonId: number, page: number, pageSize: number, dateFilter?: string, professionalId?: number, includeCancelled?: boolean, startDate?: string, endDate?: string, status?: string, search?: string, includeDetails?: boolean) => api.get(`/appointments/unidade/${salonId}/paged`, { params: { page, pageSize, dateFilter, professionalId, includeCancelled, startDate, endDate, status, search, includeDetails } }).then(r => r.data),
+  dashboardSummary: (salonId: number) => api.get(`/appointments/unidade/${salonId}/dashboard-summary`).then(r => r.data),
   cancel: (id: number, reason: string) => api.post(`/appointments/${id}/cancel`, { reason }).then(r => r.data),
   changeProfessional: (id: number, newProfessionalId: number) => api.patch(`/appointments/${id}/professional`, { newProfessionalId }).then(r => r.data),
 };

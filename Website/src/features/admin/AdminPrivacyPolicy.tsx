@@ -8,7 +8,7 @@ import { getApiErrorMessage } from '../../utils/apiError';
 export function AdminPrivacyPolicy() {
   const { data: documents, isLoading, error, isError } = useQuery({
     queryKey: ['legal-documents', 'privacy_policy'],
-    queryFn: () => legalDocumentsApi.listActive().then(r => r.data),
+    queryFn: () => legalDocumentsApi.listActive(),
   });
 
   // Filter for privacy policy specifically
