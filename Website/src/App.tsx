@@ -15,7 +15,7 @@ import DeleteAccountPage from './features/legal/DeleteAccountPage';
 import { PrivacyPolicyPage, TermsOfUsePage } from './features/legal/LegalDocumentPages';
 
 // Admin - mixed exports
-import AdminLoginPage from './features/admin/AdminLoginPage'; // default
+import { AdminLoginPage } from './features/admin/AdminLoginPage';
 import { AdminDashboard } from './features/admin/AdminDashboard'; // default
 import { AdminAppointments } from './features/admin/AdminAppointments'; // default
 // Temporarily disabled - needs implementation

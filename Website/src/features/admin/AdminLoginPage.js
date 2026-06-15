@@ -11,7 +11,7 @@ const loginSchema = z.object({
     email: z.string().email('Email obrigatório'),
     senha: z.string().min(6, 'Mínimo 6 caracteres'),
 });
-export default function AdminLoginPage() {
+export function AdminLoginPage() {
     const navigate = useNavigate();
     const { setAuth } = useAdminAuth();
     const [showPassword, setShowPassword] = useState(false);
