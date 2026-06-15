@@ -11,7 +11,7 @@ services:
       - "5050:5050"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Server=host.docker.internal;Database=LavaMeuCarro;User Id=sa;Password=4uPYdPr0l6oYPAqUgMmRStdZCqFU;Encrypt=False;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Server=vps-sqlserver-1;Database=LavaMeuCarro;User Id=sa;Password=4uPYdPr0l6oYPAqUgMmRStdZCqFU;Encrypt=False;TrustServerCertificate=True;
       - Jwt__Secret=lavameucarro-super-secret-key-2024-change-in-production
       - Jwt__Issuer=lavameucarro
       - Jwt__Audience=lavameucarro

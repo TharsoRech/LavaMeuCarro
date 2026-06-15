@@ -87,6 +87,9 @@ jobs:
             set -e
             cd /opt/lavameucarro
             echo "Starting deployment (Attempt 1)..."
+            # Reset any local changes to avoid pull conflicts
+            git reset --hard HEAD
+            git clean -fd
             git pull origin main || { echo "Git pull failed"; exit 1; }
             docker compose down
             docker compose build --no-cache
@@ -113,6 +116,9 @@ jobs:
             set -e
             cd /opt/lavameucarro
             echo "Starting deployment (Attempt 2)..."
+            # Reset any local changes to avoid pull conflicts
+            git reset --hard HEAD
+            git clean -fd
             git pull origin main || { echo "Git pull failed"; exit 1; }
             docker compose down
             docker compose build --no-cache
@@ -138,6 +144,9 @@ jobs:
             set -e
             cd /opt/lavameucarro
             echo "Starting deployment (Attempt 3 - Final)..."
+            # Reset any local changes to avoid pull conflicts
+            git reset --hard HEAD
+            git clean -fd
             git pull origin main || { echo "Git pull failed"; exit 1; }
             docker compose down
             docker compose build --no-cache
