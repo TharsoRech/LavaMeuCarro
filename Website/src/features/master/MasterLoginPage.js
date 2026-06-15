@@ -24,7 +24,7 @@ export default function MasterLoginPage() {
         setLoading(true);
         setError('');
         try {
-            const res = await api.post('/auth/login', { ...data, tipo: 'Master' });
+            const res = await api.post('/auth/login', { Email: data.email, Password: data.senha });
             setAuth(res.data.token, res.data.refreshToken, res.data.user);
             navigate('/master/dashboard');
         }

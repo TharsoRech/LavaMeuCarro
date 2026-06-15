@@ -24,7 +24,7 @@ export default function AdminLoginPage() {
         setLoading(true);
         setError('');
         try {
-            const res = await api.post('/auth/login', { ...data, tipo: 'Admin' });
+            const res = await api.post('/auth/login', { Email: data.email, Password: data.senha });
             setAuth(res.data.token, res.data.refreshToken, res.data.user);
             navigate('/admin/dashboard');
         }
