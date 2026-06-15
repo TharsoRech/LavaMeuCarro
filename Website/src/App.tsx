@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { useAdminAuth, useMasterAuth } from './stores/authStore';
 
@@ -85,7 +85,7 @@ function App() {
           <Route path="/admin/login" element={<AdminLoginPage />} />
 
            {/* Admin panel (protected) */}
-           <Route element={<AdminGuard><div /></AdminGuard>}>
+           <Route element={<AdminGuard><Outlet /></AdminGuard>}>
              <Route element={<AdminLayout />}>
                {/* Default admin route is now Agendamentos (silent refresh) */}
                <Route path="/admin" element={<Navigate to="/admin/agendamentos" replace />} />
@@ -108,7 +108,7 @@ function App() {
           <Route path="/master/login" element={<MasterLoginPage />} />
 
           {/* Master panel (protected) */}
-          <Route element={<MasterGuard><div /></MasterGuard>}>
+          <Route element={<MasterGuard><Outlet /></MasterGuard>}>
             <Route element={<MasterLayout />}>
               <Route path="/master" element={<MasterDashboard />} />
               {/* <Route path="/master/usuarios" element={<MasterUsers />} /> */}
