@@ -72,13 +72,25 @@ export function AdminLoginPage() {
         return;
       }
 
-      // Fetch full profile
-      const profileRes = await authApi.me();
-      setAuth(token, refreshToken, profileRes.data || profileRes);
-      logTelemetry('Admin login succeeded.', {
-        level: 'Information',
-        context: { userType: type, userId: (profileRes.data || profileRes)?.id },
-      });
+      // Save token FIRST so interceptor can use it for authApi.me()
+      setAuth(token, refreshToken, user);
+
+      // Fetch full profile (now with token in localStorage)
+      try {
+        const profileRes = await authApi.me();
+        const fullUser = profileRes.data || profileRes;
+        setAuth(token, refreshToken, fullUser);
+        logTelemetry('Admin login succeeded.', {
+          level: 'Information',
+          context: { userType: type, userId: fullUser?.id },
+        });
+      } catch {
+        // Profile fetch failed but login succeeded - use login user data
+        logTelemetry('Admin login succeeded but profile fetch failed.', {
+          level: 'Warning',
+          context: { userType: type, userId: user?.id },
+        });
+      }
       navigate('/admin/painel');
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string, error?: string } } };
