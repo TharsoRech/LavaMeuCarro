@@ -34,7 +34,7 @@ export const updateProfile = (data: any) => api.put('/auth/me', data).then(r => 
 
 export const salonsApi = {
   mine: () => api.get('/unidades/mine').then(r => r.data),
-  myUnits: () => api.get('/unidades/my-units').then(r => r.data),
+  myUnits: () => api.get('/unidades/mine').then(r => r.data),
   getById: (id: number) => api.get(`/unidades/${id}`).then(r => r.data),
   update: (id: number, data: any) => api.put(`/unidades/${id}`, data).then(r => r.data),
   create: (data: any) => api.post('/unidades', data).then(r => r.data),
