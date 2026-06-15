@@ -19,6 +19,7 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - lavameucarro-net
+      - horadabeleza_net
 
   web:
     build:
@@ -32,7 +33,10 @@ services:
       - api
     networks:
       - lavameucarro-net
+      - horadabeleza_net
 
 networks:
   lavameucarro-net:
     driver: bridge
+  horadabeleza_net:
+    external: true
