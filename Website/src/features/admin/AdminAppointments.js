@@ -20,7 +20,7 @@ const statusOptions = [
     { value: 'Cancelado', label: 'Cancelado' },
 ];
 const PAGE_SIZE = 25;
-export default function AdminAppointments() {
+export function AdminAppointments() {
     const queryClient = useQueryClient();
     const { selectedUnitId } = useUnitSelection();
     const refreshInterval = useRef(null);

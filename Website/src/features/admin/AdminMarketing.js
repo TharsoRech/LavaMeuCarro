@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { marketingApi } from '../../api';
 import { useUnitSelection } from '../../hooks/useUnitSelection';
 import { logAction } from '../../utils/telemetry';
-export default function AdminMarketing() {
+export function AdminMarketing() {
     const { unidades } = useUnitSelection();
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');

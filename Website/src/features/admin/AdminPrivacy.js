@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { privacyApi } from '../../api';
 import { useAdminAuth } from '../../stores/authStore';
 import { logAction } from '../../utils/telemetry';
-export default function AdminPrivacy() {
+export function AdminPrivacy() {
     const { user } = useAdminAuth();
     const [exporting, setExporting] = useState(false);
     const [exportDone, setExportDone] = useState(false);

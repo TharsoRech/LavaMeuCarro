@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from 'react';
 import { legalApi } from '../../api';
-export default function AdminTermsOfUse() {
+export function AdminTermsOfUse() {
     const [doc, setDoc] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');

@@ -8,7 +8,7 @@ import { Badge, getStatusBadge } from '../../components/ui/Badge';
 import { Calendar, Users, DollarSign, Clock, CheckCircle, MapPin, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-export default function AdminDashboard() {
+export function AdminDashboard() {
     const { selectedUnitId, selectedUnit, unidades, setSelectedUnitId } = useUnitSelection();
     const { user } = useAdminAuth();
     const { data: summary, isLoading: loadingSummary, isError, refetch } = useQuery({
