@@ -63,7 +63,7 @@ export default function AdminLoginPage() {
     setServerError('');
     setIsMaintenance(false);
     try {
-      const res = await authApi.login({ email: data.email, password: data.password });
+      const res = await authApi.login({ Email: data.email, Password: data.password });
       const { token, refreshToken, user } = res;
       const type = user?.type;
 
