@@ -28,7 +28,7 @@ function normalizeWhatsAppNumber(value: string) {
   return `55${digits}`;
 }
 
-export default function AdminLoginPage() {
+export function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
   const [isMaintenance, setIsMaintenance] = useState(false);
