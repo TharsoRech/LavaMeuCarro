@@ -12,4 +12,12 @@ public class TelemetriaController : ControllerBase
 
     [HttpGet("server-time")]
     public ActionResult<TelemetriaDTO> ServerTime() => Ok(new TelemetriaDTO(DateTime.UtcNow));
+
+    [HttpPost]
+    public IActionResult LogTelemetry([FromBody] object data)
+    {
+        // Telemetry endpoint - accepts and logs client-side events
+        // Non-critical, silently accepts any payload
+        return Ok(new { received = true });
+    }
 }
