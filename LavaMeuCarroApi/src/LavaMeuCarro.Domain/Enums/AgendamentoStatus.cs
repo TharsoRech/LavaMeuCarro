@@ -2,12 +2,12 @@ namespace LavaMeuCarro.Domain.Enums;
 
 public enum AgendamentoStatus
 {
-    Pendente = 1,
-    Confirmado = 2,
-    Cancelado = 3,
-    Finalizado = 4,
+    Pending = 1,
+    Confirmed = 2,
+    Cancelled = 3,
+    Completed = 4,
     NoShow = 5,
     ACaminho = 6,
-    EmExecucao = 7,
-    Pronto = 8
+    InProgress = 7,
+    Ready = 8
 }

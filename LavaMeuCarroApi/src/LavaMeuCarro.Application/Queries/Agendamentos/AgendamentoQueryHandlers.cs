@@ -238,15 +238,15 @@ public class GetDashboardSummaryHandler : IRequestHandler<GetDashboardSummaryQue
         var today = DateTime.Today;
         var monthStart = new DateTime(today.Year, today.Month, 1);
 
-        var totalToday = await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Confirmado, today, today.AddDays(1))
-            + await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Pendente, today, today.AddDays(1))
-            + await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.EmExecucao, today, today.AddDays(1))
-            + await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Pronto, today, today.AddDays(1));
+        var totalToday = await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Confirmed, today, today.AddDays(1))
+            + await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Pending, today, today.AddDays(1))
+            + await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.InProgress, today, today.AddDays(1))
+            + await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Ready, today, today.AddDays(1));
 
-        var confirmados = await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Confirmado, today, today.AddDays(1));
-        var pendentes = await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Pendente, null, null);
-        var finalizadosMes = await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Finalizado, monthStart, today.AddDays(1));
-        var finalizadosHoje = await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Finalizado, today, today.AddDays(1));
+        var confirmados = await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Confirmed, today, today.AddDays(1));
+        var pendentes = await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Pending, null, null);
+        var finalizadosMes = await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Completed, monthStart, today.AddDays(1));
+        var finalizadosHoje = await _repo.CountByStatusAsync(cmd.UnidadeId, AgendamentoStatus.Completed, today, today.AddDays(1));
         var faturamentoMes = await _repo.SumByUnidadeAsync(cmd.UnidadeId, monthStart, today.AddDays(1));
         var faturamentoHoje = await _repo.SumByUnidadeAsync(cmd.UnidadeId, today, today.AddDays(1));
 
@@ -257,8 +257,8 @@ public class GetDashboardSummaryHandler : IRequestHandler<GetDashboardSummaryQue
             var upcoming = await _repo.GetByUnidadeAsync(cmd.UnidadeId, null, null);
             var upcomingFiltered = upcoming
                 .Where(a => a.ScheduledAt >= DateTime.Now && 
-                           (a.Status == AgendamentoStatus.Pendente || 
-                            a.Status == AgendamentoStatus.Confirmado))
+                           (a.Status == AgendamentoStatus.Pending || 
+                            a.Status == AgendamentoStatus.Confirmed))
                 .OrderBy(a => a.ScheduledAt)
                 .Take(10)
                 .ToList();

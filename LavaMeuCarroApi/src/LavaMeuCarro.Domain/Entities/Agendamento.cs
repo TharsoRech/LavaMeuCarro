@@ -13,7 +13,7 @@ public class Agendamento
     public DateTime ScheduledAt { get; set; }
     public int DurationMinutes { get; set; }
     public decimal TotalPrice { get; set; }
-    public AgendamentoStatus Status { get; set; } = AgendamentoStatus.Pendente;
+    public AgendamentoStatus Status { get; set; } = AgendamentoStatus.Pending;
     public string Modalidade { get; set; } = "LevarAoLocal";
     public decimal? TaxaDeslocamento { get; set; }
     public decimal PrecoBruto { get; set; }

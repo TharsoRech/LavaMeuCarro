@@ -266,8 +266,8 @@ export function AdminAppointments() {
       const s = searchFilter.trim().toLowerCase();
       return (
         apt.clientName.toLowerCase().includes(s)
-        || apt.serviceName.toLowerCase().includes(s)
-        || apt.professionalName.toLowerCase().includes(s)
+        || (apt.servicoName || '').toLowerCase().includes(s)
+        || (apt.funcionarioName || '').toLowerCase().includes(s)
       );
     });
   }, [calendarAppointments, pagedAppointments?.items, searchFilter, statusFilter, viewMode]);
@@ -593,17 +593,11 @@ export function AdminAppointments() {
   }, [filteredAppointments]);
 
   const statusColor: Record<string, string> = {
-    // Portuguese values (from backend)
-    Pendente: 'bg-blue-500 text-white hover:bg-blue-600',
-    Confirmado: 'bg-green-500 text-white hover:bg-green-600',
-    Finalizado: 'bg-purple-500 text-white hover:bg-purple-600',
-    Cancelado: 'bg-red-500 text-white hover:bg-red-600',
-    NoShow: 'bg-gray-500 text-white hover:bg-gray-600',
-    // English values (fallback)
     Pending: 'bg-blue-500 text-white hover:bg-blue-600',
     Confirmed: 'bg-green-500 text-white hover:bg-green-600',
     Completed: 'bg-purple-500 text-white hover:bg-purple-600',
     Cancelled: 'bg-red-500 text-white hover:bg-red-600',
+    NoShow: 'bg-gray-500 text-white hover:bg-gray-600',
   };
 
   return (
@@ -904,7 +898,7 @@ export function AdminAppointments() {
                               className={`w-full min-w-0 max-w-full text-left rounded px-1.5 py-1 mb-0.5 text-xs overflow-hidden ${statusColor[apt.status] ?? 'bg-gray-100 text-gray-700'}`}
                             >
                               <p className="font-semibold truncate">{format(new Date(apt.scheduledAt), 'HH:mm')} {apt.clientName}</p>
-                              <p className="truncate opacity-75">{apt.serviceName}</p>
+                              <p className="truncate opacity-75">{apt.servicoName}</p>
                             </button>
                           ))}
                         </div>
@@ -971,15 +965,15 @@ export function AdminAppointments() {
           ) : filteredAppointments.map((apt) => {
             const rowPending = pendingAction?.id === apt.id;
             const canComplete = canCompleteAppointment(apt);
-            const statusBorderColor = apt.status === 'Pendente' ? 'border-l-4 border-l-blue-500' :
-                                     apt.status === 'Confirmado' ? 'border-l-4 border-l-green-500' :
-                                     apt.status === 'Finalizado' ? 'border-l-4 border-l-purple-500' :
-                                     apt.status === 'Cancelado' ? 'border-l-4 border-l-red-500' :
+            const statusBorderColor = apt.status === 'Pending' ? 'border-l-4 border-l-blue-500' :
+                                     apt.status === 'Confirmed' ? 'border-l-4 border-l-green-500' :
+                                     apt.status === 'Completed' ? 'border-l-4 border-l-purple-500' :
+                                     apt.status === 'Cancelled' ? 'border-l-4 border-l-red-500' :
                                      'border-l-4 border-l-gray-500';
-            const statusAvatarColor = apt.status === 'Pendente' ? 'bg-blue-100 text-blue-700' :
-                                     apt.status === 'Confirmado' ? 'bg-green-100 text-green-700' :
-                                     apt.status === 'Finalizado' ? 'bg-purple-100 text-purple-700' :
-                                     apt.status === 'Cancelado' ? 'bg-red-100 text-red-700' :
+            const statusAvatarColor = apt.status === 'Pending' ? 'bg-blue-100 text-blue-700' :
+                                     apt.status === 'Confirmed' ? 'bg-green-100 text-green-700' :
+                                     apt.status === 'Completed' ? 'bg-purple-100 text-purple-700' :
+                                     apt.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
                                      'bg-gray-100 text-gray-700';
             return (
               <div key={apt.id} className={`bg-white border border-gray-200 rounded-xl p-4 shadow-sm ${statusBorderColor}`}>
@@ -990,7 +984,7 @@ export function AdminAppointments() {
                     </div>
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900 truncate">{apt.clientName}</p>
-                      <p className="text-sm text-slate-600 truncate">{apt.serviceName} • {apt.professionalName}</p>
+                      <p className="text-sm text-slate-600 truncate">{apt.servicoName} • {apt.funcionarioName}</p>
                       <p className="text-xs text-slate-500 mt-1">
                         {format(new Date(apt.scheduledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </p>
@@ -1274,8 +1268,8 @@ export function AdminAppointments() {
                     )}
                   </div>
                 )} />
-                <Row label="Serviço" value={selectedApt.serviceName} />
-                <Row label="Profissional" value={selectedApt.professionalName} />
+                <Row label="Serviço" value={selectedApt.servicoName} />
+                <Row label="Profissional" value={selectedApt.funcionarioName} />
                 <Row label="Data/Hora" value={format(new Date(selectedApt.scheduledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
                 <Row label="Duração" value={`${selectedApt.durationMinutes} min`} />
                 <Row label="Valor" value={selectedApt.totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} />
@@ -1346,7 +1340,7 @@ export function AdminAppointments() {
                   ← Voltar aos detalhes
                 </button>
                 <p className="text-gray-600">
-                  Tem certeza que deseja cancelar o agendamento de <strong>{selectedApt.clientName}</strong> para <strong>{selectedApt.serviceName}</strong>?
+                  Tem certeza que deseja cancelar o agendamento de <strong>{selectedApt.clientName}</strong> para <strong>{selectedApt.servicoName}</strong>?
                 </p>
                 <div>
                   <label className="text-sm font-medium text-gray-700 block mb-1">Motivo do cancelamento (opcional)</label>

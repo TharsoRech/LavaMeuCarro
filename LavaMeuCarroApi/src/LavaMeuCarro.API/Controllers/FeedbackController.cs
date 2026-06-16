@@ -45,7 +45,7 @@ public class FeedbackController : ControllerBase
                 return Forbid();
 
             // Check if appointment is completed
-            if (agendamento.Status != AgendamentoStatus.Finalizado)
+            if (agendamento.Status != AgendamentoStatus.Completed)
                 return UnprocessableEntity(new { message = "Apenas agendamentos finalizados podem ser avaliados" });
 
             // Handle professional rating

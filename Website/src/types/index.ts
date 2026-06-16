@@ -1,5 +1,5 @@
 export enum UserType { Client = 0, Profissional = 1, Owner = 2, Admin = 3 }
-export enum AgendamentoStatus { Pendente = 1, Confirmado = 2, Cancelado = 3, Finalizado = 4, NoShow = 5, ACaminho = 6, EmExecucao = 7, Pronto = 8 }
+export enum AgendamentoStatus { Pending = 1, Confirmed = 2, Cancelled = 3, Completed = 4, NoShow = 5, ACaminho = 6, InProgress = 7, Ready = 8 }
 export enum SubscriptionStatus { None = 0, Active = 1, Cancelled = 2, Expired = 3, Suspended = 4, PaymentFailed = 5 }
 
 export interface User {
@@ -62,6 +62,8 @@ export interface AppointmentDto {
   clientName?: string;
   professionalName?: string;
   serviceName?: string;
+  servicoName?: string; // Backend sends this (camelCase from ServicoName)
+  funcionarioName?: string; // Backend sends this (camelCase from FuncionarioName)
   clientImage?: string;
   salonName?: string;
   clientHistory?: ClientAppointmentHistoryResponse;

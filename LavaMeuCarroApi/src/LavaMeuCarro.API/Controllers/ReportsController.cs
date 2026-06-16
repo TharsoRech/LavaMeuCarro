@@ -102,7 +102,7 @@ public class ReportsController : ControllerBase
                 var statusName = status.ToString();
                 statusCounts[statusName] = statusCounts.GetValueOrDefault(statusName) + count;
                 totalAppointments += count;
-                if (status == AgendamentoStatus.Cancelado) totalCancelled += count;
+                if (status == AgendamentoStatus.Cancelled) totalCancelled += count;
             }
             var revenue = await _agendamentoRepo.SumByUnidadeAsync(uid, fromDate, toDate);
             totalRevenue += revenue;

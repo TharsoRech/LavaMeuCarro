@@ -27,14 +27,14 @@ export const Badge: React.FC<BadgeProps> = ({ variant = 'default', children, cla
 
 export const getStatusBadge = (status: string): { variant: BadgeVariant; label: string } => {
   const statusMap: Record<string, { variant: BadgeVariant; label: string }> = {
-    Pendente: { variant: 'warning', label: 'Pendente' },
-    Confirmado: { variant: 'info', label: 'Confirmado' },
-    Cancelado: { variant: 'danger', label: 'Cancelado' },
-    Finalizado: { variant: 'success', label: 'Finalizado' },
+    Pending: { variant: 'warning', label: 'Pendente' },
+    Confirmed: { variant: 'info', label: 'Confirmado' },
+    Cancelled: { variant: 'danger', label: 'Cancelado' },
+    Completed: { variant: 'success', label: 'Finalizado' },
     NoShow: { variant: 'gray', label: 'No-Show' },
     ACaminho: { variant: 'info', label: 'A Caminho' },
-    EmExecucao: { variant: 'info', label: 'Em Execução' },
-    Pronto: { variant: 'success', label: 'Pronto' },
+    InProgress: { variant: 'info', label: 'Em Execução' },
+    Ready: { variant: 'success', label: 'Pronto' },
   };
   return statusMap[status] || { variant: 'gray', label: status };
 };

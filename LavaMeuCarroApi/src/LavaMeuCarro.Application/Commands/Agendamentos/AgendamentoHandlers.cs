@@ -43,7 +43,7 @@ public class CreateAgendamentoHandler : IRequestHandler<CreateAgendamentoCommand
             VeiculoId = cmd.Request.VeiculoId, ScheduledAt = cmd.Request.ScheduledAt,
             DurationMinutes = servico.DurationMinutes, TotalPrice = servico.Price,
             PrecoBruto = servico.Price, Modalidade = cmd.Request.Modalidade,
-            Notes = cmd.Request.Notes, Status = AgendamentoStatus.Pendente
+            Notes = cmd.Request.Notes, Status = AgendamentoStatus.Pending
         };
 
         agendamento.Id = await _repo.CreateAsync(agendamento);
@@ -81,7 +81,7 @@ public class UpdateAgendamentoStatusHandler : IRequestHandler<UpdateAgendamentoS
         ag.Status = cmd.Request.Status;
         ag.UpdatedAt = DateTime.UtcNow;
 
-        if (cmd.Request.Status == AgendamentoStatus.Cancelado)
+        if (cmd.Request.Status == AgendamentoStatus.Cancelled)
             ag.CancellationReason = cmd.Request.CancellationReason;
 
         await _repo.UpdateAsync(ag);
@@ -99,10 +99,10 @@ public class CancelAgendamentoHandler : IRequestHandler<CancelAgendamentoCommand
         var ag = await _repo.GetByIdAsync(cmd.Id)
             ?? throw new NotFoundException("Appointment not found");
 
-        if (ag.Status == AgendamentoStatus.Finalizado)
+        if (ag.Status == AgendamentoStatus.Completed)
             throw new BusinessException("Cannot cancel completed appointment");
 
-        ag.Status = AgendamentoStatus.Cancelado;
+        ag.Status = AgendamentoStatus.Cancelled;
         ag.CancellationReason = cmd.Reason;
         ag.UpdatedAt = DateTime.UtcNow;
         await _repo.UpdateAsync(ag);
@@ -143,7 +143,7 @@ public class RetiradaHandler : IRequestHandler<RetiradaCommand, Unit>
         ag.NomeAutorizado = cmd.Request.NomeAutorizado;
         ag.DocumentoAutorizado = cmd.Request.DocumentoAutorizado;
         ag.RetiradaEm = DateTime.UtcNow;
-        ag.Status = AgendamentoStatus.Finalizado;
+        ag.Status = AgendamentoStatus.Completed;
         ag.UpdatedAt = DateTime.UtcNow;
         await _repo.UpdateAsync(ag);
         return Unit.Value;
@@ -165,7 +165,7 @@ public class ReatribuirFuncionarioHandler : IRequestHandler<ReatribuirFuncionari
         var ag = await _repo.GetByIdAsync(cmd.Id)
             ?? throw new NotFoundException("Appointment not found");
 
-        if (ag.Status == AgendamentoStatus.Finalizado || ag.Status == AgendamentoStatus.Cancelado)
+        if (ag.Status == AgendamentoStatus.Completed || ag.Status == AgendamentoStatus.Cancelled)
             throw new BusinessException("Cannot reassign completed or cancelled appointment");
 
         var novoFunc = await _funcRepo.GetByIdAsync(cmd.NovoFuncionarioId)
@@ -176,8 +176,8 @@ public class ReatribuirFuncionarioHandler : IRequestHandler<ReatribuirFuncionari
 
         ag.FuncionarioId = cmd.NovoFuncionarioId;
         // Reset to pending so the unit can re-confirm
-        if (ag.Status == AgendamentoStatus.Confirmado)
-            ag.Status = AgendamentoStatus.Pendente;
+        if (ag.Status == AgendamentoStatus.Confirmed)
+            ag.Status = AgendamentoStatus.Pending;
         ag.UpdatedAt = DateTime.UtcNow;
         await _repo.UpdateAsync(ag);
         return Unit.Value;
