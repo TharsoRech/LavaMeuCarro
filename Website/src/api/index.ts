@@ -66,7 +66,7 @@ export const appointmentsApi = {
   update: (id: number, data: any) => api.put(`/appointments/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/appointments/${id}`).then(r => r.data),
   updateStatus: (id: number, status: string) => api.patch(`/appointments/${id}/status`, { status }).then(r => r.data),
-  clientHistory: (salonId: number, clientId: number) => api.get(`/appointments/${salonId}/client/${clientId}/history`).then(r => r.data),
+  clientHistory: (appointmentId: number) => api.get(`/appointments/${appointmentId}/client-history`).then(r => r.data),
   bySalon: (salonId: number, dateFilter?: string, professionalId?: number, includeCancelled?: boolean, startDate?: string, endDate?: string, includeDetails?: boolean) => api.get(`/appointments/unidade/${salonId}`, { params: { dateFilter, date: dateFilter, funcionarioId: professionalId, includeCancelled, startDate, endDate, includeDetails } }).then(r => r.data),
   bySalonPaged: (salonId: number, page: number, pageSize: number, dateFilter?: string, professionalId?: number, includeCancelled?: boolean, startDate?: string, endDate?: string, status?: string, search?: string, includeDetails?: boolean) => api.get(`/appointments/unidade/${salonId}/paged`, { params: { page, pageSize, dateFilter, professionalId, includeCancelled, startDate, endDate, status, search, includeDetails } }).then(r => r.data),
   dashboardSummary: (salonId: number) => api.get(`/appointments/unidade/${salonId}/dashboard-summary`).then(r => r.data),

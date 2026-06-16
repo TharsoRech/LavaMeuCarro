@@ -204,8 +204,8 @@ export function AdminAppointments() {
   }, [selectedAptDetails]);
 
   const { data: clientHistory, isLoading: clientHistoryLoading, isError: clientHistoryIsError, error: clientHistoryError, refetch: refetchClientHistory } = useQuery({
-    queryKey: ['client-appointment-history', selectedApt?.salonId, selectedApt?.clientId],
-    queryFn: () => appointmentsApi.clientHistory(selectedApt!.salonId, selectedApt!.clientId),
+    queryKey: ['client-appointment-history', selectedApt?.id],
+    queryFn: () => appointmentsApi.clientHistory(selectedApt!.id),
     enabled: clientHistoryOpen && !!selectedApt,
   });
 
@@ -848,6 +848,33 @@ export function AdminAppointments() {
       {/* List View */}
       {hasUnits && viewMode === 'list' && !(!isLoading && !pagedAppointments && !calendarAppointments) && (
         <div className="space-y-3">
+          {/* Legend */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Legenda dos Status</p>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-blue-500"></div>
+                <span className="text-sm text-gray-600">Pendente</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                <span className="text-sm text-gray-600">Confirmado</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-purple-500"></div>
+                <span className="text-sm text-gray-600">Finalizado</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                <span className="text-sm text-gray-600">Cancelado</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-gray-500"></div>
+                <span className="text-sm text-gray-600">Não Compareceu</span>
+              </div>
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
               {[...Array(3)].map((_, index) => (
@@ -870,11 +897,22 @@ export function AdminAppointments() {
           ) : filteredAppointments.map((apt) => {
             const rowPending = pendingAction?.id === apt.id;
             const canComplete = canCompleteAppointment(apt);
+            const statusBorderColor = apt.status === 'Pending' ? 'border-l-4 border-l-blue-500' :
+                                     apt.status === 'Confirmed' ? 'border-l-4 border-l-green-500' :
+                                     apt.status === 'Completed' ? 'border-l-4 border-l-purple-500' :
+                                     apt.status === 'Cancelled' ? 'border-l-4 border-l-red-500' :
+                                     'border-l-4 border-l-gray-500';
             return (
-              <div key={apt.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div key={apt.id} className={`bg-white border border-gray-200 rounded-xl p-4 shadow-sm ${statusBorderColor}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-semibold flex items-center justify-center text-xs">
+                    <div className={`w-10 h-10 rounded-full font-semibold flex items-center justify-center text-xs ${
+                      apt.status === 'Pending' ? 'bg-blue-100 text-blue-700' :
+                      apt.status === 'Confirmed' ? 'bg-green-100 text-green-700' :
+                      apt.status === 'Completed' ? 'bg-purple-100 text-purple-700' :
+                      apt.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
                       {toInitials(apt.clientName)}
                     </div>
                     <div className="min-w-0">
