@@ -131,7 +131,7 @@ export function AdminMarketing() {
       </div>
 
       {/* Seletor de unidade */}
-      {salons && salons.length > 1 && (
+      {salons && salons.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">Unidade</label>
           <select
