@@ -10,8 +10,7 @@ import type { Servico as ServiceDto, Categoria } from '../../types';
 import { ApiErrorAlert } from '../../components/ui/ApiErrorAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { useAdminAuth } from '../../stores/authStore';
-// LavaMeuCarro doesn't have multi-salon selection
-// import { useAdminSalonSelection } from '../../utils/adminSalonSelection';
+import { useAdminSalonSelection } from '../../utils/adminSalonSelection';
 
 interface FormData {
   name: string;
@@ -105,10 +104,7 @@ export function AdminServices() {
     queryFn: () => salonsApi.myUnits(),
   });
 
-  // LavaMeuCarro: simplified - no salon selection needed
-  const activeSalonId = null;
-  const hasUnits = false;
-  const handleSalonChange = (_id: number) => {};
+  const { activeSalonId, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);
 
   useEffect(() => {
     if (!activeSalonId) return;

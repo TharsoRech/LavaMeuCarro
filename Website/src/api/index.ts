@@ -117,12 +117,11 @@ export const deleteServico = (id: number) => api.delete(`/unidades/0/servicos/${
 // ── Funcionarios (Professionals) ──────────────────────────────────────────────
 
 export const professionalsApi = {
-  bySalon: (salonId: number) => api.get(`/unidades/${salonId}/funcionarios`).then(r => r.data),
+  bySalon: (salonId: number) => api.get(`/funcionarios`, { params: { unidadeId: salonId } }).then(r => r.data),
   timeOptions: (salonId?: number) => api.get('/funcionarios/time-options', { params: salonId ? { salonId } : undefined }).then(r => r.data),
-  createByDoc: (salonId: number, data: any) => api.post(`/unidades/${salonId}/funcionarios`, data).then(r => r.data),
+  createByDoc: (salonId: number, data: any) => api.post(`/funcionarios`, { ...data, unidadeId: salonId }).then(r => r.data),
   update: (id: number, data: any) => api.put(`/funcionarios/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/funcionarios/${id}`).then(r => r.data),
-  reviews: (professionalId: number) => api.get(`/funcionarios/${professionalId}/reviews`).then(r => r.data),
 };
 
 export const getFuncionarios = (unidadeId?: number) => api.get(`/unidades/${unidadeId}/funcionarios`).then(r => r.data);
@@ -170,6 +169,8 @@ export const notificationsApi = {
   list: () => api.get('/notificacoes').then(r => r.data),
   markRead: (id: number) => api.patch(`/notificacoes/${id}/read`).then(r => r.data),
   markAllRead: () => api.post('/notificacoes/mark-all-read').then(r => r.data),
+  getBroadcastClients: (params: { salonId: number; search?: string; onlyWithPushToken?: boolean }) => 
+    api.get('/notificacoes/broadcast/clients', { params }).then(r => r.data),
   broadcast: (data: any) => api.post('/notificacoes/broadcast', data).then(r => r.data),
 };
 

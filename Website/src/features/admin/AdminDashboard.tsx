@@ -258,7 +258,19 @@ export function AdminDashboard() {
                   <p className="text-sm font-medium text-gray-900">
                     {format(new Date(apt.scheduledAt), 'HH:mm')}
                   </p>
-                  {(() => { const badge = StatusBadge(String(apt.status)); return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-${badge.variant === "warning" ? "yellow" : badge.variant === "success" ? "green" : "gray"}-100 text-${badge.variant === "warning" ? "yellow" : badge.variant === "success" ? "green" : "gray"}-800`}>{badge.label}</span>; })()}
+                  {(() => {
+                    const badge = StatusBadge(String(apt.status));
+                    const colorMap: Record<string, { bg: string; text: string }> = {
+                      warning: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+                      success: { bg: 'bg-green-100', text: 'text-green-800' },
+                    };
+                    const colors = colorMap[badge.variant] || { bg: 'bg-gray-100', text: 'text-gray-800' };
+                    return (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
+                        {badge.label}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             ))

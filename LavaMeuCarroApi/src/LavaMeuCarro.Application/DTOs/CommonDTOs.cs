@@ -8,7 +8,25 @@ public record NpsShouldShowDTO(bool ShouldShow);
 public record NpsSubmitRequest(int Score, string? Comment);
 public record LegalDocumentDTO(int Id, string Code, string Title, string Version, string Context, string Content, bool IsRequired);
 public record SuporteRequest(string Assunto, string Mensagem);
-public record DashboardSummaryDTO(int TotalToday, int Confirmados, int Pendentes, int FinalizadosMes, decimal FaturamentoMes, int FinalizadosHoje, decimal FaturamentoHoje);
+public record DashboardSummaryDTO(
+    int TotalToday, 
+    int Confirmados, 
+    int Pendentes, 
+    int FinalizadosMes, 
+    decimal FaturamentoMes, 
+    int FinalizadosHoje, 
+    decimal FaturamentoHoje,
+    List<UpcomingAppointmentDTO> UpcomingAppointments
+);
+
+public record UpcomingAppointmentDTO(
+    int Id,
+    string ClientName,
+    string ServiceName,
+    string ProfessionalName,
+    DateTime ScheduledAt,
+    string Status
+);
 public record PagedResult<T>(List<T> Items, int Total, int Page, int PageSize);
 public record MasterStatsDTO(int TotalUsers, int TotalUnidades, int TotalAgendamentos, int TotalAssinaturasAtivas, int NoShowCount);
 public record TelemetriaDTO(DateTime ServerTime);

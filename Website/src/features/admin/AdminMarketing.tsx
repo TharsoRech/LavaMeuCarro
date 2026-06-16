@@ -43,13 +43,11 @@ export function AdminMarketing() {
   const { data: clients, isLoading, isFetching, isError, error, refetch } = useQuery<SalonClientForBroadcastDto[]>({
     queryKey: ['marketing-clients', activeSalonId, debouncedTerm, onlyWithPushToken],
     queryFn: () =>
-      notificationsApi
-        .broadcast({
-          salonId: activeSalonId as number,
-          search: debouncedTerm || undefined,
-          onlyWithPushToken,
-        })
-        ,
+      notificationsApi.getBroadcastClients({
+        salonId: activeSalonId as number,
+        search: debouncedTerm || undefined,
+        onlyWithPushToken,
+      }),
     enabled: !!activeSalonId,
     placeholderData: (prev) => prev,
   });

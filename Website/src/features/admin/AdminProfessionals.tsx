@@ -12,8 +12,7 @@ import type { Funcionario, ReviewDto } from '../../types';
 import { ApiErrorAlert } from '../../components/ui/ApiErrorAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { useAdminAuth } from '../../stores/authStore';
-// LavaMeuCarro doesn't have multi-salon selection
-// import { useAdminSalonSelection } from '../../utils/adminSalonSelection';
+import { useAdminSalonSelection } from '../../utils/adminSalonSelection';
 
 const createSchema = z.object({
   doc: z.string().min(3, 'CPF/documento obrigatório'),
@@ -75,10 +74,7 @@ export function AdminProfessionals() {
     queryFn: () => salonsApi.myUnits(),
   });
 
-  // LavaMeuCarro: simplified - no salon selection needed
-  const activeSalonId = null; // Will use all professionals
-  const hasUnits = false;
-  const handleSalonChange = (_id: number) => {};
+  const { activeSalonId, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);
 
   const { data: professionals, isLoading, isError, error: professionalsError, refetch } = useQuery({
     queryKey: ['professionals', activeSalonId],

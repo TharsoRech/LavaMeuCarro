@@ -217,7 +217,22 @@ public class GetPagedAgendamentosHandler : IRequestHandler<GetPagedAgendamentosQ
 public class GetDashboardSummaryHandler : IRequestHandler<GetDashboardSummaryQuery, DashboardSummaryDTO>
 {
     private readonly IAgendamentoRepository _repo;
-    public GetDashboardSummaryHandler(IAgendamentoRepository repo) => _repo = repo;
+    private readonly IUserRepository _userRepo;
+    private readonly IServicoRepository _servicoRepo;
+    private readonly IFuncionarioRepository _funcionarioRepo;
+
+    public GetDashboardSummaryHandler(
+        IAgendamentoRepository repo,
+        IUserRepository userRepo,
+        IServicoRepository servicoRepo,
+        IFuncionarioRepository funcionarioRepo)
+    {
+        _repo = repo;
+        _userRepo = userRepo;
+        _servicoRepo = servicoRepo;
+        _funcionarioRepo = funcionarioRepo;
+    }
+
     public async Task<DashboardSummaryDTO> Handle(GetDashboardSummaryQuery cmd, CancellationToken ct)
     {
         var today = DateTime.Today;
@@ -235,7 +250,70 @@ public class GetDashboardSummaryHandler : IRequestHandler<GetDashboardSummaryQue
         var faturamentoMes = await _repo.SumByUnidadeAsync(cmd.UnidadeId, monthStart, today.AddDays(1));
         var faturamentoHoje = await _repo.SumByUnidadeAsync(cmd.UnidadeId, today, today.AddDays(1));
 
-        return new DashboardSummaryDTO(totalToday, confirmados, pendentes, finalizadosMes, faturamentoMes, finalizadosHoje, faturamentoHoje);
+        // Get upcoming appointments (pending and confirmed from now onwards)
+        var upcomingAppointments = new List<UpcomingAppointmentDTO>();
+        try
+        {
+            var upcoming = await _repo.GetByUnidadeAsync(cmd.UnidadeId, null, null);
+            var upcomingFiltered = upcoming
+                .Where(a => a.ScheduledAt >= DateTime.Now && 
+                           (a.Status == AgendamentoStatus.Pendente || 
+                            a.Status == AgendamentoStatus.Confirmado))
+                .OrderBy(a => a.ScheduledAt)
+                .Take(10)
+                .ToList();
+
+            if (upcomingFiltered.Any())
+            {
+                var clientIds = upcomingFiltered.Select(a => a.ClientId).Distinct().ToList();
+                var servicoIds = upcomingFiltered.Select(a => a.ServicoId).Distinct().ToList();
+                var funcionarioIds = upcomingFiltered.Select(a => a.FuncionarioId).Distinct().ToList();
+
+                var users = (await _userRepo.GetByIdsAsync(clientIds)).ToDictionary(u => u.Id);
+                var servicos = (await _servicoRepo.GetByIdsAsync(servicoIds)).ToDictionary(s => s.Id);
+                var funcionarios = (await _funcionarioRepo.GetByIdsAsync(funcionarioIds)).ToDictionary(f => f.Id);
+
+                var funcUserIds = funcionarios.Values.Select(f => f.UserId).Distinct().ToList();
+                var funcUsers = funcUserIds.Any()
+                    ? (await _userRepo.GetByIdsAsync(funcUserIds)).ToDictionary(u => u.Id)
+                    : new Dictionary<int, User>();
+
+                upcomingAppointments = upcomingFiltered.Select(a =>
+                {
+                    users.TryGetValue(a.ClientId, out var client);
+                    servicos.TryGetValue(a.ServicoId, out var servico);
+                    funcionarios.TryGetValue(a.FuncionarioId, out var func);
+                    
+                    string? funcName = null;
+                    if (func != null && funcUsers.TryGetValue(func.UserId, out var fu))
+                        funcName = fu.Name;
+
+                    return new UpcomingAppointmentDTO(
+                        a.Id,
+                        client?.Name ?? "Cliente",
+                        servico?.Name ?? "Serviço",
+                        funcName ?? "Profissional",
+                        a.ScheduledAt,
+                        a.Status.ToString()
+                    );
+                }).ToList();
+            }
+        }
+        catch
+        {
+            // If upcoming appointments fail, continue with empty list
+        }
+
+        return new DashboardSummaryDTO(
+            totalToday, 
+            confirmados, 
+            pendentes, 
+            finalizadosMes, 
+            faturamentoMes, 
+            finalizadosHoje, 
+            faturamentoHoje,
+            upcomingAppointments
+        );
     }
 }
 

@@ -12,11 +12,19 @@ public class NotificacoesController : ControllerBase
 {
     private readonly INotificacaoRepository _repo;
     private readonly IUserRepository _userRepo;
+    private readonly IAgendamentoRepository _agendamentoRepo;
+    private readonly IPushDeviceTokenRepository _deviceTokenRepo;
     
-    public NotificacoesController(INotificacaoRepository repo, IUserRepository userRepo)
+    public NotificacoesController(
+        INotificacaoRepository repo, 
+        IUserRepository userRepo,
+        IAgendamentoRepository agendamentoRepo,
+        IPushDeviceTokenRepository deviceTokenRepo)
     {
         _repo = repo;
         _userRepo = userRepo;
+        _agendamentoRepo = agendamentoRepo;
+        _deviceTokenRepo = deviceTokenRepo;
     }
 
     private int UserId => int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
@@ -41,6 +49,68 @@ public class NotificacoesController : ControllerBase
     {
         await _repo.MarkAllReadAsync(UserId);
         return Ok();
+    }
+
+    /// <summary>
+    /// Lista clientes de uma unidade para envio de broadcast
+    /// </summary>
+    [HttpGet("broadcast/clients")]
+    public async Task<ActionResult> GetBroadcastClients(
+        [FromQuery] int salonId,
+        [FromQuery] string? search = null,
+        [FromQuery] bool onlyWithPushToken = false)
+    {
+        // Get all appointments for this salon to find unique clients
+        var appointments = await _agendamentoRepo.GetByUnidadeAsync(salonId, null, null);
+        
+        var clientIds = appointments
+            .Select(a => a.ClientId)
+            .Distinct()
+            .ToList();
+
+        if (clientIds.Count == 0)
+        {
+            return Ok(new List<SalonClientForBroadcastDto>());
+        }
+
+        // Get user details for these clients
+        var users = await _userRepo.GetByIdsAsync(clientIds);
+        
+        // Filter by search if provided
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            users = users.Where(u => 
+                u.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                (u.Phone != null && u.Phone.Contains(search)) ||
+                (u.Email != null && u.Email.Contains(search, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        // Get push device tokens if needed
+        var pushTokens = new Dictionary<int, int>();
+        if (onlyWithPushToken)
+        {
+            var allTokens = await _deviceTokenRepo.GetAllActiveAsync();
+            pushTokens = allTokens
+                .GroupBy(t => t.UserId)
+                .ToDictionary(g => g.Key, g => g.Count());
+        }
+
+        var result = users
+            .Where(u => !onlyWithPushToken || pushTokens.ContainsKey(u.Id))
+            .Select(u => new SalonClientForBroadcastDto
+            {
+                ClientId = u.Id,
+                Name = u.Name,
+                Phone = u.Phone,
+                Email = u.Email,
+                HasPushToken = pushTokens.ContainsKey(u.Id),
+                PushTokenCount = pushTokens.GetValueOrDefault(u.Id, 0)
+            })
+            .OrderBy(u => u.Name)
+            .ToList();
+
+        return Ok(result);
     }
 
     /// <summary>
@@ -102,4 +172,14 @@ public class ClientBroadcastRequest
     public string Message { get; set; } = string.Empty;
     public List<int>? ClientIds { get; set; }
     public int? SalonId { get; set; }
+}
+
+public class SalonClientForBroadcastDto
+{
+    public int ClientId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Email { get; set; }
+    public bool HasPushToken { get; set; }
+    public int PushTokenCount { get; set; }
 }

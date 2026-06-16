@@ -100,6 +100,37 @@ public class FuncionariosController : ControllerBase
         await _repo.DeleteAsync(id);
         return Ok();
     }
+
+    /// <summary>
+    /// Get available time options for a salon's professionals
+    /// </summary>
+    [HttpGet("time-options")]
+    [AllowAnonymous]
+    public async Task<ActionResult<List<string>>> GetTimeOptions([FromQuery] int? salonId = null)
+    {
+        if (!salonId.HasValue)
+        {
+            // Return default time options if no salon specified
+            return Ok(GetDefaultTimeOptions());
+        }
+
+        // Get salon to check if it has custom time options
+        // For now, return default time options
+        // TODO: Fetch from salon configuration if needed
+        return Ok(GetDefaultTimeOptions());
+    }
+
+    private List<string> GetDefaultTimeOptions()
+    {
+        return new List<string>
+        {
+            "07:00", "07:30", "08:00", "08:30", "09:00", "09:30",
+            "10:00", "10:30", "11:00", "11:30", "12:00", "12:30",
+            "13:00", "13:30", "14:00", "14:30", "15:00", "15:30",
+            "16:00", "16:30", "17:00", "17:30", "18:00", "18:30",
+            "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"
+        };
+    }
 }
 
 public record CreateFuncionarioByNomeRequest(string Nome, int UnidadeId, string? Specialty, bool Active);
