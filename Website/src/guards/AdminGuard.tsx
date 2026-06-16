@@ -19,9 +19,10 @@ export const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
     return <Navigate to="/admin/login" replace />;
   }
 
-  // Check if user is Owner or Admin type (support both 'type' and 'tipo' fields)
+  // Check if user is Owner or Admin type (support both numeric and string values)
   const userType = user?.type ?? user?.tipo;
-  if (user && userType !== 2 && userType !== 3) {
+  const allowedTypes = [2, 3, 'Owner', 'Admin', 'Professional'];
+  if (user && !allowedTypes.includes(userType)) {
     return <Navigate to="/admin/login" replace />;
   }
 
