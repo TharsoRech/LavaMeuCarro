@@ -561,11 +561,11 @@ export function AdminAppointments() {
   }, [filteredAppointments]);
 
   const statusColor: Record<string, string> = {
-    Pending: 'bg-blue-100 border-l-4 border-blue-500 text-blue-900',
-    Confirmed: 'bg-green-100 border-l-4 border-green-500 text-green-900',
-    Completed: 'bg-purple-100 border-l-4 border-purple-500 text-purple-900',
-    Cancelled: 'bg-red-100 border-l-4 border-red-500 text-red-900',
-    NoShow: 'bg-gray-100 border-l-4 border-gray-500 text-gray-900',
+    Pending: 'bg-blue-200 text-blue-900 border border-blue-400',
+    Confirmed: 'bg-green-200 text-green-900 border border-green-400',
+    Completed: 'bg-purple-200 text-purple-900 border border-purple-400',
+    Cancelled: 'bg-red-200 text-red-900 border border-red-400',
+    NoShow: 'bg-gray-300 text-gray-900 border border-gray-500',
   };
 
   return (
