@@ -74,8 +74,7 @@ export function AdminNotifications() {
   const [clientHistoryLoading, setClientHistoryLoading] = useState(false);
   const [clientHistoryError, setClientHistoryError] = useState('');
   const [clientHistory, setClientHistory] = useState<ClientAppointmentHistoryResponse | null>(null);
-  const resolvableIds = useResolvableAppointmentNotificationIds(notifications);
-  const canOpenAppointmentDetails = resolvableIds.length > 0;
+  const { canOpenAppointmentDetails } = useResolvableAppointmentNotificationIds(notifications);
 
   const handleOpenDetails = async (notification: NotificationDto) => {
     if (!notification.referenceId) return;
@@ -265,7 +264,7 @@ export function AdminNotifications() {
                       })}
                     </p>
                     {/* Botão Detalhes para notificações de agendamento */}
-                    {canOpenAppointmentDetails && (
+                    {canOpenAppointmentDetails(notification) && (
                       <button
                         onClick={() => handleOpenDetails(notification)}
                         className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors"
