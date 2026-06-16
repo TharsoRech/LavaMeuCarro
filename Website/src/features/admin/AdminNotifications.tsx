@@ -3,7 +3,10 @@ import { Bell, Check, Loader2, Calendar, X, UserRound, MapPin, MessageCircle, Hi
 import { useNotifications } from '../../hooks/useNotifications';
 import { useResolvableAppointmentNotificationIds } from '../../hooks/useResolvableAppointmentNotificationIds';
 import { ApiErrorAlert } from '../../components/ui/ApiErrorAlert';
-import { appointmentsApi } from '../../api';
+import { appointmentsApi, salonsApi } from '../../api';
+import { useQuery } from '@tanstack/react-query';
+import { useAdminAuth } from '../../stores/authStore';
+import { useAdminSalonSelection } from '../../utils/adminSalonSelection';
 import type { AppointmentDto, ClientAppointmentHistoryResponse, NotificationDto } from '../../types';
 import { getStatusBadge } from '../../components/ui/Badge';
 
@@ -52,10 +55,17 @@ const getNotificationLabel = (type: string | number) => {
 type FilterType = 'all' | 'unread';
 
 export function AdminNotifications() {
+  const { user } = useAdminAuth();
   const [filter, setFilter] = useState<FilterType>('all');
   const { notifications, unreadCount, markAsRead, markAllAsRead, isLoading, error, refetch } =
     useNotifications();
   const navigate = useNavigate();
+
+  const { data: salons } = useQuery({
+    queryKey: ['my-units-notifications'],
+    queryFn: () => salonsApi.myUnits(),
+  });
+  const { activeSalonId, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);
 
   const [detailApt, setDetailApt] = useState<AppointmentDto | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -123,13 +133,27 @@ export function AdminNotifications() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Notificações</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          {unreadCount > 0
-            ? `Você tem ${unreadCount} notificação${unreadCount > 1 ? 's' : ''} não lida${unreadCount > 1 ? 's' : ''}`
-            : 'Todas as notificações foram lidas'}
-        </p>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Notificações</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {unreadCount > 0
+              ? `Você tem ${unreadCount} notificação${unreadCount > 1 ? 's' : ''} não lida${unreadCount > 1 ? 's' : ''}`
+              : 'Todas as notificações foram lidas'}
+          </p>
+        </div>
+
+        {salons && salons.length > 0 && (
+          <select
+            value={activeSalonId ?? ''}
+            onChange={(event) => handleSalonChange(Number(event.target.value))}
+            className="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white"
+          >
+            {salons.map((salon: any) => (
+              <option key={salon.id} value={salon.id}>{salon.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {error && (
