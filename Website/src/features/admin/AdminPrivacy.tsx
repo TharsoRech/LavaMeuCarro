@@ -93,9 +93,9 @@ export function AdminPrivacy() {
       )}
 
       <Card title="Termos de Uso">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-blue-50 rounded-lg">
-            <FileText className="w-6 h-6 text-blue-600" />
+        <div className="flex items-start gap-6">
+          <div className="p-4 bg-blue-50 rounded-xl">
+            <FileText className="w-7 h-7 text-blue-600" />
           </div>
           <div className="flex-1">
             <p className="text-sm text-gray-600 mb-4">
@@ -112,9 +112,9 @@ export function AdminPrivacy() {
       </Card>
 
       <Card title="Política de Privacidade">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-blue-50 rounded-lg">
-            <FileText className="w-6 h-6 text-blue-600" />
+        <div className="flex items-start gap-6">
+          <div className="p-4 bg-blue-50 rounded-xl">
+            <FileText className="w-7 h-7 text-blue-600" />
           </div>
           <div className="flex-1">
             <p className="text-sm text-gray-600 mb-4">
@@ -131,9 +131,9 @@ export function AdminPrivacy() {
       </Card>
 
       <Card title="Portabilidade de Dados">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-brand-50 rounded-lg">
-            <Download className="w-6 h-6 text-brand-600" />
+        <div className="flex items-start gap-6">
+          <div className="p-4 bg-brand-50 rounded-xl">
+            <Download className="w-7 h-7 text-brand-600" />
           </div>
           <div className="flex-1">
             <p className="text-sm text-gray-600 mb-4">
@@ -151,9 +151,9 @@ export function AdminPrivacy() {
       </Card>
 
       <Card title="Direito ao Esquecimento">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-red-50 rounded-lg">
-            <Trash2 className="w-6 h-6 text-red-600" />
+        <div className="flex items-start gap-6">
+          <div className="p-4 bg-red-50 rounded-xl">
+            <Trash2 className="w-7 h-7 text-red-600" />
           </div>
           <div className="flex-1">
             <p className="text-sm text-gray-600 mb-4">
@@ -179,9 +179,9 @@ export function AdminPrivacy() {
       </Card>
 
       <Card title="Segurança">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-blue-50 rounded-lg">
-            <Shield className="w-6 h-6 text-blue-600" />
+        <div className="flex items-start gap-6">
+          <div className="p-4 bg-blue-50 rounded-xl">
+            <Shield className="w-7 h-7 text-blue-600" />
           </div>
           <div className="flex-1">
             <p className="text-sm text-gray-600">

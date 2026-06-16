@@ -298,15 +298,20 @@ export function AdminReports() {
   const report = useMemo(() => {
     if (!selectedSalon || !appointments || !services || !professionals) return null;
 
-    return computeBusinessReport({
-      salon: selectedSalon,
-      appointments,
-      services,
-      professionals,
-      periodDays,
-      rangeStart: effectiveReportRange.start,
-      rangeEnd: effectiveReportRange.end,
-    } as any, periodDays);
+    try {
+      return computeBusinessReport({
+        salon: selectedSalon,
+        appointments,
+        services,
+        professionals,
+        periodDays,
+        rangeStart: effectiveReportRange.start,
+        rangeEnd: effectiveReportRange.end,
+      } as any, periodDays);
+    } catch (error) {
+      console.error('Error computing business report:', error);
+      return null;
+    }
   }, [appointments, effectiveReportRange.end, effectiveReportRange.start, periodDays, professionals, selectedSalon, services]);
 
    const [isExportingPdf, setIsExportingPdf] = useState(false);

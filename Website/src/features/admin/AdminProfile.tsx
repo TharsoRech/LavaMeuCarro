@@ -441,22 +441,22 @@ export function AdminProfile() {
       )}
 
       {/* Avatar */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center gap-6">
         <div className="relative">
           {currentPhotoSrc ? (
-            <img src={currentPhotoSrc} alt="foto" className="w-16 h-16 rounded-full object-cover border-2 border-brand-100" />
+            <img src={currentPhotoSrc} alt="foto" className="w-20 h-20 rounded-full object-cover border-2 border-brand-100" />
           ) : (
-            <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center">
-              <span className="text-brand-700 font-bold text-2xl">{user?.name?.charAt(0)?.toUpperCase()}</span>
+            <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center">
+              <span className="text-brand-700 font-bold text-3xl">{user?.name?.charAt(0)?.toUpperCase()}</span>
             </div>
           )}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="absolute bottom-0 right-0 bg-brand-600 text-white rounded-full p-1.5 shadow hover:bg-brand-700 transition"
+            className="absolute bottom-0 right-0 bg-brand-600 text-white rounded-full p-2 shadow hover:bg-brand-700 transition"
             title="Alterar foto"
           >
-            <Camera className="w-3.5 h-3.5" />
+            <Camera className="w-4 h-4" />
           </button>
           <input
             ref={fileInputRef}
@@ -473,12 +473,12 @@ export function AdminProfile() {
           />
         </div>
         <div>
-          <p className="font-semibold text-gray-900">{user?.name}</p>
+          <p className="font-semibold text-gray-900 text-lg">{user?.name}</p>
           <p className="text-sm text-gray-500">{user?.email}</p>
-          <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-brand-100 text-brand-700">
+          <span className="inline-flex items-center mt-2 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-100 text-brand-700">
             {user?.type === 'Owner' ? 'Proprietário' : user?.type === 'Professional' ? 'Profissional' : 'Admin'}
           </span>
-          {photoBase64 && <p className="text-xs text-brand-600 mt-1">Nova foto selecionada — salve para aplicar</p>}
+          {photoBase64 && <p className="text-xs text-brand-600 mt-2">Nova foto selecionada — salve para aplicar</p>}
         </div>
       </div>
 
