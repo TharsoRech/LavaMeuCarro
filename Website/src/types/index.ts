@@ -75,6 +75,8 @@ export interface AppointmentDto {
   canOpenAppointmentDetails?: boolean;
   cancellationReason?: string;
   salonWhatsApp?: string;
+  veiculoPlaca?: string;
+  veiculoModelo?: string;
 }
 
 export interface LegalConsentRequest {
@@ -153,7 +155,10 @@ export interface Veiculo {
   modelo: string;
   cor?: string;
   tamanho: string;
+  ano?: number;
+  fotoBase64?: string;
   clientName?: string;
+  clientPhone?: string;
 }
 
 export interface Categoria {

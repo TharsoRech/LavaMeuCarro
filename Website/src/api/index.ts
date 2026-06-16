@@ -136,6 +136,9 @@ export const getVeiculos = () => api.get('/veiculos').then(r => r.data);
 export const createVeiculo = (data: any) => api.post('/veiculos', data).then(r => r.data);
 export const updateVeiculo = (id: number, data: any) => api.put(`/veiculos/${id}`, data).then(r => r.data);
 export const deleteVeiculo = (id: number) => api.delete(`/veiculos/${id}`).then(r => r.data);
+export const getVeiculosByUnidade = (unidadeId: number) => api.get(`/veiculos/admin/by-unidade/${unidadeId}`).then(r => r.data);
+export const getVeiculoAdmin = (id: number) => api.get(`/veiculos/${id}/admin`).then(r => r.data);
+export const getVeiculoAppointments = (id: number, unidadeId: number) => api.get(`/veiculos/${id}/appointments`, { params: { unidadeId } }).then(r => r.data);
 
 // ── Categorias ────────────────────────────────────────────────────────────────
 

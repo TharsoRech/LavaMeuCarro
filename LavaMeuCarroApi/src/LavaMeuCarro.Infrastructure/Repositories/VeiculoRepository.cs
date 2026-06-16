@@ -17,4 +17,28 @@ public class VeiculoRepository : IVeiculoRepository
     public async Task UpdateAsync(Veiculo v) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("UPDATE Veiculos SET Placa=@Placa, Marca=@Marca, Modelo=@Modelo, Cor=@Cor, Tamanho=@Tamanho, Ano=@Ano, FotoBase64=@FotoBase64 WHERE Id=@Id", v); }
     public async Task DeleteAsync(int id) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("DELETE FROM Veiculos WHERE Id = @Id", new { Id = id }); }
     public async Task<List<Veiculo>> GetByIdsAsync(List<int> ids) { if (ids.Count == 0) return new List<Veiculo>(); using var db = _factory.CreateConnection(); return (await db.QueryAsync<Veiculo>("SELECT * FROM Veiculos WHERE Id IN @Ids", new { Ids = ids })).ToList(); }
+
+    public async Task<List<Veiculo>> GetByUnidadeAsync(int unidadeId)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = @"
+            SELECT DISTINCT v.*, u.Name AS ClientName, u.Phone AS ClientPhone
+            FROM Veiculos v
+            INNER JOIN Agendamentos a ON a.VeiculoId = v.Id
+            LEFT JOIN Users u ON u.Id = v.ClientId
+            WHERE a.UnidadeId = @UnidadeId
+            ORDER BY v.CreatedAt DESC";
+        return (await db.QueryAsync<Veiculo>(sql, new { UnidadeId = unidadeId })).ToList();
+    }
+
+    public async Task<Veiculo?> GetByIdWithClientAsync(int id)
+    {
+        using var db = _factory.CreateConnection();
+        var sql = @"
+            SELECT v.*, u.Name AS ClientName, u.Phone AS ClientPhone
+            FROM Veiculos v
+            LEFT JOIN Users u ON u.Id = v.ClientId
+            WHERE v.Id = @Id";
+        return await db.QueryFirstOrDefaultAsync<Veiculo>(sql, new { Id = id });
+    }
 }

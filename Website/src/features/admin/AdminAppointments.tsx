@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, startOfWeek, addDays, addWeeks, subWeeks, isSameDay, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDays, Filter, Search, UserRound, Scissors, Clock3, LayoutList, Calendar, ChevronLeft, ChevronRight, Loader2, Plus, MessageCircle, MapPin, History, X, RefreshCw } from 'lucide-react';
-import { salonsApi, appointmentsApi, professionalsApi, servicesApi, clientsApi } from '../../api';
+import { CalendarDays, Filter, Search, UserRound, Scissors, Clock3, LayoutList, Calendar, ChevronLeft, ChevronRight, Loader2, Plus, MessageCircle, MapPin, History, X, RefreshCw, Car } from 'lucide-react';
+import { salonsApi, appointmentsApi, professionalsApi, servicesApi, clientsApi, getVeiculosByUnidade, getVeiculoAdmin, getVeiculoAppointments } from '../../api';
 import { getStatusBadge as StatusBadge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import type { AppointmentClientDto, AppointmentDto, AppointmentPagedResponseDto, AppointmentProfessionalOptionDto, ClientAppointmentHistoryItemDto, Servico } from '../../types';
+import type { AppointmentClientDto, AppointmentDto, AppointmentPagedResponseDto, AppointmentProfessionalOptionDto, ClientAppointmentHistoryItemDto, Servico, Veiculo } from '../../types';
 import { ApiErrorAlert } from '../../components/ui/ApiErrorAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { useAdminAuth } from '../../stores/authStore';
@@ -56,11 +56,13 @@ export function AdminAppointments() {
   const [createClientEmail, setCreateClientEmail] = useState('');
   const [createClientDoc, setCreateClientDoc] = useState('');
   const [createMsg, setCreateMsg] = useState('');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>(() => {
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'vehicles'>(() => {
     const saved = localStorage.getItem('appointments_view_mode');
-    return (saved === 'calendar' || saved === 'list') ? saved : 'list';
+    return (saved === 'calendar' || saved === 'list' || saved === 'vehicles') ? saved : 'list';
   });
+  const [vehicleSearch, setVehicleSearch] = useState('');
   const [calendarWeek, setCalendarWeek] = useState(new Date());
+  const [vehicleDetailId, setVehicleDetailId] = useState<number | null>(null);
 
   const { data: salons } = useQuery({
     queryKey: ['my-units'],
@@ -207,6 +209,36 @@ export function AdminAppointments() {
     queryKey: ['client-appointment-history', selectedApt?.id],
     queryFn: () => appointmentsApi.clientHistory(selectedApt!.id),
     enabled: clientHistoryOpen && !!selectedApt,
+  });
+
+  const { data: unitVehicles, isLoading: vehiclesLoading } = useQuery<Veiculo[]>({
+    queryKey: ['unit-vehicles', activeSalon],
+    queryFn: () => getVeiculosByUnidade(activeSalon as number),
+    enabled: !!activeSalon && viewMode === 'vehicles',
+  });
+
+  const filteredVehicles = useMemo(() => {
+    if (!unitVehicles) return [];
+    if (!vehicleSearch.trim()) return unitVehicles;
+    const s = vehicleSearch.trim().toLowerCase();
+    return unitVehicles.filter(v =>
+      v.placa.toLowerCase().includes(s) ||
+      v.modelo.toLowerCase().includes(s) ||
+      v.marca.toLowerCase().includes(s) ||
+      (v.clientName || '').toLowerCase().includes(s)
+    );
+  }, [unitVehicles, vehicleSearch]);
+
+  const { data: vehicleDetail } = useQuery({
+    queryKey: ['vehicle-detail', vehicleDetailId],
+    queryFn: () => getVeiculoAdmin(vehicleDetailId!),
+    enabled: !!vehicleDetailId,
+  });
+
+  const { data: vehicleHistory, isLoading: vehicleHistoryLoading } = useQuery({
+    queryKey: ['vehicle-history', vehicleDetailId, activeSalon],
+    queryFn: () => getVeiculoAppointments(vehicleDetailId!, activeSalon as number),
+    enabled: !!vehicleDetailId && !!activeSalon,
   });
 
   const { data: createAvailabilityCal, isFetching: isLoadingCreateCal } = useQuery({
@@ -619,6 +651,13 @@ export function AdminAppointments() {
               >
                 <Calendar className="w-4 h-4" />
                 Calendário
+              </button>
+              <button
+                onClick={() => { setViewMode('vehicles'); localStorage.setItem('appointments_view_mode', 'vehicles'); }}
+                className={`px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors ${viewMode === 'vehicles' ? 'bg-indigo-600 text-white' : 'text-indigo-700 hover:bg-indigo-50'}`}
+              >
+                <Car className="w-4 h-4" />
+                Veículos
               </button>
             </div>
           </div>
@@ -1068,6 +1107,70 @@ export function AdminAppointments() {
         </div>
       )}
 
+      {/* Vehicles View */}
+      {hasUnits && viewMode === 'vehicles' && (
+        <div className="space-y-3">
+          {/* Search */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+            <Search className="w-4 h-4 text-gray-400" />
+            <input
+              value={vehicleSearch}
+              onChange={(e) => setVehicleSearch(e.target.value)}
+              placeholder="Buscar por placa, modelo, marca ou proprietario"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            {vehicleSearch && (
+              <button onClick={() => setVehicleSearch('')} className="text-sm text-indigo-600 hover:underline">Limpar</button>
+            )}
+            <span className="text-xs text-gray-500">{filteredVehicles.length} veiculo(s)</span>
+          </div>
+
+          {vehiclesLoading ? (
+            <div className="bg-white border border-gray-200 rounded-xl p-16 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
+            </div>
+          ) : filteredVehicles.length === 0 ? (
+            <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
+              <Car className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 text-sm">Nenhum veiculo encontrado nesta unidade.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredVehicles.map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => setVehicleDetailId(v.id)}
+                  className="bg-white border border-gray-200 rounded-xl p-4 text-left hover:border-amber-300 hover:shadow-md transition-all group"
+                >
+                  <div className="flex gap-3">
+                    <div className="w-14 h-14 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {v.fotoBase64 ? (
+                        <img
+                          src={v.fotoBase64.startsWith('data:') ? v.fotoBase64 : `data:image/jpeg;base64,${v.fotoBase64}`}
+                          alt={v.modelo}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Car className="w-6 h-6 text-amber-400" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-slate-900 text-sm group-hover:text-amber-700 transition-colors">{v.marca} {v.modelo}</p>
+                      <p className="text-xs text-slate-600 mt-0.5">Placa: <span className="font-mono font-semibold">{v.placa}</span></p>
+                      <div className="flex gap-2 mt-1 text-xs text-slate-500">
+                        {v.ano && <span>{v.ano}</span>}
+                        {v.cor && <span>· {v.cor}</span>}
+                        <span>· {v.tamanho}</span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <Modal open={!!selectedApt} onClose={() => { setClientHistoryOpen(false); setDetailInlineAction(null); setSelectedApt(null); }} title={detailInlineAction === 'cancel' ? 'Cancelar Agendamento' : detailInlineAction === 'reassign' ? 'Trocar Profissional' : 'Detalhes do Agendamento'}>
         {selectedApt && (
           <div className="space-y-4 text-sm">
@@ -1129,6 +1232,30 @@ export function AdminAppointments() {
                     </Button>
                   </div>
                 </div>
+
+                {/* Veiculo */}
+                {selectedApt.veiculoPlaca && (
+                  <div className="flex gap-3 items-center bg-amber-50 p-3 rounded-lg border border-amber-200">
+                    <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <Car className="w-5 h-5 text-amber-700" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-900 text-sm">{selectedApt.veiculoModelo || 'Veiculo'}</p>
+                      <p className="text-xs text-slate-600">Placa: {selectedApt.veiculoPlaca}</p>
+                    </div>
+                    {selectedApt.veiculoId && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setVehicleDetailId(selectedApt.veiculoId!)}
+                      >
+                        <Car className="w-3.5 h-3.5" />
+                        Detalhes
+                      </Button>
+                    )}
+                  </div>
+                )}
 
                 {/* Informações do Agendamento */}
                 <Row label="Telefone" value={(
@@ -1602,6 +1729,106 @@ export function AdminAppointments() {
             </p>
           )}
         </div>
+      </Modal>
+
+      {/* Vehicle Detail Modal */}
+      <Modal
+        open={!!vehicleDetailId}
+        onClose={() => setVehicleDetailId(null)}
+        title={vehicleDetail ? `Veiculo — ${vehicleDetail.placa}` : 'Detalhes do Veiculo'}
+        footer={<Button variant="outline" onClick={() => setVehicleDetailId(null)}>Fechar</Button>}
+      >
+        {vehicleDetail && (
+          <div className="space-y-4 text-sm max-h-[70vh] overflow-y-auto pr-1">
+            {/* Vehicle Photo */}
+            {vehicleDetail.fotoBase64 ? (
+              <div className="rounded-xl overflow-hidden border border-gray-200">
+                <img
+                  src={vehicleDetail.fotoBase64.startsWith('data:') ? vehicleDetail.fotoBase64 : `data:image/jpeg;base64,${vehicleDetail.fotoBase64}`}
+                  alt={vehicleDetail.modelo}
+                  className="w-full h-48 object-cover"
+                />
+              </div>
+            ) : (
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-8 flex flex-col items-center justify-center">
+                <Car className="w-12 h-12 text-gray-300 mb-2" />
+                <p className="text-xs text-gray-400">Sem foto</p>
+              </div>
+            )}
+
+            {/* Vehicle Info */}
+            <div className="bg-amber-50 rounded-xl p-4 border border-amber-200 space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-amber-600 uppercase tracking-wide">Placa</p>
+                  <p className="font-bold text-slate-900">{vehicleDetail.placa}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-amber-600 uppercase tracking-wide">Ano</p>
+                  <p className="font-bold text-slate-900">{vehicleDetail.ano || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-amber-600 uppercase tracking-wide">Marca</p>
+                  <p className="font-semibold text-slate-900">{vehicleDetail.marca}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-amber-600 uppercase tracking-wide">Modelo</p>
+                  <p className="font-semibold text-slate-900">{vehicleDetail.modelo}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-amber-600 uppercase tracking-wide">Cor</p>
+                  <p className="font-semibold text-slate-900">{vehicleDetail.cor || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-amber-600 uppercase tracking-wide">Tamanho</p>
+                  <p className="font-semibold text-slate-900">{vehicleDetail.tamanho}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Owner Info */}
+            <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-200">
+              <p className="text-xs font-semibold text-indigo-800 uppercase tracking-wide mb-2">Proprietario</p>
+              <p className="font-semibold text-slate-900">{vehicleDetail.clientName || '—'}</p>
+              {vehicleDetail.clientPhone && (
+                <p className="text-xs text-slate-600 mt-0.5">{vehicleDetail.clientPhone}</p>
+              )}
+            </div>
+
+            {/* Vehicle History */}
+            <div>
+              <p className="text-xs font-semibold text-slate-800 uppercase tracking-wide mb-2">
+                Historico nesta unidade ({vehicleHistory?.length || 0} agendamentos)
+              </p>
+              {vehicleHistoryLoading ? (
+                <div className="flex items-center gap-2 text-slate-500 py-3">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Carregando...
+                </div>
+              ) : vehicleHistory && vehicleHistory.length > 0 ? (
+                <ul className="space-y-2 max-h-48 overflow-y-auto">
+                  {vehicleHistory.map((item: any) => (
+                    <li key={item.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-slate-900">
+                          {item.scheduledAt ? format(new Date(item.scheduledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '—'}
+                        </span>
+                        <span className="font-semibold text-slate-700">
+                          {item.totalPrice?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                      </div>
+                      <p className="text-slate-500 mt-0.5">
+                        {item.serviceName}{item.professionalName ? ` • ${item.professionalName}` : ''}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-slate-400 py-2">Nenhum agendamento encontrado.</p>
+              )}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

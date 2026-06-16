@@ -12,4 +12,8 @@ public class Veiculo
     public int? Ano { get; set; }
     public string? FotoBase64 { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // Not mapped - populated by JOIN queries
+    public string? ClientName { get; set; }
+    public string? ClientPhone { get; set; }
 }

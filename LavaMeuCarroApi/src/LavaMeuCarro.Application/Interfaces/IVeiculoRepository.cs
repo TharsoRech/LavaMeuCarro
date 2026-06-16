@@ -11,4 +11,6 @@ public interface IVeiculoRepository
     Task UpdateAsync(Veiculo veiculo);
     Task DeleteAsync(int id);
     Task<List<Veiculo>> GetByIdsAsync(List<int> ids);
+    Task<List<Veiculo>> GetByUnidadeAsync(int unidadeId);
+    Task<Veiculo?> GetByIdWithClientAsync(int id);
 }
