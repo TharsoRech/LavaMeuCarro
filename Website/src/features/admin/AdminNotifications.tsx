@@ -121,7 +121,7 @@ export function AdminNotifications() {
     setClientHistoryError('');
     setClientHistoryLoading(true);
     try {
-      const res = await appointmentsApi.clientHistory(detailApt.salonId, detailApt.clientId);
+      const res = await appointmentsApi.clientHistory(detailApt.id);
       setClientHistory(res.data);
     } catch {
       setClientHistoryError('Não foi possível carregar o histórico do cliente.');
