@@ -4,20 +4,26 @@ import Foundation
 @Observable
 class HomePageViewModel {
     
+    var flowManager: AppFlowManager
+    
+    init(flowManager: AppFlowManager) {
+            self.flowManager = flowManager
+        }
+    
     // Propriedades de estado (ex: controlam telas de carregamento ou navegação)
     var isLoading: Bool = false
     
     // Funções que a View vai chamar ao interagir com os botões
-    func cadastrar() {
+    func goToRegistry() {
         print("MVVM: Lógica para iniciar fluxo de cadastro")
         // Aqui você pode mudar uma variável de navegação ou disparar um evento
     }
     
-    func entrar() {
-        print("MVVM: Lógica para iniciar fluxo de login")
+    func gotoLogin() {
+        flowManager.goToLogin()
     }
     
-    func continuarComoConvidado() {
-        print("MVVM: Lógica para pular autenticação")
+    func enterAsGuest() {
+        
     }
 }

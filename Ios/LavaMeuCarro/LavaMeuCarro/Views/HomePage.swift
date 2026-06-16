@@ -2,7 +2,7 @@ import SwiftUI
 
 struct HomePage: View {
     // Instanciando o ViewModel que vai gerenciar o estado desta tela
-    @State private var viewModel = HomePageViewModel()
+    @State var viewModel: HomePageViewModel
     
     var body: some View {
         ZStack {
@@ -23,8 +23,8 @@ struct HomePage: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                 
-                Text("Fique bonito do seu jeito.")
-                    .font(.subheadline)
+                Text("Sua Lavagem do sei jeito!")
+                    .font(.headline)
                     .foregroundColor(.white.opacity(0.8))
                 
                 Spacer()
@@ -32,7 +32,7 @@ struct HomePage: View {
                 VStack(spacing: 16) {
                     
                     Button(action: {
-                        viewModel.cadastrar()
+                        viewModel.goToRegistry()
                     }) {
                         Text("Cadastrar")
                             .font(.headline)
@@ -44,7 +44,7 @@ struct HomePage: View {
                     }
                     
                     Button(action: {
-                        viewModel.entrar()
+                        viewModel.gotoLogin()
                     }) {
                         Text("Entrar")
                             .font(.headline)
@@ -59,7 +59,7 @@ struct HomePage: View {
                     }
                     
                     Button(action: {
-                        viewModel.continuarComoConvidado()
+                        viewModel.enterAsGuest()
                     }) {
                         Text("Ou continue como convidado")
                             .font(.footnote)
@@ -76,5 +76,7 @@ struct HomePage: View {
 }
 
 #Preview {
-    HomePage()
+    HomePage(viewModel: HomePageViewModel(flowManager: AppFlowManager()))
 }
+
+

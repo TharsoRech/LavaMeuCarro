@@ -2,14 +2,13 @@ import SwiftUI
 
 struct LoginPage: View {
     
-    @State private var viewModel = LoginPageViewModel()
+    @State var viewModel: LoginPageViewModel
     
     var body: some View {
         ZStack {
             Color.PrimaryBlue.ignoresSafeArea()
             
             VStack(spacing: 16) {
-                // Título
                 Text("Entrar")
                     .font(.largeTitle)
                     .fontWeight(.bold)
@@ -17,19 +16,18 @@ struct LoginPage: View {
                     .multilineTextAlignment(.center)
                     .padding(.top, 40)
                 
-                // Ícone do App
                 Image("AppIcon")
                     .resizable()
                     .scaledToFit()
-                    .frame(height: 220) // Ajustado para dar espaço aos campos
+                    .frame(height: 220)
                 
                 Text("Lava Meu Carro")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
                 
-                Text("Para frotas e parceiros")
-                    .font(.subheadline)
+                Text("Sua Lavagem do sei jeito!")
+                    .font(.headline)
                     .foregroundColor(.white.opacity(0.8))
                     .padding(.top, -16)
                 
@@ -41,16 +39,20 @@ struct LoginPage: View {
                             .foregroundColor(.white.opacity(0.9))
                         
                         TextField("", text: $viewModel.email)
-                            .autocapitalization(.none)
-                            .keyboardType(.emailAddress)
-                            .padding()
-                            .frame(height: 50)
-                            .foregroundColor(.white)
-                            .background(Color.clear)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.white, lineWidth: 1.5)
-                            )
+                                .autocapitalization(.none)
+                                .keyboardType(.emailAddress)
+                                .padding()
+                                .frame(height: 50)
+                                .foregroundColor(.white)
+                                .background(Color.clear)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(viewModel.emailError != nil ? Color.red : Color.white, lineWidth: 1.5)
+                                )
+                                // Dispara a validação a cada caractere digitado (Sintaxe iOS 17+)
+                                .onChange(of: viewModel.email) {
+                                    viewModel.validateEmail()
+                                }
                     }
                     
                     VStack(alignment: .leading, spacing: 6) {
@@ -70,7 +72,7 @@ struct LoginPage: View {
                     }
                     
                     Button(action: {
-                        viewModel.esqueceuSenha()
+                        viewModel.forgetPassword()
                     }) {
                         Text("Esqueceu a senha?")
                             .font(.footnote)
@@ -84,7 +86,7 @@ struct LoginPage: View {
                 
                 VStack(spacing: 16) {
                     Button(action: {
-                        viewModel.efetuarLogin()
+                        viewModel.Login()
                     }) {
                         Text("Entrar")
                             .font(.headline)
@@ -97,7 +99,7 @@ struct LoginPage: View {
                     
                     // Link para criar conta
                     Button(action: {
-                        viewModel.irParaCadastro()
+                        viewModel.goToRegister()
                     }) {
                         HStack(spacing: 4) {
                             Text("Não tem conta?")
@@ -122,5 +124,5 @@ struct LoginPage: View {
 }
 
 #Preview {
-    LoginPage()
+    LoginPage(viewModel: LoginPageViewModel(flowManager: AppFlowManager()))
 }
