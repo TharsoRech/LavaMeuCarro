@@ -30,3 +30,13 @@ public record UpcomingAppointmentDTO(
 public record PagedResult<T>(List<T> Items, int Total, int Page, int PageSize);
 public record MasterStatsDTO(int TotalUsers, int TotalUnidades, int TotalAgendamentos, int TotalAssinaturasAtivas, int NoShowCount);
 public record TelemetriaDTO(DateTime ServerTime);
+public record ReviewDTO(
+    int Id,
+    int ClientId,
+    int TargetId,
+    string TargetType,
+    int Rating,
+    string? Comment,
+    string? ClientName,
+    DateTime CreatedAt
+);

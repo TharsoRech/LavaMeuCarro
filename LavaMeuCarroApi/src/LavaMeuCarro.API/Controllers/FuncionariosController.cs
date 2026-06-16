@@ -14,10 +14,16 @@ public class FuncionariosController : ControllerBase
 {
     private readonly IFuncionarioRepository _repo;
     private readonly IUserRepository _userRepo;
-    public FuncionariosController(IFuncionarioRepository repo, IUserRepository userRepo)
+    private readonly IAvaliacaoRepository _avaliacaoRepo;
+    
+    public FuncionariosController(
+        IFuncionarioRepository repo, 
+        IUserRepository userRepo,
+        IAvaliacaoRepository avaliacaoRepo)
     {
         _repo = repo;
         _userRepo = userRepo;
+        _avaliacaoRepo = avaliacaoRepo;
     }
 
     [HttpGet]
@@ -99,6 +105,43 @@ public class FuncionariosController : ControllerBase
     {
         await _repo.DeleteAsync(id);
         return Ok();
+    }
+
+    /// <summary>
+    /// Get reviews for a specific professional
+    /// </summary>
+    [HttpGet("{id}/reviews")]
+    [AllowAnonymous]
+    public async Task<ActionResult<List<ReviewDTO>>> GetProfessionalReviews(int id)
+    {
+        var reviews = await _avaliacaoRepo.GetByFuncionarioAsync(id);
+        
+        if (reviews.Count == 0)
+        {
+            return Ok(new List<ReviewDTO>());
+        }
+
+        // Get client names
+        var clientIds = reviews.Select(r => r.ClientId).Distinct().ToList();
+        var users = await _userRepo.GetByIdsAsync(clientIds);
+        var userDict = users.ToDictionary(u => u.Id);
+
+        var result = reviews.Select(r =>
+        {
+            userDict.TryGetValue(r.ClientId, out var client);
+            return new ReviewDTO(
+                r.Id,
+                r.ClientId,
+                r.FuncionarioId ?? 0,
+                "funcionario",
+                r.Rating,
+                r.Comment,
+                client?.Name,
+                r.CreatedAt
+            );
+        }).ToList();
+
+        return Ok(result);
     }
 
     /// <summary>

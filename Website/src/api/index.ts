@@ -122,6 +122,7 @@ export const professionalsApi = {
   createByDoc: (salonId: number, data: any) => api.post(`/funcionarios`, { ...data, unidadeId: salonId }).then(r => r.data),
   update: (id: number, data: any) => api.put(`/funcionarios/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/funcionarios/${id}`).then(r => r.data),
+  reviews: (professionalId: number) => api.get(`/funcionarios/${professionalId}/reviews`).then(r => r.data),
 };
 
 export const getFuncionarios = (unidadeId?: number) => api.get(`/unidades/${unidadeId}/funcionarios`).then(r => r.data);
