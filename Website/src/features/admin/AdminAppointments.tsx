@@ -561,11 +561,17 @@ export function AdminAppointments() {
   }, [filteredAppointments]);
 
   const statusColor: Record<string, string> = {
+    // Portuguese values (from backend)
+    Pendente: 'bg-blue-500 text-white hover:bg-blue-600',
+    Confirmado: 'bg-green-500 text-white hover:bg-green-600',
+    Finalizado: 'bg-purple-500 text-white hover:bg-purple-600',
+    Cancelado: 'bg-red-500 text-white hover:bg-red-600',
+    NoShow: 'bg-gray-500 text-white hover:bg-gray-600',
+    // English values (fallback)
     Pending: 'bg-blue-500 text-white hover:bg-blue-600',
     Confirmed: 'bg-green-500 text-white hover:bg-green-600',
     Completed: 'bg-purple-500 text-white hover:bg-purple-600',
     Cancelled: 'bg-red-500 text-white hover:bg-red-600',
-    NoShow: 'bg-gray-500 text-white hover:bg-gray-600',
   };
 
   return (
@@ -926,22 +932,21 @@ export function AdminAppointments() {
           ) : filteredAppointments.map((apt) => {
             const rowPending = pendingAction?.id === apt.id;
             const canComplete = canCompleteAppointment(apt);
-            const statusBorderColor = apt.status === 'Pending' ? 'border-l-4 border-l-blue-500' :
-                                     apt.status === 'Confirmed' ? 'border-l-4 border-l-green-500' :
-                                     apt.status === 'Completed' ? 'border-l-4 border-l-purple-500' :
-                                     apt.status === 'Cancelled' ? 'border-l-4 border-l-red-500' :
+            const statusBorderColor = apt.status === 'Pendente' ? 'border-l-4 border-l-blue-500' :
+                                     apt.status === 'Confirmado' ? 'border-l-4 border-l-green-500' :
+                                     apt.status === 'Finalizado' ? 'border-l-4 border-l-purple-500' :
+                                     apt.status === 'Cancelado' ? 'border-l-4 border-l-red-500' :
                                      'border-l-4 border-l-gray-500';
+            const statusAvatarColor = apt.status === 'Pendente' ? 'bg-blue-100 text-blue-700' :
+                                     apt.status === 'Confirmado' ? 'bg-green-100 text-green-700' :
+                                     apt.status === 'Finalizado' ? 'bg-purple-100 text-purple-700' :
+                                     apt.status === 'Cancelado' ? 'bg-red-100 text-red-700' :
+                                     'bg-gray-100 text-gray-700';
             return (
               <div key={apt.id} className={`bg-white border border-gray-200 rounded-xl p-4 shadow-sm ${statusBorderColor}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className={`w-10 h-10 rounded-full font-semibold flex items-center justify-center text-xs ${
-                      apt.status === 'Pending' ? 'bg-blue-100 text-blue-700' :
-                      apt.status === 'Confirmed' ? 'bg-green-100 text-green-700' :
-                      apt.status === 'Completed' ? 'bg-purple-100 text-purple-700' :
-                      apt.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
+                    <div className={`w-10 h-10 rounded-full font-semibold flex items-center justify-center text-xs ${statusAvatarColor}`}>
                       {toInitials(apt.clientName)}
                     </div>
                     <div className="min-w-0">
