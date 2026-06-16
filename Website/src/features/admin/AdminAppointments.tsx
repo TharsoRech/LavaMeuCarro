@@ -561,11 +561,11 @@ export function AdminAppointments() {
   }, [filteredAppointments]);
 
   const statusColor: Record<string, string> = {
-    Pending: 'bg-amber-100 border-l-4 border-amber-400 text-amber-900',
-    Confirmed: 'bg-emerald-100 border-l-4 border-emerald-500 text-emerald-900',
-    Completed: 'bg-sky-100 border-l-4 border-sky-500 text-sky-900',
-    Cancelled: 'bg-gray-100 border-l-4 border-gray-400 text-gray-600',
-    NoShow: 'bg-red-100 border-l-4 border-red-400 text-red-900',
+    Pending: 'bg-blue-100 border-l-4 border-blue-500 text-blue-900',
+    Confirmed: 'bg-green-100 border-l-4 border-green-500 text-green-900',
+    Completed: 'bg-purple-100 border-l-4 border-purple-500 text-purple-900',
+    Cancelled: 'bg-red-100 border-l-4 border-red-500 text-red-900',
+    NoShow: 'bg-gray-100 border-l-4 border-gray-500 text-gray-900',
   };
 
   return (
@@ -779,7 +779,35 @@ export function AdminAppointments() {
 
       {/* Calendar View */}
       {hasUnits && viewMode === 'calendar' && !(!isLoading && !pagedAppointments && !calendarAppointments) && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="space-y-3">
+          {/* Legend */}
+          <div className="bg-white border border-gray-200 rounded-xl p-4">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Legenda dos Status</p>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-blue-500"></div>
+                <span className="text-sm text-gray-600">Pendente</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                <span className="text-sm text-gray-600">Confirmado</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-purple-500"></div>
+                <span className="text-sm text-gray-600">Finalizado</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                <span className="text-sm text-gray-600">Cancelado</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-gray-500"></div>
+                <span className="text-sm text-gray-600">Não Compareceu</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {isLoading ? (
             <div className="p-10 text-center text-slate-500">
               <Loader2 className="w-7 h-7 animate-spin mx-auto mb-3 text-indigo-600" />
@@ -842,6 +870,7 @@ export function AdminAppointments() {
               </div>
             </>
           )}
+        </div>
         </div>
       )}
 
