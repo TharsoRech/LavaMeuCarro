@@ -66,9 +66,11 @@ export function NotificationCenter() {
     setDetailLoading(true);
     setIsOpen(false);
     try {
-      const res = await appointmentsApi.getById(notification.referenceId);
-      setDetailApt(res.data);
-    } catch {
+      const apt = await appointmentsApi.getById(notification.referenceId);
+      // API wrapper already returns .data, but check if it's wrapped again
+      setDetailApt(apt?.data ?? apt);
+    } catch (err: any) {
+      console.error('Error loading appointment details:', err);
       setDetailError('Não foi possível carregar os detalhes do agendamento.');
     } finally {
       setDetailLoading(false);
