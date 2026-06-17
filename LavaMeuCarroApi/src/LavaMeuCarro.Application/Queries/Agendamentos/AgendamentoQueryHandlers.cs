@@ -105,8 +105,15 @@ public class GetAgendamentoByIdHandler : IRequestHandler<GetAgendamentoByIdQuery
 
     public async Task<AgendamentoDTO> Handle(GetAgendamentoByIdQuery cmd, CancellationToken ct)
     {
-        var a = await _repo.GetByIdAsync(cmd.Id)
-            ?? throw new NotFoundException("Appointment not found");
+        System.Console.WriteLine($"[GetAgendamentoById] Querying id={cmd.Id}, userId={cmd.UserId}");
+        var a = await _repo.GetByIdAsync(cmd.Id);
+        System.Console.WriteLine($"[GetAgendamentoById] Result: {a?.Id ?? 0}, unidadeId={a?.UnidadeId ?? 0}");
+        
+        if (a == null)
+        {
+            System.Console.WriteLine($"[GetAgendamentoById] NOT FOUND - id={cmd.Id}");
+            throw new NotFoundException("Appointment not found");
+        }
 
         var users = (await _userRepo.GetByIdsAsync(new List<int> { a.ClientId })).ToDictionary(u => u.Id);
         var servicos = (await _servicoRepo.GetByIdsAsync(new List<int> { a.ServicoId })).ToDictionary(s => s.Id);

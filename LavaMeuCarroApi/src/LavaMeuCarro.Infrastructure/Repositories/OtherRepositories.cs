@@ -58,8 +58,16 @@ public class NotificacaoRepository : INotificacaoRepository
     public NotificacaoRepository(IDbConnectionFactory factory) => _factory = factory;
     public async Task<List<Notificacao>> GetByUserAsync(int userId) { using var db = _factory.CreateConnection(); return (await db.QueryAsync<Notificacao>("SELECT * FROM Notificacoes WHERE UserId = @UserId ORDER BY CreatedAt DESC", new { UserId = userId })).ToList(); }
     public async Task<int> CreateAsync(Notificacao n) { using var db = _factory.CreateConnection(); return await db.QuerySingleAsync<int>("INSERT INTO Notificacoes (UserId, Title, Body, Type, ReferenceId, ReferenceType, CreatedAt) VALUES (@UserId, @Title, @Body, @Type, @ReferenceId, @ReferenceType, @CreatedAt); SELECT CAST(SCOPE_IDENTITY() AS INT)", n); }
-    public async Task MarkReadAsync(int id) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("UPDATE Notificacoes SET IsRead = 1 WHERE Id = @Id", new { Id = id }); }
-    public async Task MarkAllReadAsync(int userId) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("UPDATE Notificacoes SET IsRead = 1 WHERE UserId = @UserId AND IsRead = 0", new { UserId = userId }); }
+    public async Task MarkReadAsync(int id) { 
+        using var db = _factory.CreateConnection(); 
+        var rows = await db.ExecuteAsync("UPDATE Notificacoes SET IsRead = 1 WHERE Id = @Id", new { Id = id }); 
+        System.Console.WriteLine($"[NotificacaoRepo] MarkReadAsync: id={id}, rowsAffected={rows}");
+    }
+    public async Task MarkAllReadAsync(int userId) { 
+        using var db = _factory.CreateConnection(); 
+        var rows = await db.ExecuteAsync("UPDATE Notificacoes SET IsRead = 1 WHERE UserId = @UserId AND IsRead = 0", new { UserId = userId }); 
+        System.Console.WriteLine($"[NotificacaoRepo] MarkAllReadAsync: userId={userId}, rowsAffected={rows}");
+    }
     public async Task<int> CountUnreadAsync(int userId) { using var db = _factory.CreateConnection(); return await db.QuerySingleAsync<int>("SELECT COUNT(*) FROM Notificacoes WHERE UserId = @UserId AND IsRead = 0", new { UserId = userId }); }
     public async Task DeleteOldAsync(int daysOld) { using var db = _factory.CreateConnection(); await db.ExecuteAsync("DELETE FROM Notificacoes WHERE CreatedAt < DATEADD(day, -@DaysOld, GETUTCDATE())", new { DaysOld = daysOld }); }
 }
