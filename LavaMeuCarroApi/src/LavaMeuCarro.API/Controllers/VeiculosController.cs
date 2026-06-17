@@ -56,8 +56,8 @@ public class VeiculosController : ControllerBase
             SELECT a.Id,
                    a.ScheduledAt,
                    a.Status,
-                   s.Name AS ServiceName,
-                   u2.Name AS ProfessionalName,
+                   ISNULL(s.Name, '') AS ServiceName,
+                   ISNULL(u2.Name, '') AS ProfessionalName,
                    a.TotalPrice,
                    a.DurationMinutes
             FROM Agendamentos a
