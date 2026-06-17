@@ -83,9 +83,15 @@ export function AdminNotifications() {
     setDetailApt(null);
     try {
       const res = await appointmentsApi.getById(notification.referenceId);
-      setDetailApt(res.data);
-    } catch {
-      setDetailError('Não foi possível carregar os detalhes do agendamento.');
+      // API wrapper already returns .data
+      setDetailApt(res?.data ?? res);
+    } catch (err: any) {
+      console.error('Error loading appointment details:', err);
+      if (err?.response?.status === 404) {
+        setDetailError('Este agendamento não existe mais ou foi removido.');
+      } else {
+        setDetailError('Não foi possível carregar os detalhes do agendamento.');
+      }
     } finally {
       setDetailLoading(false);
     }

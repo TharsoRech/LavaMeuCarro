@@ -1302,7 +1302,14 @@ export function AdminAppointments() {
             )}
 
             {/* Ações - sempre visíveis quando não está em modo cancel/reassign */}
-            {detailInlineAction === null && (selectedApt.status === 'Pending' || selectedApt.status === 'Confirmed') && (
+            {(() => {
+              if (detailInlineAction !== null) return null;
+              const st = String(selectedApt.status).toLowerCase();
+              const isPending = st === 'pending' || st === '1' || st === 'pendente';
+              const isConfirmed = st === 'confirmed' || st === '2' || st === 'confirmado';
+              const canAct = isPending || isConfirmed;
+              if (!canAct) return null;
+              return (
               <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
                 <Button
                   size="sm"
@@ -1314,7 +1321,7 @@ export function AdminAppointments() {
                 >
                   Trocar profissional
                 </Button>
-                {selectedApt.status === 'Pending' && (
+                {isPending && (
                   <Button size="sm" onClick={() => { updateStatusMutation.mutate({ id: selectedApt.id, status: 2, action: 'confirm' }); setSelectedApt(null); }}>
                     Confirmar
                   </Button>
@@ -1344,12 +1351,19 @@ export function AdminAppointments() {
                   Cancelar
                 </Button>
               </div>
-            )}
-            {detailInlineAction === null && selectedApt.status === 'Confirmed' && !canCompleteAppointment(selectedApt) && (
+            );
+            })()}
+            {(() => {
+              if (detailInlineAction !== null) return null;
+              const st = String(selectedApt.status).toLowerCase();
+              const isConfirmed = st === 'confirmed' || st === '2' || st === 'confirmado';
+              if (!isConfirmed || canCompleteAppointment(selectedApt)) return null;
+              return (
               <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                 Este agendamento só pode ser concluído depois que o horário terminar.
               </p>
-            )}
+              );
+            })()}
 
             {/* Inline Cancel Form */}
             {detailInlineAction === 'cancel' && (
