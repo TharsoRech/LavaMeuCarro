@@ -1305,9 +1305,17 @@ export function AdminAppointments() {
             {(() => {
               if (detailInlineAction !== null) return null;
               const st = String(selectedApt.status).toLowerCase();
+              console.log('[AdminAppointments] Modal status:', selectedApt.status, 'normalized:', st);
               const isPending = st === 'pending' || st === '1' || st === 'pendente';
               const isConfirmed = st === 'confirmed' || st === '2' || st === 'confirmado';
+              const isCompleted = st === 'completed' || st === '4' || st === 'finalizado';
+              const isCancelled = st === 'cancelled' || st === '3' || st === 'cancelado';
+              const isNoShow = st === 'noshow' || st === '5';
               const canAct = isPending || isConfirmed;
+              // Se já foi concluído/cancelado/não compareceu, não mostrar ações
+              if (isCompleted || isCancelled || isNoShow) {
+                return <p className="text-xs text-gray-500 italic pt-2 border-t border-gray-100">Este agendamento já foi finalizado e não aceita mais alterações.</p>;
+              }
               if (!canAct) return null;
               return (
               <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
@@ -1326,7 +1334,7 @@ export function AdminAppointments() {
                     Confirmar
                   </Button>
                 )}
-                {selectedApt.status === 'Confirmed' && (
+                {isConfirmed && (
                   <>
                     <Button
                       size="sm"
