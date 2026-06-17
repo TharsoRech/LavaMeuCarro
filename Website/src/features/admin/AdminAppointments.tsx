@@ -323,7 +323,8 @@ export function AdminAppointments() {
       try {
         const appointment = await appointmentsApi.getById(appointmentId);
         if (cancelled) return;
-        setSelectedApt(appointment);
+        // API wrapper already returns .data
+        setSelectedApt(appointment?.data ?? appointment);
       } catch {
         // Ignore: the notification flow should not block the page if the appointment disappeared.
       } finally {
