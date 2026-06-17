@@ -71,7 +71,13 @@ export function NotificationCenter() {
       setDetailApt(apt?.data ?? apt);
     } catch (err: any) {
       console.error('Error loading appointment details:', err);
-      setDetailError('Não foi possível carregar os detalhes do agendamento.');
+      if (err?.response?.status === 404) {
+        setDetailError('Este agendamento não existe mais ou foi removido.');
+      } else if (err?.code === 'ECONNABORTED' || err?.message?.includes('timeout')) {
+        setDetailError('Timeout ao carregar agendamento. Tente novamente.');
+      } else {
+        setDetailError('Não foi possível carregar os detalhes do agendamento.');
+      }
     } finally {
       setDetailLoading(false);
     }
