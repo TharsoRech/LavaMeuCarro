@@ -105,9 +105,11 @@ public class GetAgendamentoByIdHandler : IRequestHandler<GetAgendamentoByIdQuery
 
     public async Task<AgendamentoDTO> Handle(GetAgendamentoByIdQuery cmd, CancellationToken ct)
     {
-        System.Console.WriteLine($"[GetAgendamentoById] Querying id={cmd.Id}, userId={cmd.UserId}");
+        System.Console.WriteLine($"[GetAgendamentoById] START: id={cmd.Id}, userId={cmd.UserId}");
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        
         var a = await _repo.GetByIdAsync(cmd.Id);
-        System.Console.WriteLine($"[GetAgendamentoById] Result: {a?.Id ?? 0}, unidadeId={a?.UnidadeId ?? 0}");
+        System.Console.WriteLine($"[GetAgendamentoById] GetByIdAsync: {sw.ElapsedMilliseconds}ms, result={a?.Id ?? 0}");
         
         if (a == null)
         {
@@ -126,6 +128,7 @@ public class GetAgendamentoByIdHandler : IRequestHandler<GetAgendamentoByIdQuery
             ? (await _userRepo.GetByIdsAsync(funcUserIds)).ToDictionary(u => u.Id)
             : new Dictionary<int, User>();
 
+        System.Console.WriteLine($"[GetAgendamentoById] TOTAL: {sw.ElapsedMilliseconds}ms");
         return GetMyAgendamentosHandler.MapDTO(a, users, servicos, funcionarios, unidades, veiculos, funcUsers);
     }
 }
