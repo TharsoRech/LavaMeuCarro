@@ -123,7 +123,7 @@ export function computeBusinessReport(
   });
 
   Object.entries(appointmentsByDate).forEach(([date, count]) => {
-    revenueTimeline.push({ date, count });
+    revenueTimeline.push({ label: date, value: count });
   });
 
   // Build weekday demand
@@ -136,8 +136,8 @@ export function computeBusinessReport(
   });
 
   const weekdayDemand = weekdayCounts.map((count, index) => ({
-    day: weekdayNames[index],
-    count
+    label: weekdayNames[index],
+    value: count
   }));
 
   // Build top services
@@ -183,6 +183,57 @@ export function computeBusinessReport(
   // Build scope label
   const scopeLabel = `${filteredAppointments.length} agendamentos`;
 
+  // Build status series for donut chart
+  const statusMap: Record<string, { label: string; value: number; color: string }> = {};
+  filteredAppointments.forEach((apt: any) => {
+    const status = apt.status || 'Pendente';
+    if (!statusMap[status]) {
+      statusMap[status] = { label: status, value: 0, color: '#D63484' };
+    }
+    statusMap[status].value++;
+  });
+  const statusSeries = Object.values(statusMap);
+
+  // Build top clients
+  const clientMap: Record<number, { name: string; visits: number; revenue: number; lastVisit?: string }> = {};
+  completedAppointments.forEach((apt: any) => {
+    const clientId = apt.clientId;
+    if (!clientMap[clientId]) {
+      clientMap[clientId] = {
+        name: apt.clientName || 'Cliente',
+        visits: 0,
+        revenue: 0,
+      };
+    }
+    clientMap[clientId].visits++;
+    clientMap[clientId].revenue += (apt.price || apt.totalPrice || 0);
+    const aptDate = new Date(apt.scheduledAt);
+    if (!clientMap[clientId].lastVisit || aptDate > new Date(clientMap[clientId].lastVisit!)) {
+      clientMap[clientId].lastVisit = apt.scheduledAt;
+    }
+  });
+  const topClients = Object.values(clientMap)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
+  // Build insights
+  const insights: string[] = [];
+  if (completionRate > 80) {
+    insights.push('Excelente taxa de conclusão! Mais de 80% dos agendamentos são finalizados.');
+  } else if (completionRate < 50) {
+    insights.push('Atenção: taxa de conclusão abaixo de 50%. Considere revisar o processo de confirmação.');
+  }
+  if (cancellationRate > 20) {
+    insights.push('Taxa de cancelamento alta. Considere implementar política de cancelamento.');
+  }
+  if (topClients.length > 0) {
+    insights.push(`Top cliente: ${topClients[0].name} com ${topClients[0].visits} visitas e ${formatCurrency(topClients[0].revenue)}.`);
+  }
+  if (uniqueClientIds.size > 0) {
+    const retentionRate = ((uniqueClientIds.size - newClientIds.size) / uniqueClientIds.size) * 100;
+    insights.push(`Taxa de retenção: ${retentionRate.toFixed(1)}% dos clientes são recorrentes.`);
+  }
+
   return {
     period: `${period} dias`,
     totalRevenue: realizedRevenue,
@@ -190,10 +241,10 @@ export function computeBusinessReport(
     averageTicket,
     revenueSeries: [],
     appointmentsSeries: [],
-    statusSeries: [],
+    statusSeries,
     topServices,
-    topClients: [],
-    insights: [],
+    topClients,
+    insights,
     bySalon: [],
     summary: {
       realizedRevenue,
@@ -215,8 +266,8 @@ export function computeBusinessReport(
       state: salon.state,
       servicesCount: services.length,
       professionalsCount: professionals.length,
-      averageRating: salon.averageRating || 0,
-      reviews: salon.reviewsCount || 0,
+      averageRating: salon.averageRating ? Number(salon.averageRating) : 0,
+      reviews: salon.reviewsCount || salon.reviews || 0,
     },
     weekdayDemand,
     topProfessionals,
