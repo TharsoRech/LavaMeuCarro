@@ -305,10 +305,12 @@ export function AdminAppointments() {
     ]);
   };
 
-  useEffect(() => {
+  // Check for pending appointment to open from notification
+  const checkAndOpenPendingAppointment = () => {
     if (typeof window === 'undefined') return;
 
     const pendingId = window.localStorage.getItem(PENDING_APPOINTMENT_DETAIL_KEY);
+    console.log('[AdminAppointments] Checking pending appointment:', pendingId);
     if (!pendingId) return;
 
     const appointmentId = Number(pendingId);
@@ -317,25 +319,44 @@ export function AdminAppointments() {
       return;
     }
 
-    let cancelled = false;
+    console.log('[AdminAppointments] Opening pending appointment:', appointmentId);
+    appointmentsApi.getById(appointmentId).then((appointment) => {
+      console.log('[AdminAppointments] Got appointment:', appointment);
+      const aptData = appointment?.data ?? appointment;
+      console.log('[AdminAppointments] Setting selectedApt:', aptData);
+      setSelectedApt(aptData);
+    }).catch((err) => {
+      console.error('[AdminAppointments] Error loading appointment:', err);
+    }).finally(() => {
+      window.localStorage.removeItem(PENDING_APPOINTMENT_DETAIL_KEY);
+    });
+  };
 
-    const openPendingAppointment = async () => {
-      try {
-        const appointment = await appointmentsApi.getById(appointmentId);
-        if (cancelled) return;
-        // API wrapper already returns .data
-        setSelectedApt(appointment?.data ?? appointment);
-      } catch {
-        // Ignore: the notification flow should not block the page if the appointment disappeared.
-      } finally {
-        window.localStorage.removeItem(PENDING_APPOINTMENT_DETAIL_KEY);
+  useEffect(() => {
+    checkAndOpenPendingAppointment();
+
+    // Also check when the page becomes visible again or regains focus
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndOpenPendingAppointment();
       }
     };
+    const handleFocus = () => checkAndOpenPendingAppointment();
+    // Listen for clicks anywhere on the page (catches navigation from notification center)
+    const handleClick = () => {
+      setTimeout(checkAndOpenPendingAppointment, 100);
+    };
 
-    void openPendingAppointment();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('storage', handleFocus);
+    document.addEventListener('click', handleClick);
 
     return () => {
-      cancelled = true;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleFocus);
+      document.removeEventListener('click', handleClick);
     };
   }, []);
 
