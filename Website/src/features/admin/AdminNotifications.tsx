@@ -358,7 +358,7 @@ export function AdminNotifications() {
                          </div>
                          <div className="w-px bg-indigo-200" />
                          <div>
-                           <p className="text-xs text-slate-500 uppercase tracking-wide">Finalizados neste salão</p>
+                           <p className="text-xs text-slate-500 uppercase tracking-wide">Finalizados nesta unidade</p>
                            <p className="font-bold text-indigo-700 text-lg leading-tight">{detailApt.clientSalonAppointments ?? 0}</p>
                          </div>
                        </div>

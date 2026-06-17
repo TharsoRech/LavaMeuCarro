@@ -19,6 +19,10 @@ class LoginPageViewModel {
             return emailPredicate.evaluate(with: email)
     }
     
+    var isFormValid: Bool {
+        return !email.isEmpty && emailError == nil && !senha.isEmpty
+    }
+    
     func validateEmail() {
             if email.isEmpty {
                 emailError = nil // Se apagou tudo, limpa o erro para não irritar o usuário

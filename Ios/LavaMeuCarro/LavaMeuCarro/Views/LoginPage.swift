@@ -96,8 +96,9 @@ struct LoginPage: View {
                             .background(Color.white)
                             .cornerRadius(27)
                     }
+                    .disabled(!viewModel.isFormValid)
+                    .opacity(viewModel.isFormValid ? 1.0 : 0.5)
                     
-                    // Link para criar conta
                     Button(action: {
                         viewModel.goToRegister()
                     }) {
