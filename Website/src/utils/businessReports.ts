@@ -192,20 +192,20 @@ export function computeBusinessReport(
     }
     statusMap[status].value++;
   });
-  const statusSeries = Object.values(statusMap);
+  const statusSeries = Object.values(statusMap).map(s => ({ ...s, date: s.label }));
 
   // Build top clients
-  const clientMap: Record<number, { name: string; visits: number; revenue: number; lastVisit?: string }> = {};
+  const clientMap: Record<number, { name: string; count: number; revenue: number; lastVisit?: string }> = {};
   completedAppointments.forEach((apt: any) => {
     const clientId = apt.clientId;
     if (!clientMap[clientId]) {
       clientMap[clientId] = {
         name: apt.clientName || 'Cliente',
-        visits: 0,
+        count: 0,
         revenue: 0,
       };
     }
-    clientMap[clientId].visits++;
+    clientMap[clientId].count++;
     clientMap[clientId].revenue += (apt.price || apt.totalPrice || 0);
     const aptDate = new Date(apt.scheduledAt);
     if (!clientMap[clientId].lastVisit || aptDate > new Date(clientMap[clientId].lastVisit!)) {
@@ -214,7 +214,8 @@ export function computeBusinessReport(
   });
   const topClients = Object.values(clientMap)
     .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 10);
+    .slice(0, 10)
+    .map(c => ({ name: c.name, count: c.count, revenue: c.revenue }));
 
   // Build insights
   const insights: string[] = [];
@@ -227,7 +228,7 @@ export function computeBusinessReport(
     insights.push('Taxa de cancelamento alta. Considere implementar política de cancelamento.');
   }
   if (topClients.length > 0) {
-    insights.push(`Top cliente: ${topClients[0].name} com ${topClients[0].visits} visitas e ${formatCurrency(topClients[0].revenue)}.`);
+    insights.push(`Top cliente: ${topClients[0].name} com ${topClients[0].count} visitas e ${formatCurrency(topClients[0].revenue)}.`);
   }
   if (uniqueClientIds.size > 0) {
     const retentionRate = ((uniqueClientIds.size - newClientIds.size) / uniqueClientIds.size) * 100;
