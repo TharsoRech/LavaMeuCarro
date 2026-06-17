@@ -40,14 +40,20 @@ public class NotificacoesController : ControllerBase
     [HttpPatch("{id}/read")]
     public async Task<ActionResult> MarkAsRead(int id)
     {
+        var userId = UserId;
+        Console.WriteLine($"[Notificacoes] MarkAsRead: notificationId={id}, userId={userId}");
         await _repo.MarkReadAsync(id);
+        Console.WriteLine($"[Notificacoes] MarkAsRead: completed");
         return Ok();
     }
 
     [HttpPost("mark-all-read")]
     public async Task<ActionResult> MarkAllAsRead()
     {
-        await _repo.MarkAllReadAsync(UserId);
+        var userId = UserId;
+        Console.WriteLine($"[Notificacoes] MarkAllAsRead: userId={userId}");
+        await _repo.MarkAllReadAsync(userId);
+        Console.WriteLine($"[Notificacoes] MarkAllAsRead: completed");
         return Ok();
     }
 
