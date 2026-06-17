@@ -296,7 +296,29 @@ export function AdminReports() {
   });
 
   const report = useMemo(() => {
-    if (!selectedSalon || !appointments || !services || !professionals) return null;
+    if (!selectedSalon) {
+      console.log('Reports: No selected salon');
+      return null;
+    }
+    if (!appointments) {
+      console.log('Reports: No appointments data');
+      return null;
+    }
+    if (!services) {
+      console.log('Reports: No services data');
+      return null;
+    }
+    if (!professionals) {
+      console.log('Reports: No professionals data');
+      return null;
+    }
+
+    console.log('Reports: Computing report with', {
+      salon: selectedSalon.name,
+      appointmentsCount: appointments.items?.length ?? 0,
+      servicesCount: services.length,
+      professionalsCount: professionals.length,
+    });
 
     try {
       return computeBusinessReport({
