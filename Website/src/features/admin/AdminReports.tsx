@@ -38,7 +38,8 @@ function formatNumber(value: number) {
 }
 
 function formatPercent(value: number) {
-  return `${value.toFixed(1).replace('.', ',')}%`;
+  const numValue = Number(value) || 0;
+  return `${numValue.toFixed(1).replace('.', ',')}%`;
 }
 
 function SectionCard({ title, subtitle, children, actions }: { title: string; subtitle?: string; children: React.ReactNode; actions?: React.ReactNode }) {
@@ -194,7 +195,7 @@ function RankingTable({
                 <td className="px-4 py-3 text-gray-600">{formatNumber(row.appointments)}</td>
                 <td className="px-4 py-3 text-gray-600">{formatCurrency(row.revenue)}</td>
                 <td className="px-4 py-3 text-gray-600">{formatCurrency(row.averageTicket)}</td>
-                <td className="px-4 py-3 text-gray-600">{formatPercent(row.share)}</td>
+                <td className="px-4 py-3 text-gray-600">{formatPercent(row.share ?? 0)}</td>
               </tr>
             ))}
           </tbody>
@@ -503,7 +504,7 @@ export function AdminReports() {
               <MetricTile label="Clientes únicos" value={formatNumber(readyReport.summary.uniqueClients)} helper={`${formatNumber(readyReport.summary.newClients)} novos • ${formatNumber(readyReport.summary.returningClients)} recorrentes`} icon={<Users className="w-5 h-5" />} />
               <MetricTile label="Agendamentos" value={formatNumber(readyReport.summary.totalAppointments)} helper={`${formatNumber(readyReport.summary.completedAppointments)} concluídos`} icon={<CalendarRange className="w-5 h-5" />} />
               <MetricTile label="Ticket médio" value={formatCurrency(readyReport.summary.averageTicket)} helper={`Receita perdida: ${formatCurrency(readyReport.summary.lostRevenue)}`} icon={<BarChart3 className="w-5 h-5" />} />
-              <MetricTile label="Saúde operacional" value={formatPercent(readyReport.summary.completionRate)} helper={`Canc.: ${formatPercent(readyReport.summary.cancellationRate)} • No-show: ${formatPercent(readyReport.summary.noShowRate)}`} icon={<Sparkles className="w-5 h-5" />} />
+              <MetricTile label="Saúde operacional" value={formatPercent(readyReport.summary.completionRate ?? 0)} helper={`Canc.: ${formatPercent(readyReport.summary.cancellationRate ?? 0)} • No-show: ${formatPercent(readyReport.summary.noShowRate ?? 0)}`} icon={<Sparkles className="w-5 h-5" />} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
