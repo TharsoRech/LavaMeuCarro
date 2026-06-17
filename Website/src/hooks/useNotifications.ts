@@ -16,9 +16,16 @@ export function useNotifications(enabled = true) {
       const data = await getNotificacoes();
       // Backend returns { items: [...], unreadCount: N }
       const items = Array.isArray(data) ? data : (data?.items ?? []);
-      setNotifications(items);
-    } catch {
-      // silently fail - notifications are non-critical
+      // Map isRead -> read for frontend compatibility
+      const mapped = items.map((n: any) => ({
+        ...n,
+        read: n.read ?? n.isRead ?? false,
+        message: n.message ?? n.body ?? '',
+        referenceId: n.referenceId ? parseInt(n.referenceId) : undefined
+      }));
+      setNotifications(mapped);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
     } finally {
       setLoading(false);
     }
