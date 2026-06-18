@@ -123,9 +123,18 @@ public class FuncionariosController : ControllerBase
         if (request.Specialty != null) funcionario.Specialty = request.Specialty;
         if (request.Bio != null) funcionario.Bio = request.Bio;
         if (request.Active != null) funcionario.Active = request.Active.Value;
+        if (request.AvailableTimes != null) funcionario.AvailableTimes = request.AvailableTimes;
+        if (request.IsAdmin != null) funcionario.IsAdmin = request.IsAdmin.Value;
         await _repo.UpdateAsync(funcionario);
         
-        // TODO: Atualizar Nome e Foto do User quando o DTO tiver os campos
+        // Atualiza User (Nome e Foto)
+        var user = await _userRepo.GetByIdAsync(funcionario.UserId);
+        if (user != null)
+        {
+            if (request.Name != null) user.Name = request.Name;
+            if (request.Base64Image != null) user.Base64Image = request.Base64Image;
+            await _userRepo.UpdateAsync(user);
+        }
         
         return Ok();
     }
