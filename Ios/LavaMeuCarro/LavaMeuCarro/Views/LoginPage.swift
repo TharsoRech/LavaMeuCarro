@@ -60,7 +60,7 @@ struct LoginPage: View {
                             .font(.caption)
                             .foregroundColor(.white.opacity(0.9))
                         
-                        SecureField("", text: $viewModel.senha)
+                        SecureField("", text: $viewModel.password)
                             .padding()
                             .frame(height: 50)
                             .foregroundColor(.white)
@@ -72,7 +72,7 @@ struct LoginPage: View {
                     }
                     
                     Button(action: {
-                        viewModel.forgetPassword()
+                        viewModel.showingForgotPassword = true;
                     }) {
                         Text("Esqueceu a senha?")
                             .font(.footnote)
@@ -116,6 +116,18 @@ struct LoginPage: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 20)
                 .padding(.top, 20)
+                
+                .sheet(isPresented: $viewModel.showingForgotPassword) {
+                    ForgotPasswordSheet(
+                        email: viewModel.email,
+                        onSendCode: {
+                            viewModel.sendRecoverCode()
+                        },
+                        onConfirmReset: { codigo, novaSenha in
+                            viewModel.updatePassword(codigo: codigo, novaSenha: novaSenha)
+                        }
+                    )
+                }
                 
                 Spacer()
             

@@ -3,8 +3,10 @@ import Foundation
 @Observable // Ou crie como ObservableObject dependendo da versão do iOS
 class LoginPageViewModel {
     var email: String = ""
-    var senha: String = ""
+    var password: String = ""
     
+    var showingForgotPassword = false
+
     var emailError: String? = nil
     
     var flowManager: AppFlowManager
@@ -20,7 +22,7 @@ class LoginPageViewModel {
     }
     
     var isFormValid: Bool {
-        return !email.isEmpty && emailError == nil && !senha.isEmpty
+        return !email.isEmpty && emailError == nil && !password.isEmpty
     }
     
     func validateEmail() {
@@ -56,5 +58,13 @@ class LoginPageViewModel {
     
     func goToRegister() {
         flowManager.goToRegister();
+    }
+    
+    func sendRecoverCode() {
+        print("API: Solicitando código para \(self.email)")
+    }
+
+    func updatePassword(codigo: String, novaSenha: String) {
+        print("API: Atualizando senha com código \(codigo) e nova senha \(novaSenha)")
     }
 }

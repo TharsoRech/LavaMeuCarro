@@ -280,7 +280,7 @@ export function AdminAppointments() {
   const isRefreshingAppointments = isFetching && !isLoading;
 
   const { data: eligibleProfessionals = [], isFetching: isLoadingEligibleProfessionals, isError: isEligibleProfessionalsError, error: eligibleProfessionalsError, refetch: refetchEligibleProfessionals } = useQuery({
-    queryKey: ['appointment-eligible-professionals', selectedApt?.id, detailInlineAction],
+    queryKey: ['professionals-filter', activeSalon], // Mesma key da lista de profissionais para compartilhar cache
     queryFn: () => professionalsApi.bySalon(activeSalon as number),
     enabled: !!selectedApt && detailInlineAction === 'reassign',
   });
@@ -543,18 +543,10 @@ export function AdminAppointments() {
     [createProfessionalId, professionals]
   );
 
+  // Todos os profissionais podem fazer todos os serviços da unidade (nao ha relacao funcionario-servico no backend)
   const servicesForSelectedProfessional = useMemo(() => {
-    if (!selectedProfessional) return activeServices;
-
-    const professionalServiceIds = new Set(
-      (selectedProfessional.serviceIds ?? [])
-        .map((id) => Number(id))
-        .filter((id) => Number.isFinite(id) && id > 0)
-    );
-
-    if (professionalServiceIds.size === 0) return [] as Servico[];
-    return activeServices.filter((service) => professionalServiceIds.has(service.id));
-  }, [activeServices, selectedProfessional]);
+    return activeServices;
+  }, [activeServices]);
 
   const selectedService = useMemo<Servico | undefined>(
     () => servicesForSelectedProfessional.find((service) => service.id === createServiceId),
