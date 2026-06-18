@@ -116,6 +116,17 @@ public class FuncionariosController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult> Update(int id, [FromBody] UpdateFuncionarioRequest request)
     {
+        System.Console.WriteLine($"[Funcionario Update] ID={id}");
+        System.Console.WriteLine($"[Funcionario Update] ModelState Valid: {ModelState.IsValid}");
+        if (!ModelState.IsValid)
+        {
+            var errors = string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+            System.Console.WriteLine($"[Funcionario Update] ModelState Errors: {errors}");
+            return BadRequest(ModelState);
+        }
+        
+        System.Console.WriteLine($"[Funcionario Update] Received: Name={request.Name}, Specialty={request.Specialty}, HasImage={request.Base64Image != null}, AvailableTimes={request.AvailableTimes?.Substring(0, Math.Min(30, request.AvailableTimes?.Length ?? 0))}");
+        
         var funcionario = await _repo.GetByIdAsync(id);
         if (funcionario == null) return NotFound();
         
@@ -126,6 +137,7 @@ public class FuncionariosController : ControllerBase
         if (request.AvailableTimes != null) funcionario.AvailableTimes = request.AvailableTimes;
         if (request.IsAdmin != null) funcionario.IsAdmin = request.IsAdmin.Value;
         await _repo.UpdateAsync(funcionario);
+        System.Console.WriteLine($"[Funcionario Update] Updated Funcionario");
         
         // Atualiza User (Nome e Foto)
         var user = await _userRepo.GetByIdAsync(funcionario.UserId);
@@ -134,8 +146,10 @@ public class FuncionariosController : ControllerBase
             if (request.Name != null) user.Name = request.Name;
             if (request.Base64Image != null) user.Base64Image = request.Base64Image;
             await _userRepo.UpdateAsync(user);
+            System.Console.WriteLine($"[Funcionario Update] Updated User: Name={user.Name}");
         }
         
+        System.Console.WriteLine($"[Funcionario Update] SUCCESS");
         return Ok();
     }
 
