@@ -59,8 +59,8 @@ public class FuncionariosController : ControllerBase
             var hasStats = statsByFuncionario.TryGetValue(f.Id, out var stats);
             
             // Usa stats calculados se existirem, senao usa os campos do banco
-            var averageRating = hasStats ? stats.AvgRating : f.AverageRating;
-            var totalReviews = hasStats ? stats.Total : f.TotalReviews;
+            decimal? averageRating = hasStats ? (decimal?)stats.AvgRating : f.AverageRating;
+            int totalReviews = hasStats ? stats.Total : f.TotalReviews;
             
             return new FuncionarioDTO(f.Id, f.UserId, f.UnidadeId, f.Specialty, f.Bio, averageRating, totalReviews, f.Active, f.AvailableTimes, f.IsAdmin, user?.Name, user?.Phone);
         }));
