@@ -78,7 +78,7 @@ public class FuncionariosController : ControllerBase
                 catch { /* ignore parse errors */ }
             }
             
-            return new FuncionarioDTO(f.Id, f.UserId, f.UnidadeId, f.Specialty, f.Bio, averageRating, totalReviews, f.Active, f.AvailableTimes, f.IsAdmin, user?.Name, user?.Phone, user?.Base64Image, schedule);
+            return new FuncionarioDTO(f.Id, f.UserId, f.UnidadeId, f.Specialty, f.Bio, averageRating, totalReviews, f.Active, f.AvailableTimes, f.IsAdmin, user?.Name, user?.Phone, user?.Base64Image, schedule, user?.Doc);
         }));
     }
 

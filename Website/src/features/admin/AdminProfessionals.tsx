@@ -319,6 +319,11 @@ export function AdminProfessionals() {
                             setEditSchedule(normalized);
                             const firstWithTimes = DAYS_OF_WEEK.find((day) => (normalized[day.id] || []).length > 0)?.id ?? '1';
                             setEditSelectedDay(firstWithTimes);
+                            
+                            // Carrega foto atual do profissional
+                            const photoSrc = normalizeImageSrc(prof.photoUrl);
+                            setEditPhotoPreview(photoSrc || undefined);
+                            
                             editForm.reset({
                               name: prof.name || '',
                               specialty: prof.specialty || '',
@@ -459,6 +464,9 @@ export function AdminProfessionals() {
         }
       >
         <form className="space-y-4">
+          {editTarget?.doc && (
+            <Input label="CPF" value={editTarget.doc} disabled />
+          )}
           <Input label="Nome completo *" error={editForm.formState.errors.name?.message} {...editForm.register('name')} />
           <Input label="Especialidade" {...editForm.register('specialty')} />
           <div>
@@ -467,11 +475,11 @@ export function AdminProfessionals() {
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">Foto do profissional</label>
-            {/* Photo preview - simplified */}
-            {editPhotoPreview && (
+            {/* Photo preview - mostra foto atual ou nova */}
+            {(editPhotoPreview || editTarget?.photoUrl) && (
               <div className="flex items-center gap-3 mb-2">
                 <img
-                  src={editPhotoPreview}
+                  src={editPhotoPreview || normalizeImageSrc(editTarget?.photoUrl) || ''}
                   alt="foto"
                   className="w-16 h-16 rounded-full object-cover border-2 border-brand-200"
                 />

@@ -134,6 +134,7 @@ export interface Funcionario {
   name?: string;
   email?: string;
   phone?: string;
+  doc?: string;
   specialty?: string;
   bio?: string;
   averageRating?: number;
