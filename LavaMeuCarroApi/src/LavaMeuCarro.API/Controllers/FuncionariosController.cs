@@ -34,10 +34,35 @@ public class FuncionariosController : ControllerBase
         var users = userIds.Count > 0
             ? (await _userRepo.GetByIdsAsync(userIds)).ToDictionary(u => u.Id)
             : new Dictionary<int, User>();
+        
+        // Calcula avaliacoes dinamicamente para garantir dados atualizados
+        var funcionarioIds = funcionarios.Select(f => f.Id).ToList();
+        var statsByFuncionario = new Dictionary<int, (int Total, double AvgRating)>();
+        
+        if (funcionarioIds.Count > 0)
+        {
+            // Busca todas as avaliacoes e agrupa
+            foreach (var funcId in funcionarioIds)
+            {
+                var reviews = await _avaliacaoRepo.GetByFuncionarioAsync(funcId);
+                if (reviews.Count > 0)
+                {
+                    var avg = reviews.Average(r => r.Rating);
+                    statsByFuncionario[funcId] = (reviews.Count, avg);
+                }
+            }
+        }
+        
         return Ok(funcionarios.Select(f =>
         {
             users.TryGetValue(f.UserId, out var user);
-            return new FuncionarioDTO(f.Id, f.UserId, f.UnidadeId, f.Specialty, f.Bio, f.AverageRating, f.TotalReviews, f.Active, f.AvailableTimes, f.IsAdmin, user?.Name, user?.Phone);
+            statsByFuncionario.TryGetValue(f.Id, out var stats);
+            
+            // Usa stats calculados se existirem, senao usa os campos do banco
+            var averageRating = stats?.AvgRating ?? f.AverageRating;
+            var totalReviews = stats?.Total ?? f.TotalReviews;
+            
+            return new FuncionarioDTO(f.Id, f.UserId, f.UnidadeId, f.Specialty, f.Bio, averageRating, totalReviews, f.Active, f.AvailableTimes, f.IsAdmin, user?.Name, user?.Phone);
         }));
     }
 
@@ -93,10 +118,24 @@ public class FuncionariosController : ControllerBase
     {
         var funcionario = await _repo.GetByIdAsync(id);
         if (funcionario == null) return NotFound();
+        
+        // Atualiza Funcionario
         if (request.Specialty != null) funcionario.Specialty = request.Specialty;
         if (request.Bio != null) funcionario.Bio = request.Bio;
         if (request.Active != null) funcionario.Active = request.Active.Value;
+        if (request.AvailableTimes != null) funcionario.AvailableTimes = request.AvailableTimes;
+        if (request.IsAdmin != null) funcionario.IsAdmin = request.IsAdmin.Value;
         await _repo.UpdateAsync(funcionario);
+        
+        // Atualiza User (Nome e Foto)
+        var user = await _userRepo.GetByIdAsync(funcionario.UserId);
+        if (user != null)
+        {
+            if (request.Name != null) user.Name = request.Name;
+            if (request.Base64Image != null) user.PhotoBase64 = request.Base64Image;
+            await _userRepo.UpdateAsync(user);
+        }
+        
         return Ok();
     }
 
