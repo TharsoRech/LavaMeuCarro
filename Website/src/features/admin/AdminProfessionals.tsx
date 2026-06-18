@@ -194,15 +194,18 @@ export function AdminProfessionals() {
 
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: EditData }) =>
-      professionalsApi.update(id, {
+    mutationFn: ({ id, data }: { id: number; data: EditData }) => {
+      const payload = {
         ...data,
         salonId: activeSalonId,
         base64Image: editPhotoBase64,
         serviceIds: editServiceIds,
         availableTimes: flattenSchedule(editSchedule),
         schedule: editSchedule,
-      }),
+      };
+      console.log('[Professionals] Update payload:', payload);
+      return professionalsApi.update(id, payload);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['professionals'] });
       setEditTarget(null);

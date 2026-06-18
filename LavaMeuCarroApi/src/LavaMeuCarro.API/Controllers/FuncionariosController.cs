@@ -216,4 +216,3 @@ public class FuncionariosController : ControllerBase
 }
 
 public record CreateFuncionarioByNomeRequest(string Nome, int UnidadeId, string? Specialty, bool Active);
-public record UpdateFuncionarioRequest(string? Specialty, string? Bio, bool? Active);
