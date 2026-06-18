@@ -169,7 +169,7 @@ export function AdminProfessionals() {
     mutationFn: (data: CreateData) =>
       professionalsApi.createByDoc(activeSalonId!, {
         doc: data.doc,
-        name: data.name,
+        Nome: data.name, // Backend espera 'Nome' com N maiúsculo
         specialty: data.specialty,
         bio: data.bio,
         isAdmin: data.isAdmin ?? false,

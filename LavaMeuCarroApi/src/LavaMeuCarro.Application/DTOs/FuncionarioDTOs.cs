@@ -1,6 +1,8 @@
+using System.Text.Json;
+
 namespace LavaMeuCarro.Application.DTOs;
 
-public record FuncionarioDTO(int Id, int UserId, int UnidadeId, string? Specialty, string? Bio, decimal? AverageRating, int TotalReviews, bool Active, string? AvailableTimes, bool IsAdmin, string? UserName, string? UserPhone)
+public record FuncionarioDTO(int Id, int UserId, int UnidadeId, string? Specialty, string? Bio, decimal? AverageRating, int TotalReviews, bool Active, string? AvailableTimes, bool IsAdmin, string? UserName, string? UserPhone, string? PhotoUrl, Dictionary<string, string[]>? Schedule)
 {
     // Alias para compatibilidade com frontend que espera 'Name'
     public string? Name => UserName;

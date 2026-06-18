@@ -62,7 +62,22 @@ public class FuncionariosController : ControllerBase
             decimal? averageRating = hasStats ? (decimal?)stats.AvgRating : f.AverageRating;
             int totalReviews = hasStats ? stats.Total : f.TotalReviews;
             
-            return new FuncionarioDTO(f.Id, f.UserId, f.UnidadeId, f.Specialty, f.Bio, averageRating, totalReviews, f.Active, f.AvailableTimes, f.IsAdmin, user?.Name, user?.Phone);
+            // Parse AvailableTimes para Schedule (Dictionary<string, string[]>)
+            Dictionary<string, string[]>? schedule = null;
+            if (!string.IsNullOrEmpty(f.AvailableTimes))
+            {
+                try
+                {
+                    var times = JsonSerializer.Deserialize<string[]>(f.AvailableTimes);
+                    if (times != null && times.Length > 0)
+                    {
+                        schedule = new Dictionary<string, string[]> { { "1", times } };
+                    }
+                }
+                catch { /* ignore parse errors */ }
+            }
+            
+            return new FuncionarioDTO(f.Id, f.UserId, f.UnidadeId, f.Specialty, f.Bio, averageRating, totalReviews, f.Active, f.AvailableTimes, f.IsAdmin, user?.Name, user?.Phone, user?.Base64Image, schedule);
         }));
     }
 
