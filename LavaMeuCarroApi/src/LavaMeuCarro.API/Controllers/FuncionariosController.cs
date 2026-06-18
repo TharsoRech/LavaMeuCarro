@@ -100,19 +100,22 @@ public class FuncionariosController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<int>> Create([FromBody] CreateFuncionarioByNomeRequest request)
+    public async Task<ActionResult<int>> Create([FromBody] CreateFuncionarioByDocRequest request)
     {
-        // Create a stub user for the funcionario
+        System.Console.WriteLine($"[Funcionario Create] Doc={request.Doc}, Name={request.Name}, UnidadeId={request.UnidadeId}");
+        
+        // Create a user for the funcionario
         var user = new User
         {
-            Name = request.Nome,
+            Name = request.Name ?? $"Profissional_{request.Doc}",
             Email = $"func_{Guid.NewGuid():N}@lavemeucarro.local",
             Phone = null,
             Type = UserType.Profissional,
             Active = true,
-            Doc = null,
+            Doc = request.Doc,
             Dob = null,
-            Country = "Brasil"
+            Country = "Brasil",
+            Base64Image = request.Base64Image
         };
         var userId = await _userRepo.CreateAsync(user);
 
@@ -121,11 +124,14 @@ public class FuncionariosController : ControllerBase
             UserId = userId,
             UnidadeId = request.UnidadeId,
             Specialty = request.Specialty,
-            Bio = null,
-            Active = request.Active,
-            IsAdmin = false
+            Bio = request.Bio,
+            Active = true,
+            IsAdmin = request.IsAdmin,
+            AvailableTimes = request.AvailableTimes
         };
         var id = await _repo.CreateAsync(funcionario);
+        
+        System.Console.WriteLine($"[Funcionario Create] SUCCESS: ID={id}, UserId={userId}");
         return Ok(id);
     }
 

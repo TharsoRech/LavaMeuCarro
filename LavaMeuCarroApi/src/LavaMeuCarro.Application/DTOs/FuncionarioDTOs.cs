@@ -10,5 +10,5 @@ public record FuncionarioDTO(int Id, int UserId, int UnidadeId, string? Specialt
 };
 public record PopularProfessionalDTO(int Id, int UserId, int UnidadeId, string Name, string UnidadeName, string? Specialty, decimal? AverageRating, int TotalReviews);
 public record CreateFuncionarioRequest(int UserId, string? Specialty, string? Bio, string? AvailableTimes, bool IsAdmin);
-public record CreateFuncionarioByDocRequest(string Doc, string? Specialty, string? Bio, string? AvailableTimes, bool IsAdmin);
+public record CreateFuncionarioByDocRequest(string Doc, int UnidadeId, string? Name, string? Specialty, string? Bio, string? AvailableTimes, bool IsAdmin, string? Base64Image);
 public record UpdateFuncionarioRequest(string? Name, string? Specialty, string? Bio, bool? Active, string? AvailableTimes, bool? IsAdmin, string? Base64Image);
