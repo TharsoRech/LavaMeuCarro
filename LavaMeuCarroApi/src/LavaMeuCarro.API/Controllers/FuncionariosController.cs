@@ -56,11 +56,11 @@ public class FuncionariosController : ControllerBase
         return Ok(funcionarios.Select(f =>
         {
             users.TryGetValue(f.UserId, out var user);
-            statsByFuncionario.TryGetValue(f.Id, out var stats);
+            var hasStats = statsByFuncionario.TryGetValue(f.Id, out var stats);
             
             // Usa stats calculados se existirem, senao usa os campos do banco
-            var averageRating = stats?.AvgRating ?? f.AverageRating;
-            var totalReviews = stats?.Total ?? f.TotalReviews;
+            var averageRating = hasStats ? stats.AvgRating : f.AverageRating;
+            var totalReviews = hasStats ? stats.Total : f.TotalReviews;
             
             return new FuncionarioDTO(f.Id, f.UserId, f.UnidadeId, f.Specialty, f.Bio, averageRating, totalReviews, f.Active, f.AvailableTimes, f.IsAdmin, user?.Name, user?.Phone);
         }));
@@ -132,7 +132,7 @@ public class FuncionariosController : ControllerBase
         if (user != null)
         {
             if (request.Name != null) user.Name = request.Name;
-            if (request.Base64Image != null) user.PhotoBase64 = request.Base64Image;
+            if (request.Base64Image != null) user.Base64Image = request.Base64Image;
             await _userRepo.UpdateAsync(user);
         }
         
