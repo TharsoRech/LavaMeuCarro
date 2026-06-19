@@ -69,10 +69,17 @@ public class FuncionariosController : ControllerBase
             {
                 try
                 {
-                    var times = JsonSerializer.Deserialize<string[]>(f.AvailableTimes);
-                    if (times != null && times.Length > 0)
+                    // Tenta parsear como Dictionary<string, string[]> primeiro
+                    schedule = JsonSerializer.Deserialize<Dictionary<string, string[]>>(f.AvailableTimes);
+                    
+                    // Se falhar ou vier vazio, tenta parsear como array (formato antigo)
+                    if (schedule == null || schedule.Count == 0)
                     {
-                        schedule = new Dictionary<string, string[]> { { "1", times } };
+                        var times = JsonSerializer.Deserialize<string[]>(f.AvailableTimes);
+                        if (times != null && times.Length > 0)
+                        {
+                            schedule = new Dictionary<string, string[]> { { "1", times } };
+                        }
                     }
                 }
                 catch { /* ignore parse errors */ }

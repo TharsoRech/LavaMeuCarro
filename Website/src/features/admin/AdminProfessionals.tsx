@@ -175,7 +175,7 @@ export function AdminProfessionals() {
         isAdmin: data.isAdmin ?? false,
         base64Image: createPhotoBase64,
         serviceIds: createServiceIds,
-        availableTimes: JSON.stringify(flattenSchedule(createSchedule)), // Backend espera string JSON
+        availableTimes: JSON.stringify(createSchedule), // Salva schedule completo como JSON
         schedule: createSchedule,
       }),
     onSuccess: () => {
@@ -200,7 +200,7 @@ export function AdminProfessionals() {
         salonId: activeSalonId,
         base64Image: editPhotoBase64,
         serviceIds: editServiceIds,
-        availableTimes: JSON.stringify(flattenSchedule(editSchedule)), // Backend espera string JSON
+        availableTimes: JSON.stringify(editSchedule), // Salva schedule completo como JSON
         schedule: editSchedule,
       };
       console.log('[Professionals] Update payload:', payload);
