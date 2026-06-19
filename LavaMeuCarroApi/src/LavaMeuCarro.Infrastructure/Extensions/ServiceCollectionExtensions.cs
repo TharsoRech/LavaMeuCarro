@@ -23,6 +23,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAgendamentoRepository, AgendamentoRepository>();
         services.AddScoped<IServicoRepository, ServicoRepository>();
         services.AddScoped<IFuncionarioRepository, FuncionarioRepository>();
+        services.AddScoped<IFuncionarioServicoRepository, FuncionarioServicoRepository>();
         services.AddScoped<IVeiculoRepository, VeiculoRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ICategoriaRepository, CategoriaRepository>();
