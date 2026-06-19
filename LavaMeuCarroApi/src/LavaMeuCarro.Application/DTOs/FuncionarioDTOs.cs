@@ -2,12 +2,7 @@ using System.Text.Json;
 
 namespace LavaMeuCarro.Application.DTOs;
 
-public record FuncionarioDTO(int Id, int UserId, int UnidadeId, string? Specialty, string? Bio, decimal? AverageRating, int TotalReviews, bool Active, string? AvailableTimes, bool IsAdmin, string? UserName, string? UserPhone, string? PhotoUrl, Dictionary<string, string[]>? Schedule, string? Doc, List<int>? ServiceIds)
-{
-    // Alias para compatibilidade com frontend que espera 'Name'
-    public string? Name => UserName;
-    public string? Phone => UserPhone;
-};
+public record FuncionarioDTO(int Id, int UserId, int UnidadeId, string? Specialty, string? Bio, decimal? AverageRating, int TotalReviews, bool Active, string? AvailableTimes, bool IsAdmin, string? Name, string? Phone, string? PhotoUrl, Dictionary<string, string[]>? Schedule, string? Doc, List<int>? ServiceIds);
 public record PopularProfessionalDTO(int Id, int UserId, int UnidadeId, string Name, string UnidadeName, string? Specialty, decimal? AverageRating, int TotalReviews);
 public record CreateFuncionarioRequest(int UserId, string? Specialty, string? Bio, string? AvailableTimes, bool IsAdmin);
 public record CreateFuncionarioByDocRequest(string Doc, int UnidadeId, string? Name, string? Specialty, string? Bio, string? AvailableTimes, bool IsAdmin, string? Base64Image, List<int>? ServiceIds);
