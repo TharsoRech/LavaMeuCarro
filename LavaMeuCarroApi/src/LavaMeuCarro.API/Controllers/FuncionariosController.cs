@@ -16,15 +16,18 @@ public class FuncionariosController : ControllerBase
     private readonly IFuncionarioRepository _repo;
     private readonly IUserRepository _userRepo;
     private readonly IAvaliacaoRepository _avaliacaoRepo;
+    private readonly IFuncionarioServicoRepository _funcionarioServicoRepo;
     
     public FuncionariosController(
         IFuncionarioRepository repo, 
         IUserRepository userRepo,
-        IAvaliacaoRepository avaliacaoRepo)
+        IAvaliacaoRepository avaliacaoRepo,
+        IFuncionarioServicoRepository funcionarioServicoRepo)
     {
         _repo = repo;
         _userRepo = userRepo;
         _avaliacaoRepo = avaliacaoRepo;
+        _funcionarioServicoRepo = funcionarioServicoRepo;
     }
 
     [HttpGet]
@@ -52,6 +55,13 @@ public class FuncionariosController : ControllerBase
                     statsByFuncionario[funcId] = (reviews.Count, avg);
                 }
             }
+        }
+        
+        // Busca ServiceIds de todos os funcionarios de uma vez (otimizacao para evitar N+1)
+        var serviceIdsByFuncionario = new Dictionary<int, List<int>>();
+        foreach (var f in funcionarios)
+        {
+            serviceIdsByFuncionario[f.Id] = await _funcionarioServicoRepo.GetServicoIdsByFuncionarioAsync(f.Id);
         }
         
         return Ok(funcionarios.Select(f =>
@@ -85,7 +95,10 @@ public class FuncionariosController : ControllerBase
                 catch { /* ignore parse errors */ }
             }
             
-            return new FuncionarioDTO(f.Id, f.UserId, f.UnidadeId, f.Specialty, f.Bio, averageRating, totalReviews, f.Active, f.AvailableTimes, f.IsAdmin, user?.Name, user?.Phone, user?.Base64Image, schedule, user?.Doc);
+            // Busca ServiceIds do funcionario
+            serviceIdsByFuncionario.TryGetValue(f.Id, out var serviceIds);
+            
+            return new FuncionarioDTO(f.Id, f.UserId, f.UnidadeId, f.Specialty, f.Bio, averageRating, totalReviews, f.Active, f.AvailableTimes, f.IsAdmin, user?.Name, user?.Phone, user?.Base64Image, schedule, user?.Doc, serviceIds);
         }));
     }
 
@@ -138,6 +151,13 @@ public class FuncionariosController : ControllerBase
         };
         var id = await _repo.CreateAsync(funcionario);
         
+        // Salva serviços vinculados ao funcionario
+        if (request.ServiceIds != null && request.ServiceIds.Count > 0)
+        {
+            await _funcionarioServicoRepo.SetServicosAsync(id, request.ServiceIds);
+            System.Console.WriteLine($"[Funcionario Create] Saved {request.ServiceIds.Count} services");
+        }
+        
         System.Console.WriteLine($"[Funcionario Create] SUCCESS: ID={id}, UserId={userId}");
         return Ok(id);
     }
@@ -176,6 +196,13 @@ public class FuncionariosController : ControllerBase
             if (request.Base64Image != null) user.Base64Image = request.Base64Image;
             await _userRepo.UpdateAsync(user);
             System.Console.WriteLine($"[Funcionario Update] Updated User: Name={user.Name}");
+        }
+        
+        // Atualiza serviços vinculados (se fornecidos)
+        if (request.ServiceIds != null)
+        {
+            await _funcionarioServicoRepo.SetServicosAsync(id, request.ServiceIds);
+            System.Console.WriteLine($"[Funcionario Update] Saved {request.ServiceIds.Count} services");
         }
         
         System.Console.WriteLine($"[Funcionario Update] SUCCESS");
