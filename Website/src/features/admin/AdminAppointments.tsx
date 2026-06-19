@@ -543,10 +543,20 @@ export function AdminAppointments() {
     [createProfessionalId, professionals]
   );
 
-  // Todos os profissionais podem fazer todos os serviços da unidade (nao ha relacao funcionario-servico no backend)
+  // Filtra apenas os serviços que o profissional selecionado pode realizar
   const servicesForSelectedProfessional = useMemo(() => {
-    return activeServices;
-  }, [activeServices]);
+    if (!selectedProfessional) return [];
+    
+    // Se o profissional não tem serviços vinculados, retorna vazio
+    if (!selectedProfessional.serviceIds || selectedProfessional.serviceIds.length === 0) {
+      return [];
+    }
+    
+    // Filtra apenas os serviços que estão na lista de serviços do profissional
+    return activeServices.filter((service) => 
+      selectedProfessional.serviceIds!.includes(service.id)
+    );
+  }, [activeServices, selectedProfessional]);
 
   const selectedService = useMemo<Servico | undefined>(
     () => servicesForSelectedProfessional.find((service) => service.id === createServiceId),
