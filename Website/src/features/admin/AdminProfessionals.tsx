@@ -1,4 +1,4 @@
-import { useState, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { useState, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Edit, Search, Star, MessageSquare } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -68,6 +68,45 @@ export function AdminProfessionals() {
   const [editSchedule, setEditSchedule] = useState<Record<string, string[]>>({});
   const [createSelectedDay, setCreateSelectedDay] = useState('1');
   const [editSelectedDay, setEditSelectedDay] = useState('1');
+
+  // Carrega dados do profissional quando editTarget muda
+  useEffect(() => {
+    if (!editTarget) {
+      // Limpa o form quando fecha o modal
+      editForm.reset();
+      setEditPhotoBase64(undefined);
+      setEditPhotoPreview(undefined);
+      setEditServiceIds([]);
+      setEditSchedule({});
+      setEditSelectedDay('1');
+      return;
+    }
+
+    // Carrega foto atual do profissional
+    const photoSrc = normalizeImageSrc(editTarget.photoUrl);
+    setEditPhotoPreview(photoSrc || undefined);
+
+    // Normaliza schedule
+    const normalized = normalizeSchedule(editTarget.schedule, editTarget.availableTimes);
+    setEditSchedule(normalized);
+    
+    // Seleciona primeiro dia com horários
+    const firstWithTimes = DAYS_OF_WEEK.find((day) => (normalized[day.id] || []).length > 0)?.id ?? '1';
+    setEditSelectedDay(firstWithTimes);
+
+    // Carrega serviços vinculados (garante que sejam strings)
+    const serviceIds = (editTarget.serviceIds ?? []).map(id => String(id));
+    setEditServiceIds(serviceIds);
+
+    // Reseta o formulário com os dados do profissional
+    editForm.reset({
+      name: editTarget.name || '',
+      specialty: editTarget.specialty || '',
+      bio: editTarget.bio || '',
+      isAdmin: editTarget.isAdmin,
+      serviceIds: serviceIds,
+    });
+  }, [editTarget?.id]); // Só executa quando o ID muda (evita re-execuções desnecessárias)
 
   const { data: salons } = useQuery({
     queryKey: ['my-units'],
@@ -314,23 +353,6 @@ export function AdminProfessionals() {
                         <button
                           onClick={() => {
                             setEditTarget(prof);
-                            setEditServiceIds((prof.serviceIds ?? []) as any);
-                            const normalized = normalizeSchedule(prof.schedule, prof.availableTimes);
-                            setEditSchedule(normalized);
-                            const firstWithTimes = DAYS_OF_WEEK.find((day) => (normalized[day.id] || []).length > 0)?.id ?? '1';
-                            setEditSelectedDay(firstWithTimes);
-                            
-                            // Carrega foto atual do profissional
-                            const photoSrc = normalizeImageSrc(prof.photoUrl);
-                            setEditPhotoPreview(photoSrc || undefined);
-                            
-                            editForm.reset({
-                              name: prof.name || '',
-                              specialty: prof.specialty || '',
-                              bio: prof.bio || '',
-                              isAdmin: prof.isAdmin,
-                              serviceIds: (prof.serviceIds ?? []) as any,
-                            });
                           }}
                           className="text-gray-400 hover:text-brand-600 transition-colors"
                         >
@@ -455,7 +477,11 @@ export function AdminProfessionals() {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal open={!!editTarget} onClose={() => { setEditTarget(null); editForm.reset(); setEditPhotoBase64(undefined); setEditPhotoPreview(undefined); setEditServiceIds([]); setEditSchedule({}); setEditSelectedDay('1'); }} title="Editar Profissional"
+      <Modal 
+        key={editTarget?.id || 'closed'} 
+        open={!!editTarget} 
+        onClose={() => { setEditTarget(null); editForm.reset(); setEditPhotoBase64(undefined); setEditPhotoPreview(undefined); setEditServiceIds([]); setEditSchedule({}); setEditSelectedDay('1'); }} 
+        title="Editar Profissional"
         footer={
           <>
             <Button variant="outline" onClick={() => { setEditTarget(null); editForm.reset(); setEditPhotoBase64(undefined); setEditPhotoPreview(undefined); setEditServiceIds([]); setEditSchedule({}); setEditSelectedDay('1'); }}>Cancelar</Button>
