@@ -147,8 +147,18 @@ export function AdminProfessionals() {
     enabled: !!reviewTarget,
   });
 
-  const createForm = useForm<CreateData>({ resolver: zodResolver(createSchema) });
-  const editForm = useForm<EditData>({ resolver: zodResolver(editSchema) });
+  const createForm = useForm<CreateData>({ 
+    resolver: zodResolver(createSchema),
+    defaultValues: {
+      serviceIds: [],
+    }
+  });
+  const editForm = useForm<EditData>({ 
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      serviceIds: [],
+    }
+  });
 
   const normalizeImageSrc = (value?: string) => {
     if (!value) return undefined;
