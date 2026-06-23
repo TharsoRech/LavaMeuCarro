@@ -76,7 +76,6 @@ export function AdminProfessionals() {
         specialty: '',
         bio: '',
         isAdmin: false,
-        serviceIds: [],
       });
       setEditPhotoBase64(undefined);
       setEditPhotoPreview(undefined);
