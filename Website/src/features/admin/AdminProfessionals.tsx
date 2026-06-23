@@ -351,8 +351,8 @@ export const AdminProfessionals: React.FC = () => {
                         </div>
                       )}
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{prof.name || '-'}</p>
-                        <p className="text-xs text-gray-500">{prof.email || '-'}</p>
+                        <p className="text-sm font-medium text-gray-900">{prof.name || 'Sem nome'}</p>
+                        <p className="text-xs text-gray-500">{prof.doc || prof.email || 'Sem contato'}</p>
                       </div>
                     </div>
                   </td>
@@ -558,6 +558,16 @@ export const AdminProfessionals: React.FC = () => {
           onSubmit={editForm.handleSubmit((data) => updateMutation.mutate({ id: editTarget!.id, data }))}
           className="space-y-4"
         >
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">CPF/Documento</label>
+            <input 
+              type="text" 
+              value={editTarget?.doc || ''} 
+              disabled 
+              className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500 cursor-not-allowed" 
+            />
+            <p className="text-xs text-gray-400 mt-1">Documento não pode ser alterado</p>
+          </div>
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Nome completo *</label>
             <Input {...editForm.register('name')} placeholder="Nome do profissional" />
