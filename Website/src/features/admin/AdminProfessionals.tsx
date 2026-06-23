@@ -20,7 +20,6 @@ const createSchema = z.object({
   specialty: z.string().optional(),
   bio: z.string().optional(),
   isAdmin: z.boolean().optional(),
-  serviceIds: z.array(z.string()).optional(),
 });
 
 const editSchema = z.object({
@@ -28,7 +27,6 @@ const editSchema = z.object({
   specialty: z.string().optional(),
   bio: z.string().optional(),
   isAdmin: z.boolean().optional(),
-  serviceIds: z.array(z.string()).optional(),
 });
 
 type CreateData = z.infer<typeof createSchema>;
@@ -112,7 +110,6 @@ export function AdminProfessionals() {
     editForm.setValue('specialty', editTarget.specialty || '');
     editForm.setValue('bio', editTarget.bio || '');
     editForm.setValue('isAdmin', editTarget.isAdmin || false);
-    editForm.setValue('serviceIds', serviceIds);
   }, [editTarget?.id]); // Só executa quando o ID muda (evita re-execuções desnecessárias)
 
   const { data: salons } = useQuery({
@@ -151,18 +148,8 @@ export function AdminProfessionals() {
     enabled: !!reviewTarget,
   });
 
-  const createForm = useForm<CreateData>({ 
-    resolver: zodResolver(createSchema),
-    defaultValues: {
-      serviceIds: [],
-    }
-  });
-  const editForm = useForm<EditData>({ 
-    resolver: zodResolver(editSchema),
-    defaultValues: {
-      serviceIds: [],
-    }
-  });
+  const createForm = useForm<CreateData>({ resolver: zodResolver(createSchema) });
+  const editForm = useForm<EditData>({ resolver: zodResolver(editSchema) });
 
   const normalizeImageSrc = (value?: string) => {
     if (!value) return undefined;
