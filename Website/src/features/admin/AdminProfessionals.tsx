@@ -320,7 +320,7 @@ export function AdminProfessionals() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {professionals.map((prof: Funcionario) => (
+                {Array.isArray(professionals) && professionals.map((prof: Funcionario) => (
                   <tr key={prof.id} className="hover:bg-gray-50/50">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -412,7 +412,7 @@ export function AdminProfessionals() {
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Serviços vinculados</label>
             <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-2">
-              {services?.map((service: any) => (
+              {Array.isArray(services) && services.map((service: any) => (
                 <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"
@@ -531,7 +531,7 @@ export function AdminProfessionals() {
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Serviços vinculados</label>
             <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-2">
-              {services?.map((service: any) => {
+              {Array.isArray(services) && services.map((service: any) => {
                 const isChecked = Array.isArray(editServiceIds) && editServiceIds.includes(String(service.id));
                 return (
                   <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
@@ -552,6 +552,9 @@ export function AdminProfessionals() {
                   </label>
                 );
               })}
+              {(!Array.isArray(services) || services.length === 0) && (
+                <p className="text-xs text-gray-500">Nenhum serviço disponível</p>
+              )}
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
