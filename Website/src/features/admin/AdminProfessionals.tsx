@@ -73,7 +73,13 @@ export function AdminProfessionals() {
   useEffect(() => {
     if (!editTarget) {
       // Limpa o form quando fecha o modal
-      editForm.reset();
+      editForm.reset({
+        name: '',
+        specialty: '',
+        bio: '',
+        isAdmin: false,
+        serviceIds: [],
+      });
       setEditPhotoBase64(undefined);
       setEditPhotoPreview(undefined);
       setEditServiceIds([]);
@@ -101,14 +107,12 @@ export function AdminProfessionals() {
       : [];
     setEditServiceIds(serviceIds);
 
-    // Reseta o formulário com os dados do profissional
-    editForm.reset({
-      name: editTarget.name || '',
-      specialty: editTarget.specialty || '',
-      bio: editTarget.bio || '',
-      isAdmin: editTarget.isAdmin,
-      serviceIds: serviceIds,
-    });
+    // Define os valores do formulário individualmente para evitar problemas de race condition
+    editForm.setValue('name', editTarget.name || '');
+    editForm.setValue('specialty', editTarget.specialty || '');
+    editForm.setValue('bio', editTarget.bio || '');
+    editForm.setValue('isAdmin', editTarget.isAdmin || false);
+    editForm.setValue('serviceIds', serviceIds);
   }, [editTarget?.id]); // Só executa quando o ID muda (evita re-execuções desnecessárias)
 
   const { data: salons } = useQuery({
