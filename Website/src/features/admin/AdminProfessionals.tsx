@@ -353,7 +353,7 @@ export const AdminProfessionals: React.FC = () => {
                       )}
                       <div>
                         <p className="text-sm font-medium text-gray-900">{prof.name || 'Sem nome'}</p>
-                        <p className="text-xs text-gray-500">{prof.doc || prof.email || 'Sem contato'}</p>
+                        <p className="text-xs text-gray-500">{prof.specialty || 'Sem especialidade'}</p>
                       </div>
                     </div>
                   </td>
