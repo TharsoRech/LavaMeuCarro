@@ -82,7 +82,8 @@ const normalizeSchedule = (
   return {};
 };
 
-export const AdminProfessionals: React.FC<{ user: any }> = ({ user }) => {
+export const AdminProfessionals: React.FC = () => {
+  const { user } = useAdminAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [createModal, setCreateModal] = useState(false);
