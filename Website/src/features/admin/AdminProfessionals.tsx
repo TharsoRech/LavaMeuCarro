@@ -473,6 +473,67 @@ export const AdminProfessionals: React.FC = () => {
               )}
             </div>
           </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Agenda semanal</label>
+            <div className="border border-gray-200 rounded-lg p-3">
+              <div className="flex gap-2 mb-3 overflow-x-auto">
+                {DAYS_OF_WEEK.map((day) => (
+                  <button
+                    key={day.id}
+                    type="button"
+                    onClick={() => setCreateSelectedDay(day.id)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                      createSelectedDay === day.id
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-gray-500">
+                  {(createSchedule[createSelectedDay] || []).length} horários selecionados
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = createSchedule[createSelectedDay] || [];
+                    if (current.length === timeOptions.length) {
+                      const newSchedule = { ...createSchedule };
+                      delete newSchedule[createSelectedDay];
+                      setCreateSchedule(newSchedule);
+                    } else {
+                      setCreateSchedule({ ...createSchedule, [createSelectedDay]: [...timeOptions] });
+                    }
+                  }}
+                  className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+                >
+                  {(createSchedule[createSelectedDay] || []).length === timeOptions.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                {timeOptions.map((time) => {
+                  const isSelected = (createSchedule[createSelectedDay] || []).includes(time);
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => toggleTimeOnSchedule(createSchedule, setCreateSchedule, createSelectedDay, time)}
+                      className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-brand-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
             <input type="checkbox" {...createForm.register('isAdmin')} className="rounded" />
             <span>É administrador da unidade?</span>
@@ -555,8 +616,68 @@ export const AdminProfessionals: React.FC = () => {
               )}
             </div>
           </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Agenda semanal</label>
+            <div className="border border-gray-200 rounded-lg p-3">
+              <div className="flex gap-2 mb-3 overflow-x-auto">
+                {DAYS_OF_WEEK.map((day) => (
+                  <button
+                    key={day.id}
+                    type="button"
+                    onClick={() => setEditSelectedDay(day.id)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                      editSelectedDay === day.id
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-gray-500">
+                  {(editSchedule[editSelectedDay] || []).length} horários selecionados
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = editSchedule[editSelectedDay] || [];
+                    if (current.length === timeOptions.length) {
+                      const newSchedule = { ...editSchedule };
+                      delete newSchedule[editSelectedDay];
+                      setEditSchedule(newSchedule);
+                    } else {
+                      setEditSchedule({ ...editSchedule, [editSelectedDay]: [...timeOptions] });
+                    }
+                  }}
+                  className="text-xs text-brand-600 hover:text-brand-700 font-medium"
+                >
+                  {(editSchedule[editSelectedDay] || []).length === timeOptions.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                {timeOptions.map((time) => {
+                  const isSelected = (editSchedule[editSelectedDay] || []).includes(time);
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => toggleTimeOnSchedule(editSchedule, setEditSchedule, editSelectedDay, time)}
+                      className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-brand-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-            <input type="checkbox" {...editForm.register('isAdmin')} className="rounded" />
             <span>É administrador da unidade?</span>
           </label>
           <div className="flex justify-end gap-2 pt-4">
