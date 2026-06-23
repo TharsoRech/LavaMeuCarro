@@ -247,6 +247,7 @@ export const AdminProfessionals: React.FC = () => {
     mutationFn: ({ id, data }: { id: number; data: EditData }) => {
       const payload = {
         ...data,
+        doc: editTarget?.doc, // Envia o CPF atualizado
         salonId: activeSalonId,
         base64Image: editPhotoBase64,
         serviceIds: editServiceIds,
@@ -560,13 +561,16 @@ export const AdminProfessionals: React.FC = () => {
         >
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">CPF/Documento</label>
-            <input 
-              type="text" 
+            <Input 
               value={editTarget?.doc || ''} 
-              disabled 
-              className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500 cursor-not-allowed" 
+              onChange={(e) => {
+                // Atualiza o doc no editTarget localmente
+                if (editTarget) {
+                  setEditTarget({ ...editTarget, doc: e.target.value });
+                }
+              }}
+              placeholder="000.000.000-00" 
             />
-            <p className="text-xs text-gray-400 mt-1">Documento não pode ser alterado</p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Nome completo *</label>

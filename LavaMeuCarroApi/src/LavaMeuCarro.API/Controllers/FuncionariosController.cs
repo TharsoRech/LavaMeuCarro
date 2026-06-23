@@ -188,14 +188,15 @@ public class FuncionariosController : ControllerBase
         await _repo.UpdateAsync(funcionario);
         System.Console.WriteLine($"[Funcionario Update] Updated Funcionario");
         
-        // Atualiza User (Nome e Foto)
+        // Atualiza User (Nome, Doc e Foto)
         var user = await _userRepo.GetByIdAsync(funcionario.UserId);
         if (user != null)
         {
             if (request.Name != null) user.Name = request.Name;
+            if (request.Doc != null) user.Doc = request.Doc;
             if (request.Base64Image != null) user.Base64Image = request.Base64Image;
             await _userRepo.UpdateAsync(user);
-            System.Console.WriteLine($"[Funcionario Update] Updated User: Name={user.Name}");
+            System.Console.WriteLine($"[Funcionario Update] Updated User: Name={user.Name}, Doc={user.Doc}");
         }
         
         // Atualiza serviços vinculados (se fornecidos)
