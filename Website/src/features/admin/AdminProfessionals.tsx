@@ -33,50 +33,84 @@ type CreateData = z.infer<typeof createSchema>;
 type EditData = z.infer<typeof editSchema>;
 
 const DAYS_OF_WEEK = [
-  { id: '0', label: 'Dom' },
-  { id: '1', label: 'Seg' },
-  { id: '2', label: 'Ter' },
-  { id: '3', label: 'Qua' },
-  { id: '4', label: 'Qui' },
-  { id: '5', label: 'Sex' },
-  { id: '6', label: 'Sab' },
+  { id: '1', label: 'Segunda' },
+  { id: '2', label: 'Terça' },
+  { id: '3', label: 'Quarta' },
+  { id: '4', label: 'Quinta' },
+  { id: '5', label: 'Sexta' },
+  { id: '6', label: 'Sábado' },
+  { id: '7', label: 'Domingo' },
 ];
 
-const DEFAULT_TIME_OPTIONS = [
-  '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-  '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30',
-];
+const DEFAULT_TIME_OPTIONS = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00'];
 
-export function AdminProfessionals() {
+const normalizeSchedule = (
+  schedule?: Record<string, string[]>,
+  availableTimes?: string | string[] | null,
+): Record<string, string[]> => {
+  if (schedule && typeof schedule === 'object' && Object.keys(schedule).length > 0) {
+    return Object.fromEntries(
+      Object.entries(schedule).map(([day, times]) => [day, Array.isArray(times) ? Array.from(new Set(times.filter(Boolean))).sort() : []])
+    );
+  }
+  
+  if (Array.isArray(availableTimes)) {
+    const normalized = Array.from(new Set(availableTimes.filter(Boolean))).sort();
+    return normalized.length ? { '1': normalized } : {};
+  }
+  
+  if (typeof availableTimes === 'string' && availableTimes.length > 0) {
+    try {
+      const parsed = JSON.parse(availableTimes);
+      if (Array.isArray(parsed)) {
+        const normalized = Array.from(new Set(parsed.filter(Boolean))).sort();
+        return normalized.length ? { '1': normalized } : {};
+      }
+      if (typeof parsed === 'object' && parsed !== null) {
+        return Object.fromEntries(
+          Object.entries(parsed).map(([day, times]) => [
+            day, 
+            Array.isArray(times) ? Array.from(new Set(times.filter(Boolean))).sort() : []
+          ])
+        );
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+  
+  return {};
+};
+
+export const AdminProfessionals: React.FC<{ user: any }> = ({ user }) => {
   const qc = useQueryClient();
-  const { user } = useAdminAuth();
+  const [search, setSearch] = useState('');
   const [createModal, setCreateModal] = useState(false);
   const [editTarget, setEditTarget] = useState<Funcionario | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Funcionario | null>(null);
   const [reviewTarget, setReviewTarget] = useState<Funcionario | null>(null);
   const [error, setError] = useState('');
-  const [createPhotoBase64, setCreatePhotoBase64] = useState<string | undefined>();
-  const [createPhotoPreview, setCreatePhotoPreview] = useState<string | undefined>();
-  const [editPhotoBase64, setEditPhotoBase64] = useState<string | undefined>();
-  const [editPhotoPreview, setEditPhotoPreview] = useState<string | undefined>();
+  
+  // Create modal state
+  const [createPhotoBase64, setCreatePhotoBase64] = useState<string>();
+  const [createPhotoPreview, setCreatePhotoPreview] = useState<string>();
   const [createServiceIds, setCreateServiceIds] = useState<string[]>([]);
-  const [editServiceIds, setEditServiceIds] = useState<string[]>([]);
   const [createSchedule, setCreateSchedule] = useState<Record<string, string[]>>({});
-  const [editSchedule, setEditSchedule] = useState<Record<string, string[]>>({});
   const [createSelectedDay, setCreateSelectedDay] = useState('1');
+  
+  // Edit modal state
+  const [editPhotoBase64, setEditPhotoBase64] = useState<string>();
+  const [editPhotoPreview, setEditPhotoPreview] = useState<string>();
+  const [editServiceIds, setEditServiceIds] = useState<string[]>([]);
+  const [editSchedule, setEditSchedule] = useState<Record<string, string[]>>({});
   const [editSelectedDay, setEditSelectedDay] = useState('1');
 
-  // Carrega dados do profissional quando editTarget muda
+  const createForm = useForm<CreateData>({ resolver: zodResolver(createSchema) });
+  const editForm = useForm<EditData>({ resolver: zodResolver(editSchema) });
+
+  // Load edit data when editTarget changes
   useEffect(() => {
     if (!editTarget) {
-      // Limpa o form quando fecha o modal
-      editForm.reset({
-        name: '',
-        specialty: '',
-        bio: '',
-        isAdmin: false,
-      });
+      editForm.reset({ name: '', specialty: '', bio: '', isAdmin: false });
       setEditPhotoBase64(undefined);
       setEditPhotoPreview(undefined);
       setEditServiceIds([]);
@@ -85,31 +119,28 @@ export function AdminProfessionals() {
       return;
     }
 
-    // Carrega foto atual do profissional
-    const photoSrc = normalizeImageSrc(editTarget.photoUrl);
-    setEditPhotoPreview(photoSrc || undefined);
+    const photoSrc = editTarget.photoUrl 
+      ? (editTarget.photoUrl.startsWith('http') || editTarget.photoUrl.startsWith('data:image') 
+        ? editTarget.photoUrl 
+        : `data:image/jpeg;base64,${editTarget.photoUrl}`)
+      : undefined;
+    setEditPhotoPreview(photoSrc);
 
-    // Normaliza schedule
     const normalized = normalizeSchedule(editTarget.schedule, editTarget.availableTimes);
     setEditSchedule(normalized);
     
-    // Seleciona primeiro dia com horários
     const firstWithTimes = DAYS_OF_WEEK.find((day) => (normalized[day.id] || []).length > 0)?.id ?? '1';
     setEditSelectedDay(firstWithTimes);
 
-    // Carrega serviços vinculados (garante que sejam strings e sempre seja array)
     const rawServiceIds = editTarget.serviceIds;
-    const serviceIds = Array.isArray(rawServiceIds) 
-      ? rawServiceIds.map(id => String(id))
-      : [];
+    const serviceIds = Array.isArray(rawServiceIds) ? rawServiceIds.map(id => String(id)) : [];
     setEditServiceIds(serviceIds);
 
-    // Define os valores do formulário individualmente para evitar problemas de race condition
     editForm.setValue('name', editTarget.name || '');
     editForm.setValue('specialty', editTarget.specialty || '');
     editForm.setValue('bio', editTarget.bio || '');
     editForm.setValue('isAdmin', editTarget.isAdmin || false);
-  }, [editTarget?.id]); // Só executa quando o ID muda (evita re-execuções desnecessárias)
+  }, [editTarget?.id]);
 
   const { data: salons } = useQuery({
     queryKey: ['my-units'],
@@ -118,10 +149,26 @@ export function AdminProfessionals() {
 
   const { activeSalonId, hasUnits, handleSalonChange } = useAdminSalonSelection(salons, user?.id);
 
-  const { data: professionals, isLoading, isError, error: professionalsError, refetch } = useQuery({
+  const { data: professionals, isLoading } = useQuery({
     queryKey: ['professionals', activeSalonId],
     queryFn: () => professionalsApi.bySalon(activeSalonId!),
     enabled: !!activeSalonId,
+  });
+
+  const { data: timeOptionsData } = useQuery({
+    queryKey: ['time-options'],
+    queryFn: () => professionalsApi.timeOptions(),
+  });
+
+  const timeOptions = useMemo(
+    () => (Array.isArray(timeOptionsData) && timeOptionsData.length > 0 ? Array.from(new Set(timeOptionsData as string[])).sort() : DEFAULT_TIME_OPTIONS),
+    [timeOptionsData]
+  );
+
+  const { data: reviews } = useQuery({
+    queryKey: ['professional-reviews', reviewTarget?.id],
+    queryFn: () => professionalsApi.reviews(reviewTarget!.id),
+    enabled: !!reviewTarget,
   });
 
   const { data: services } = useQuery({
@@ -129,32 +176,6 @@ export function AdminProfessionals() {
     queryFn: () => servicesApi.list(activeSalonId!),
     enabled: !!activeSalonId,
   });
-
-  const { data: timeOptionsData } = useQuery({
-    queryKey: ['professional-time-options', activeSalonId],
-    queryFn: () => professionalsApi.timeOptions(activeSalonId!),
-    enabled: !!activeSalonId,
-  });
-
-    const timeOptions = useMemo(
-    () => (timeOptionsData && timeOptionsData.length > 0 ? Array.from(new Set(timeOptionsData as string[])).sort() : DEFAULT_TIME_OPTIONS),
-    [timeOptionsData]
-  );
-
-  const { data: reviews, isLoading: isLoadingReviews } = useQuery({
-    queryKey: ['professional-reviews', reviewTarget?.id],
-    queryFn: () => professionalsApi.reviews(reviewTarget!.id),
-    enabled: !!reviewTarget,
-  });
-
-  const createForm = useForm<CreateData>({ resolver: zodResolver(createSchema) });
-  const editForm = useForm<EditData>({ resolver: zodResolver(editSchema) });
-
-  const normalizeImageSrc = (value?: string) => {
-    if (!value) return undefined;
-    if (value.startsWith('http') || value.startsWith('data:image')) return value;
-    return `data:image/jpeg;base64,${value}`;
-  };
 
   const fileToBase64 = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -167,19 +188,6 @@ export function AdminProfessionals() {
       reader.onerror = () => reject(new Error('Falha ao carregar imagem.'));
       reader.readAsDataURL(file);
     });
-
-  const normalizeSchedule = (schedule?: Record<string, string[]>, availableTimes?: string[]) => {
-    if (schedule && Object.keys(schedule).length > 0) {
-      return Object.fromEntries(
-        Object.entries(schedule).map(([day, times]) => [day, Array.from(new Set((times || []).filter(Boolean))).sort()])
-      );
-    }
-    const normalizedTimes = Array.from(new Set((availableTimes || []).filter(Boolean))).sort();
-    return normalizedTimes.length ? { '1': normalizedTimes } : {};
-  };
-
-  const flattenSchedule = (schedule: Record<string, string[]>) =>
-    Array.from(new Set(Object.values(schedule || {}).flat().filter(Boolean))).sort();
 
   const toggleTimeOnSchedule = (
     schedule: Record<string, string[]>,
@@ -211,13 +219,13 @@ export function AdminProfessionals() {
     mutationFn: (data: CreateData) =>
       professionalsApi.createByDoc(activeSalonId!, {
         doc: data.doc,
-        Nome: data.name, // Backend espera 'Nome' com N maiúsculo
+        Nome: data.name,
         specialty: data.specialty,
         bio: data.bio,
         isAdmin: data.isAdmin ?? false,
         base64Image: createPhotoBase64,
         serviceIds: createServiceIds,
-        availableTimes: JSON.stringify(createSchedule), // Salva schedule completo como JSON
+        availableTimes: JSON.stringify(createSchedule),
         schedule: createSchedule,
       }),
     onSuccess: () => {
@@ -234,7 +242,6 @@ export function AdminProfessionals() {
     onError: () => setError('Erro ao cadastrar profissional. Verifique os dados.'),
   });
 
-
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: EditData }) => {
       const payload = {
@@ -242,10 +249,9 @@ export function AdminProfessionals() {
         salonId: activeSalonId,
         base64Image: editPhotoBase64,
         serviceIds: editServiceIds,
-        availableTimes: JSON.stringify(editSchedule), // Salva schedule completo como JSON
+        availableTimes: JSON.stringify(editSchedule),
         schedule: editSchedule,
       };
-      console.log('[Professionals] Update payload:', payload);
       return professionalsApi.update(id, payload);
     },
     onSuccess: () => {
@@ -257,145 +263,176 @@ export function AdminProfessionals() {
       setEditServiceIds([]);
       setEditSchedule({});
       setEditSelectedDay('1');
+      setError('');
     },
+    onError: () => setError('Erro ao atualizar profissional. Verifique os dados.'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => professionalsApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['professionals'] });
-      setDeleteTarget(null);
+      setError('');
     },
+    onError: () => setError('Erro ao excluir profissional.'),
   });
+
+  const filteredProfessionals = useMemo(() => {
+    if (!Array.isArray(professionals)) return [];
+    if (!search) return professionals;
+    const q = search.toLowerCase();
+    return professionals.filter(
+      (p) =>
+        p.name?.toLowerCase().includes(q) ||
+        p.specialty?.toLowerCase().includes(q) ||
+        p.email?.toLowerCase().includes(q)
+    );
+  }, [professionals, search]);
+
+  const getAverageRating = (prof: Funcionario) => {
+    return prof.averageRating ?? 0;
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Profissionais</h1>
-          <p className="text-gray-500 text-sm">Gerencie a equipe da sua unidade.</p>
-        </div>
-        <div className="flex gap-3">
-          {salons && salons.length > 0 && (
-            <select value={activeSalonId ?? ''} onChange={e => handleSalonChange(Number(e.target.value))} className="border border-gray-300 rounded-lg px-3 py-2 text-sm min-w-[220px]">
-              {salons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          )}
-          <Button onClick={() => setCreateModal(true)} size="sm">
-            <Plus className="w-4 h-4" />
-            Novo Profissional
-          </Button>
-        </div>
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Profissionais</h1>
+        <Button onClick={() => setCreateModal(true)}>
+          <Plus className="w-4 h-4 mr-2" /> Novo Profissional
+        </Button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        {!hasUnits && (
-          <div className="p-10 text-center text-gray-400">Nenhuma unidade cadastrada para exibir profissionais.</div>
-        )}
-        {isError && (
-          <div className="p-4 border-b border-gray-100">
-            <ApiErrorAlert
-              message={getApiErrorMessage(professionalsError, 'Falha ao carregar profissionais.')}
-              onRetry={() => refetch()}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-red-700">{error}</p>
+          <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">×</button>
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Input
+              placeholder="Buscar por nome, especialidade..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
             />
           </div>
-        )}
-        {isLoading ? (
-          <div className="p-10 text-center text-gray-400">Carregando...</div>
-        ) : !professionals?.length ? (
-          <div className="p-10 text-center text-gray-400">
-            <Search className="w-8 h-8 mx-auto mb-2 opacity-40" />
-            Nenhum profissional cadastrado.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
-                <tr>
-                  <th className="px-5 py-3 text-left">Nome</th>
-                  <th className="px-5 py-3 text-left">Especialidade</th>
-                  <th className="px-5 py-3 text-left">Avaliação</th>
-                  <th className="px-5 py-3 text-left">Perfil</th>
-                  <th className="px-5 py-3 text-center">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {Array.isArray(professionals) && professionals.map((prof: Funcionario) => (
-                  <tr key={prof.id} className="hover:bg-gray-50/50">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        {normalizeImageSrc(prof.photoUrl) ? (
-                          <img src={normalizeImageSrc(prof.photoUrl)} alt={prof.name} className="w-8 h-8 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center">
-                            <span className="text-brand-700 text-xs font-semibold">{prof.name?.charAt(0)?.toUpperCase()}</span>
-                          </div>
-                        )}
-                        <span className="font-medium text-gray-900">{prof.name}</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50/50">
+              <tr>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profissional</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Especialidade</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avaliação</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {Array.isArray(filteredProfessionals) && filteredProfessionals.map((prof: Funcionario) => (
+                <tr key={prof.id} className="hover:bg-gray-50/50">
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      {prof.photoUrl ? (
+                        <img 
+                          src={prof.photoUrl.startsWith('http') || prof.photoUrl.startsWith('data:image') ? prof.photoUrl : `data:image/jpeg;base64,${prof.photoUrl}`} 
+                          alt={prof.name} 
+                          className="w-8 h-8 rounded-full object-cover" 
+                        />
+                      ) : (
+                        <div className="w-8 h-8 bg-brand-100 rounded-full flex items-center justify-center">
+                          <span className="text-brand-600 font-medium text-sm">{prof.name?.charAt(0)?.toUpperCase()}</span>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{prof.name || '-'}</p>
+                        <p className="text-xs text-gray-500">{prof.email || '-'}</p>
                       </div>
-                    </td>
-                    <td className="px-5 py-4 text-gray-600">{prof.specialty || '—'}</td>
-                    <td className="px-5 py-4 text-gray-600">
-                      {prof.averageRating ? `${prof.averageRating.toFixed(1)}★ (${prof.totalReviews})` : 'Sem avaliações'}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-sm text-gray-600">{prof.specialty || '-'}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-1">
+                      <Star className={`w-4 h-4 ${getAverageRating(prof) > 0 ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                      <span className="text-sm text-gray-600">{getAverageRating(prof).toFixed(1)}</span>
+                      <span className="text-xs text-gray-400">({prof.totalReviews || 0})</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${prof.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {prof.active ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => setReviewTarget(prof)}
-                        className="ml-2 text-xs text-brand-600 hover:underline"
+                        className="text-gray-400 hover:text-brand-600 transition-colors"
                       >
-                        Ver
+                        <MessageSquare className="w-4 h-4" />
                       </button>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                        prof.isAdmin ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {prof.isAdmin ? 'Admin' : 'Profissional'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center justify-center gap-3">
-                        <button
-                          onClick={() => {
-                            setEditTarget(prof);
-                          }}
-                          className="text-gray-400 hover:text-brand-600 transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setDeleteTarget(prof)} className="text-gray-400 hover:text-red-600 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <button
+                        onClick={() => setEditTarget(prof)}
+                        className="text-gray-400 hover:text-brand-600 transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Tem certeza que deseja excluir este profissional?')) {
+                            deleteMutation.mutate(prof.id);
+                          }
+                        }}
+                        className="text-gray-400 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {(!Array.isArray(filteredProfessionals) || filteredProfessionals.length === 0) && (
+          <div className="px-6 py-12 text-center">
+            <p className="text-gray-500">Nenhum profissional encontrado</p>
           </div>
         )}
       </div>
 
       {/* Create Modal */}
-      <Modal open={createModal} onClose={() => { setCreateModal(false); createForm.reset(); setError(''); setCreatePhotoBase64(undefined); setCreatePhotoPreview(undefined); setCreateServiceIds([]); setCreateSchedule({}); setCreateSelectedDay('1'); }} title="Novo Profissional"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => { setCreateModal(false); createForm.reset(); setError(''); setCreatePhotoBase64(undefined); setCreatePhotoPreview(undefined); setCreateServiceIds([]); setCreateSchedule({}); setCreateSelectedDay('1'); }}>Cancelar</Button>
-            <Button loading={createMutation.isPending} onClick={createForm.handleSubmit(d => createMutation.mutate(d))}>Cadastrar</Button>
-          </>
-        }
-      >
-        <form className="space-y-4">
-          <Input label="CPF / Documento *" placeholder="000.000.000-00" error={createForm.formState.errors.doc?.message} {...createForm.register('doc')} />
-          <Input label="Nome completo *" placeholder="Nome do profissional" error={createForm.formState.errors.name?.message} {...createForm.register('name')} />
-          <Input label="Especialidade" placeholder="Ex: Cabeleireiro, Esteticista..." {...createForm.register('specialty')} />
+      <Modal open={createModal} onClose={() => { setCreateModal(false); createForm.reset(); setCreatePhotoBase64(undefined); setCreatePhotoPreview(undefined); setCreateServiceIds([]); setCreateSchedule({}); setCreateSelectedDay('1'); }} title="Novo Profissional">
+        <form
+          onSubmit={createForm.handleSubmit((data) => createMutation.mutate(data))}
+          className="space-y-4"
+        >
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Bio</label>
-            <textarea rows={3} placeholder="Breve apresentação do profissional..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" {...createForm.register('bio')} />
+            <label className="text-sm font-medium text-gray-700 block mb-2">CPF/Documento *</label>
+            <Input {...createForm.register('doc')} placeholder="000.000.000-00" />
+            {createForm.formState.errors.doc && <p className="text-xs text-red-500 mt-1">{createForm.formState.errors.doc.message}</p>}
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Foto do profissional</label>
-            {createPhotoPreview && (
-              <img src={createPhotoPreview} alt="preview" className="w-16 h-16 rounded-full object-cover mb-2 border-2 border-brand-200" />
-            )}
+            <label className="text-sm font-medium text-gray-700 block mb-2">Nome completo *</label>
+            <Input {...createForm.register('name')} placeholder="Nome do profissional" />
+            {createForm.formState.errors.name && <p className="text-xs text-red-500 mt-1">{createForm.formState.errors.name.message}</p>}
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Especialidade</label>
+            <Input {...createForm.register('specialty')} placeholder="Ex: Pintor, Funileiro" />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Bio</label>
+            <textarea {...createForm.register('bio')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" rows={3} />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Foto</label>
             <input
               type="file"
               accept="image/*"
@@ -408,6 +445,9 @@ export function AdminProfessionals() {
                 setCreatePhotoPreview(URL.createObjectURL(file));
               }}
             />
+            {createPhotoPreview && (
+              <img src={createPhotoPreview} alt="Preview" className="mt-2 w-20 h-20 rounded-full object-cover" />
+            )}
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Serviços vinculados</label>
@@ -418,10 +458,8 @@ export function AdminProfessionals() {
                     type="checkbox"
                     checked={createServiceIds.includes(String(service.id))}
                     onChange={(e) => {
-                      setCreateServiceIds((current) =>
-                        e.target.checked
-                          ? [...current, String(service.id)]
-                          : current.filter((id) => id !== String(service.id))
+                      setCreateServiceIds((current) => 
+                        e.target.checked ? [...current, String(service.id)] : current.filter((id) => id !== String(service.id))
                       );
                     }}
                     className="rounded"
@@ -429,53 +467,21 @@ export function AdminProfessionals() {
                   {service.name}
                 </label>
               ))}
-              {!services?.length && <p className="text-xs text-gray-500">Cadastre serviços para vincular profissionais.</p>}
+              {(!Array.isArray(services) || services.length === 0) && (
+                <p className="text-xs text-gray-500">Nenhum serviço disponível</p>
+              )}
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
             <input type="checkbox" {...createForm.register('isAdmin')} className="rounded" />
-            Este profissional é administrador da unidade
+            <span>É administrador da unidade?</span>
           </label>
-          <div className="space-y-3 border border-gray-200 rounded-lg p-3">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-sm font-medium text-gray-700">Agenda semanal</label>
-              <button
-                type="button"
-                onClick={() => toggleAllTimesOfDay(createSchedule, setCreateSchedule, createSelectedDay)}
-                className="text-xs text-brand-600 hover:underline"
-              >
-                {(createSchedule[createSelectedDay] || []).length === timeOptions.length ? 'Limpar dia' : 'Selecionar dia inteiro'}
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {DAYS_OF_WEEK.map((day) => (
-                <button
-                  key={day.id}
-                  type="button"
-                  onClick={() => setCreateSelectedDay(day.id)}
-                  className={`px-2.5 py-1 text-xs rounded-full border ${createSelectedDay === day.id ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-600 border-gray-300'}`}
-                >
-                  {day.label}
-                </button>
-              ))}
-            </div>
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-44 overflow-y-auto pr-1">
-              {timeOptions.map((time) => {
-                const checked = (createSchedule[createSelectedDay] || []).includes(time);
-                return (
-                  <button
-                    key={time}
-                    type="button"
-                    onClick={() => toggleTimeOnSchedule(createSchedule, setCreateSchedule, createSelectedDay, time)}
-                    className={`text-xs rounded-md px-2 py-1.5 border ${checked ? 'bg-brand-50 text-brand-700 border-brand-300' : 'bg-white text-gray-600 border-gray-200'}`}
-                  >
-                    {time}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setCreateModal(false)}>Cancelar</Button>
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? 'Salvando...' : 'Salvar'}
+            </Button>
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
         </form>
       </Modal>
 
@@ -485,34 +491,30 @@ export function AdminProfessionals() {
         open={!!editTarget} 
         onClose={() => { setEditTarget(null); editForm.reset(); setEditPhotoBase64(undefined); setEditPhotoPreview(undefined); setEditServiceIds([]); setEditSchedule({}); setEditSelectedDay('1'); }} 
         title="Editar Profissional"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => { setEditTarget(null); editForm.reset(); setEditPhotoBase64(undefined); setEditPhotoPreview(undefined); setEditServiceIds([]); setEditSchedule({}); setEditSelectedDay('1'); }}>Cancelar</Button>
-            <Button loading={updateMutation.isPending} onClick={editForm.handleSubmit(d => editTarget && updateMutation.mutate({ id: editTarget.id, data: d }))}>Salvar</Button>
-          </>
-        }
       >
-        <form className="space-y-4">
-          {editTarget?.doc && (
-            <Input label="CPF" value={editTarget.doc} disabled />
-          )}
-          <Input label="Nome completo *" error={editForm.formState.errors.name?.message} {...editForm.register('name')} />
-          <Input label="Especialidade" {...editForm.register('specialty')} />
+        <form
+          onSubmit={editForm.handleSubmit((data) => updateMutation.mutate({ id: editTarget!.id, data }))}
+          className="space-y-4"
+        >
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Bio</label>
-            <textarea rows={3} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" {...editForm.register('bio')} />
+            <label className="text-sm font-medium text-gray-700 block mb-2">Nome completo *</label>
+            <Input {...editForm.register('name')} placeholder="Nome do profissional" />
+            {editForm.formState.errors.name && <p className="text-xs text-red-500 mt-1">{editForm.formState.errors.name.message}</p>}
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Foto do profissional</label>
-            {/* Photo preview - mostra foto atual ou nova */}
-            {(editPhotoPreview || editTarget?.photoUrl) && (
-              <div className="flex items-center gap-3 mb-2">
-                <img
-                  src={editPhotoPreview || normalizeImageSrc(editTarget?.photoUrl) || ''}
-                  alt="foto"
-                  className="w-16 h-16 rounded-full object-cover border-2 border-brand-200"
-                />
-                <span className="text-xs text-gray-500">{editPhotoPreview ? 'Prévia da nova foto' : 'Foto atual'}</span>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Especialidade</label>
+            <Input {...editForm.register('specialty')} placeholder="Ex: Pintor, Funileiro" />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Bio</label>
+            <textarea {...editForm.register('bio')} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" rows={3} />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Foto</label>
+            {editPhotoPreview && (
+              <div className="mb-2 flex items-center gap-3">
+                <img src={editPhotoPreview} alt="Preview" className="w-16 h-16 rounded-full object-cover" />
+                <span className="text-xs text-gray-500">{editPhotoBase64 ? 'Nova foto selecionada' : 'Foto atual'}</span>
               </div>
             )}
             <input
@@ -531,27 +533,22 @@ export function AdminProfessionals() {
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Serviços vinculados</label>
             <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-2">
-              {Array.isArray(services) && services.map((service: any) => {
-                const isChecked = Array.isArray(editServiceIds) && editServiceIds.includes(String(service.id));
-                return (
-                  <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={(e) => {
-                        setEditServiceIds((current) => {
-                          const arr = Array.isArray(current) ? current : [];
-                          return e.target.checked
-                            ? [...arr, String(service.id)]
-                            : arr.filter((id) => id !== String(service.id));
-                        });
-                      }}
-                      className="rounded"
-                    />
-                    {service.name}
-                  </label>
-                );
-              })}
+              {Array.isArray(services) && services.map((service: any) => (
+                <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Array.isArray(editServiceIds) && editServiceIds.includes(String(service.id))}
+                    onChange={(e) => {
+                      setEditServiceIds((current) => {
+                        const arr = Array.isArray(current) ? current : [];
+                        return e.target.checked ? [...arr, String(service.id)] : arr.filter((id) => id !== String(service.id));
+                      });
+                    }}
+                    className="rounded"
+                  />
+                  {service.name}
+                </label>
+              ))}
               {(!Array.isArray(services) || services.length === 0) && (
                 <p className="text-xs text-gray-500">Nenhum serviço disponível</p>
               )}
@@ -559,91 +556,40 @@ export function AdminProfessionals() {
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
             <input type="checkbox" {...editForm.register('isAdmin')} className="rounded" />
-            Administrador da unidade
+            <span>É administrador da unidade?</span>
           </label>
-          <div className="space-y-3 border border-gray-200 rounded-lg p-3">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-sm font-medium text-gray-700">Agenda semanal</label>
-              <button
-                type="button"
-                onClick={() => toggleAllTimesOfDay(editSchedule, setEditSchedule, editSelectedDay)}
-                className="text-xs text-brand-600 hover:underline"
-              >
-                {(editSchedule[editSelectedDay] || []).length === timeOptions.length ? 'Limpar dia' : 'Selecionar dia inteiro'}
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {DAYS_OF_WEEK.map((day) => (
-                <button
-                  key={day.id}
-                  type="button"
-                  onClick={() => setEditSelectedDay(day.id)}
-                  className={`px-2.5 py-1 text-xs rounded-full border ${editSelectedDay === day.id ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-600 border-gray-300'}`}
-                >
-                  {day.label}
-                </button>
-              ))}
-            </div>
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-44 overflow-y-auto pr-1">
-              {timeOptions.map((time) => {
-                const checked = (editSchedule[editSelectedDay] || []).includes(time);
-                return (
-                  <button
-                    key={time}
-                    type="button"
-                    onClick={() => toggleTimeOnSchedule(editSchedule, setEditSchedule, editSelectedDay, time)}
-                    className={`text-xs rounded-md px-2 py-1.5 border ${checked ? 'bg-brand-50 text-brand-700 border-brand-300' : 'bg-white text-gray-600 border-gray-200'}`}
-                  >
-                    {time}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="secondary" onClick={() => setEditTarget(null)}>Cancelar</Button>
+            <Button type="submit" disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? 'Salvando...' : 'Salvar'}
+            </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Delete Modal */}
-      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Remover Profissional"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
-            <Button variant="danger" loading={deleteMutation.isPending} onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}>Remover</Button>
-          </>
-        }
-      >
-        <p className="text-gray-600 text-sm">Tem certeza que deseja remover <strong>{deleteTarget?.name}</strong> da equipe? Esta ação desvincula o profissional da unidade.</p>
-      </Modal>
-
-      <Modal
-        open={!!reviewTarget}
-        onClose={() => setReviewTarget(null)}
-        title={`Avaliações - ${reviewTarget?.name ?? ''}`}
-      >
-        <div className="space-y-3 max-h-[380px] overflow-y-auto">
-          {isLoadingReviews ? (
-            <p className="text-sm text-gray-500">Carregando avaliações...</p>
-          ) : !reviews?.length ? (
-            <div className="text-sm text-gray-500 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Este profissional ainda não possui avaliações.
-            </div>
-          ) : (
+      {/* Reviews Modal */}
+      <Modal open={!!reviewTarget} onClose={() => setReviewTarget(null)} title="Avaliações" size="lg">
+        <div className="space-y-4">
+          {Array.isArray(reviews) && reviews.length > 0 ? (
             reviews.map((review: ReviewDto) => (
-              <div key={review.id} className="border border-gray-200 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-medium text-gray-900 text-sm">{review.clientName}</p>
-                  <p className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString('pt-BR')}</p>
+              <div key={review.id} className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: review.rating }).map((_, index) => (
+                      <Star key={index} className="w-4 h-4 fill-current text-yellow-400" />
+                    ))}
+                  </div>
+                  <span className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString('pt-BR')}</span>
                 </div>
-                <div className="flex items-center gap-1 text-amber-500 mb-2">
-                  {Array.from({ length: review.rating }).map((_, index) => <Star key={index} className="w-4 h-4 fill-current" />)}
-                </div>
-                <p className="text-sm text-gray-700">{review.comment || 'Sem comentário.'}</p>
+                <p className="text-sm text-gray-700">{review.comment}</p>
+                <p className="text-xs text-gray-500 mt-2">- {review.clientName || 'Cliente'}</p>
               </div>
             ))
+          ) : (
+            <p className="text-center text-gray-500 py-8">Nenhuma avaliação ainda</p>
           )}
         </div>
       </Modal>
     </div>
   );
-}
+};
