@@ -94,8 +94,11 @@ export function AdminProfessionals() {
     const firstWithTimes = DAYS_OF_WEEK.find((day) => (normalized[day.id] || []).length > 0)?.id ?? '1';
     setEditSelectedDay(firstWithTimes);
 
-    // Carrega serviços vinculados (garante que sejam strings)
-    const serviceIds = (editTarget.serviceIds ?? []).map(id => String(id));
+    // Carrega serviços vinculados (garante que sejam strings e sempre seja array)
+    const rawServiceIds = editTarget.serviceIds;
+    const serviceIds = Array.isArray(rawServiceIds) 
+      ? rawServiceIds.map(id => String(id))
+      : [];
     setEditServiceIds(serviceIds);
 
     // Reseta o formulário com os dados do profissional
@@ -528,23 +531,27 @@ export function AdminProfessionals() {
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-2">Serviços vinculados</label>
             <div className="max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-2">
-              {services?.map((service: any) => (
-                <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editServiceIds.includes(String(service.id))}
-                    onChange={(e) => {
-                      setEditServiceIds((current) =>
-                        e.target.checked
-                          ? [...current, String(service.id)]
-                          : current.filter((id) => id !== String(service.id))
-                      );
-                    }}
-                    className="rounded"
-                  />
-                  {service.name}
-                </label>
-              ))}
+              {services?.map((service: any) => {
+                const isChecked = Array.isArray(editServiceIds) && editServiceIds.includes(String(service.id));
+                return (
+                  <label key={service.id} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        setEditServiceIds((current) => {
+                          const arr = Array.isArray(current) ? current : [];
+                          return e.target.checked
+                            ? [...arr, String(service.id)]
+                            : arr.filter((id) => id !== String(service.id));
+                        });
+                      }}
+                      className="rounded"
+                    />
+                    {service.name}
+                  </label>
+                );
+              })}
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
