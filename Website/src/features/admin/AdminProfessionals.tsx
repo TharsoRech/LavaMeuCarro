@@ -220,7 +220,7 @@ export const AdminProfessionals: React.FC = () => {
     mutationFn: (data: CreateData) =>
       professionalsApi.createByDoc(activeSalonId!, {
         doc: data.doc,
-        Nome: data.name,
+        name: data.name, // Backend espera 'Name' (System.Text.Json converte camelCase -> PascalCase)
         specialty: data.specialty,
         bio: data.bio,
         isAdmin: data.isAdmin ?? false,
