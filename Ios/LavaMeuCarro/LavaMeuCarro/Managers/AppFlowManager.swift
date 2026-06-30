@@ -8,10 +8,8 @@ enum AppScreen {
 
 @Observable
 class AppFlowManager {
-    // A tela inicial padrão do app
     var telaAtual: AppScreen = .home
     
-    // Funções simples para mudar de tela
     func goToLogin() {
         telaAtual = .login
     }

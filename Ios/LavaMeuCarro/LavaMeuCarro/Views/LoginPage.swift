@@ -49,7 +49,6 @@ struct LoginPage: View {
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(viewModel.emailError != nil ? Color.red : Color.white, lineWidth: 1.5)
                                 )
-                                // Dispara a validação a cada caractere digitado (Sintaxe iOS 17+)
                                 .onChange(of: viewModel.email) {
                                     viewModel.validateEmail()
                                 }
@@ -106,6 +105,20 @@ struct LoginPage: View {
                             Text("Não tem conta?")
                                 .foregroundColor(.white.opacity(0.8))
                             Text("Cadastre-se")
+                                .foregroundColor(.white)
+                                .fontWeight(.bold)
+                                .underline()
+                        }
+                        .font(.footnote)
+                    }
+                    
+                    Button(action: {
+                        viewModel.goToHome()
+                    }) {
+                        HStack(spacing: 4) {
+                            Text("Voltar ao Inicio")
+                                .foregroundColor(.white.opacity(0.8))
+                            Text("Voltar")
                                 .foregroundColor(.white)
                                 .fontWeight(.bold)
                                 .underline()

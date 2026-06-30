@@ -1,7 +1,9 @@
 import Foundation
+import SwiftUI
+import PhotosUI
 
-@Observable // Ou crie como ObservableObject dependendo da versão do iOS
-class LoginPageViewModel {
+@Observable 
+class RegisterPageViewModel {
     var email: String = ""
     var password: String = ""
     
@@ -11,8 +13,23 @@ class LoginPageViewModel {
     
     var flowManager: AppFlowManager
     
+    var profileType: ProfileType
+    
+    var base64Image: String? = nil
+        var selectedPhotoItem: PhotosPickerItem? = nil {
+            didSet {
+                // Toda vez que o usuário escolher uma foto, processa em background
+                Task {
+                    await processSelectedPhoto()
+                }
+            }
+        }
+    
+    var displayImage: Image? = nil // Imagem pronta para renderizar no SwiftUI
+    
     init(flowManager: AppFlowManager) {
             self.flowManager = flowManager
+            self.profileType = .client
         }
         
     var emailsIsValid: Bool {
@@ -71,4 +88,25 @@ class LoginPageViewModel {
     func updatePassword(codigo: String, novaSenha: String) {
         print("API: Atualizando senha com código \(codigo) e nova senha \(novaSenha)")
     }
+    
+    @MainActor
+        private func processSelectedPhoto() async {
+            guard let item = selectedPhotoItem else { return }
+            
+            // Carrega os dados brutos da imagem (UIKit/UIImage compatível)
+            if let data = try? await item.loadTransferable(type: Data.self) {
+                // 1. Converte para UIImage para podermos comprimir e garantir o formato correto (JPEG)
+                if let uiImage = UIImage(data: data) {
+                    // Comprime a imagem (0.7 tira peso sem perder qualidade perceptível no avatar)
+                    if let jpegData = uiImage.jpegData(compressionQuality: 0.7) {
+                        // 2. Transforma em Base64
+                        self.base64Image = jpegData.base64EncodedString()
+                        
+                        // 3. Atualiza a propriedade visual para a View exibir
+                        self.displayImage = Image(uiImage: uiImage)
+                        print("Sucesso! Imagem convertida para Base64. Tamanho: \(self.base64Image?.count ?? 0) caracteres.")
+                    }
+                }
+            }
+        }
 }

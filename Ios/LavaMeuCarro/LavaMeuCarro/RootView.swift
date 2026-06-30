@@ -14,7 +14,7 @@ struct RootView: View {
                 LoginPage(viewModel: LoginPageViewModel(flowManager: flowManager))
                 
             case .register:
-                Text("Tela de Cadastro (Em breve)") // CriarContaPage()
+                RegisterPage(viewModel: RegisterPageViewModel(flowManager: flowManager))
             
             }
         }
