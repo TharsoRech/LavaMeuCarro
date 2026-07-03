@@ -2,8 +2,8 @@ import Foundation
 import SwiftUI
 import PhotosUI
 
-@Observable 
-class RegisterPageViewModel {
+@Observable
+class RegisterPageViewModel: BaseViewModel {
     var email: String = ""
     var password: String = ""
     
@@ -14,6 +14,11 @@ class RegisterPageViewModel {
     var flowManager: AppFlowManager
     
     var profileType: ProfileType
+    
+    var emailHasError: Bool {
+        return emailError != nil
+    }
+
     
     var base64Image: String? = nil
         var selectedPhotoItem: PhotosPickerItem? = nil {
@@ -42,13 +47,16 @@ class RegisterPageViewModel {
         return !email.isEmpty && emailError == nil && !password.isEmpty
     }
     
-    func validateEmail() {
-            if email.isEmpty {
-                emailError = nil // Se apagou tudo, limpa o erro para não irritar o usuário
-            } else if !emailsIsValid {
-                emailError = "E-mail inválido" // Mostra um aviso curto enquanto digita
+    func validateEmail(_ value: String) -> String? {
+            if value.isEmpty {
+                return nil
             } else {
-                emailError = nil // Se o formato ficou correto, some com o erro na hora!
+                let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+                let emailPredicate = NSPredicate(format:"SELF MATCHES %@", emailRegex)
+                if !emailPredicate.evaluate(with: value) {
+                    return "E-mail inválido"
+                }
+                return nil
             }
         }
     
@@ -69,10 +77,6 @@ class RegisterPageViewModel {
             print("E-mail válido! Prosseguindo com a autenticação...")
         }
     
-    func forgetPassword() {
-        // Fluxo de recuperar senha
-    }
-    
     func goToRegister() {
         flowManager.goToRegister();
     }
@@ -80,31 +84,17 @@ class RegisterPageViewModel {
     func goToHome() {
         flowManager.goToHome();
     }
-    
-    func sendRecoverCode() {
-        print("API: Solicitando código para \(self.email)")
-    }
 
-    func updatePassword(codigo: String, novaSenha: String) {
-        print("API: Atualizando senha com código \(codigo) e nova senha \(novaSenha)")
-    }
     
     @MainActor
         private func processSelectedPhoto() async {
             guard let item = selectedPhotoItem else { return }
             
-            // Carrega os dados brutos da imagem (UIKit/UIImage compatível)
             if let data = try? await item.loadTransferable(type: Data.self) {
-                // 1. Converte para UIImage para podermos comprimir e garantir o formato correto (JPEG)
                 if let uiImage = UIImage(data: data) {
-                    // Comprime a imagem (0.7 tira peso sem perder qualidade perceptível no avatar)
                     if let jpegData = uiImage.jpegData(compressionQuality: 0.7) {
-                        // 2. Transforma em Base64
                         self.base64Image = jpegData.base64EncodedString()
-                        
-                        // 3. Atualiza a propriedade visual para a View exibir
                         self.displayImage = Image(uiImage: uiImage)
-                        print("Sucesso! Imagem convertida para Base64. Tamanho: \(self.base64Image?.count ?? 0) caracteres.")
                     }
                 }
             }

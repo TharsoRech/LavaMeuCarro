@@ -1,15 +1,13 @@
 import Foundation
 
 @Observable
-class HomePageViewModel {
+class HomePageViewModel : BaseViewModel{
     
     var flowManager: AppFlowManager
     
     init(flowManager: AppFlowManager) {
             self.flowManager = flowManager
         }
-    
-    var isLoading: Bool = false
     
     func goToRegistry() {
         flowManager.goToRegister()

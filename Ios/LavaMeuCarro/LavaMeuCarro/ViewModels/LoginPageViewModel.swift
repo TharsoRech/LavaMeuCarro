@@ -1,7 +1,7 @@
 import Foundation
 
 @Observable // Ou crie como ObservableObject dependendo da versão do iOS
-class LoginPageViewModel {
+class LoginPageViewModel : BaseViewModel{
     var email: String = ""
     var password: String = ""
     
