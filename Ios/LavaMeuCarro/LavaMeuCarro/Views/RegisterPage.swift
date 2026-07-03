@@ -3,8 +3,6 @@ import _PhotosUI_SwiftUI
 
 struct RegisterPage: View {
     @State var viewModel: RegisterPageViewModel
-    @State private var email: String = ""
-    @State private var emailError: String? = nil
     
     var body: some View {
         ZStack {
@@ -23,16 +21,21 @@ struct RegisterPage: View {
                 SelectImage(selectedPhotoItem: $viewModel.selectedPhotoItem, displayImage: $viewModel.displayImage)
                 
                 CustomTextField(
+                    title: "Nome Completo",
+                    text: $viewModel.fullName
+                ).padding(.horizontal, 24)
+                    .padding(.vertical, 4)
+                
+                CustomTextField(
                     title: "Email",
-                    text: $email,
-                    errorMessage: emailError
+                    text: $viewModel.email,
+                    errorMessage: viewModel.emailError
                 )
-                .onChange(of: email) { _, newValue in
-                    viewModel.email = newValue
-                    emailError = viewModel.validateEmail(newValue)
+                .onChange(of: viewModel.email) { _, newValue in
+                    viewModel.emailError = viewModel.validateEmail(newValue)
                 }
                 .padding(.horizontal, 24)
-                .padding(.vertical, 16)
+                .padding(.vertical, 4)
             
                 
                 Spacer()

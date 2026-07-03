@@ -5,7 +5,7 @@ import PhotosUI
 @Observable
 class RegisterPageViewModel: BaseViewModel {
     var email: String = ""
-    var password: String = ""
+    var fullName: String = ""
     
     var showingForgotPassword = false
 
@@ -44,7 +44,7 @@ class RegisterPageViewModel: BaseViewModel {
     }
     
     var isFormValid: Bool {
-        return !email.isEmpty && emailError == nil && !password.isEmpty
+        return !email.isEmpty && emailError == nil
     }
     
     func validateEmail(_ value: String) -> String? {
