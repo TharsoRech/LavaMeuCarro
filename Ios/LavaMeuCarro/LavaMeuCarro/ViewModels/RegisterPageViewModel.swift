@@ -5,11 +5,26 @@ import PhotosUI
 @Observable
 class RegisterPageViewModel: BaseViewModel {
     var email: String = ""
+    
     var fullName: String = ""
+    
+    var phone: String = ""
+    
+    var dob: String = ""
+    
+    var cpf: String = ""
+    
+    var password: String = ""
     
     var showingForgotPassword = false
 
     var emailError: String? = nil
+    
+    var phoneError: String? = nil
+    
+    var dobError: String? = nil
+    
+    var cpfError: String? = nil
     
     var flowManager: AppFlowManager
     
@@ -59,6 +74,80 @@ class RegisterPageViewModel: BaseViewModel {
                 return nil
             }
         }
+    
+    func validatePhone(_ value: String) -> String? {
+        let digitsOnly = value.filter { $0.isNumber }
+        
+        if digitsOnly.isEmpty {
+            return nil
+        } else {
+            let phoneRegex = "^[1-9]{2}[2-9][0-9]{7,8}$"
+            let phonePredicate = NSPredicate(format: "SELF MATCHES %@", phoneRegex)
+            
+            if !phonePredicate.evaluate(with: digitsOnly) {
+                return "Telefone inválido"
+            }
+            return nil
+        }
+    }
+    
+    func validateDob(_ value: String) -> String? {
+        let digitsOnly = value.filter { $0.isNumber }
+        
+        if digitsOnly.isEmpty {
+            return nil
+        }
+        
+        if digitsOnly.count != 8 {
+            return "Data de nascimento inválida"
+        }
+        
+        let dateRegex = "^(0[1-9]|[12][0-9]|3[01])(0[1-9]|1[012])[12][0-9]{3}$"
+        let datePredicate = NSPredicate(format: "SELF MATCHES %@", dateRegex)
+        
+        if !datePredicate.evaluate(with: digitsOnly) {
+            return "Data inválida"
+        }
+        
+        return nil
+    }
+    
+    func validateCpf(_ value: String) -> String? {
+        let digitsOnly = value.filter { $0.isNumber }
+        
+        if digitsOnly.isEmpty {
+            return nil
+        }
+        
+        if digitsOnly.count != 11 {
+            return "CPF inválido"
+        }
+        
+        let allEqual = digitsOnly.allSatisfy { $0 == digitsOnly.first }
+        if allEqual {
+            return "CPF inválido"
+        }
+        
+        let numbers = digitsOnly.compactMap { Int(String($0)) }
+        
+        var sum = 0
+        for i in 0..<9 {
+            sum += numbers[i] * (10 - i)
+        }
+        var firstCheck = 11 - (sum % 11)
+        if firstCheck >= 10 { firstCheck = 0 }
+        if numbers[9] != firstCheck { return "CPF inválido" }
+        
+        sum = 0
+        for i in 0..<10 {
+            sum += numbers[i] * (11 - i)
+        }
+        var secondCheck = 11 - (sum % 11)
+        if secondCheck >= 10 { secondCheck = 0 }
+        if numbers[10] != secondCheck { return "CPF inválido" }
+        
+        return nil
+    }
     
     func Login() {
            emailError = nil
